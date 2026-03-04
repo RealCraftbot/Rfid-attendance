@@ -31,9 +31,11 @@ export default function DevicesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<z.infer<typeof deviceSchema>>({
     resolver: zodResolver(deviceSchema),
     defaultValues: {
+      name: '',
+      device_id: '',
       is_active: true
     }
   });

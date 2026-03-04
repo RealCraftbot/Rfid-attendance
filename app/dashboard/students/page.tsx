@@ -27,18 +27,27 @@ const studentSchema = z.object({
   email: z.string().email('Invalid email'),
   rfid_uid: z.string().min(4, 'RFID UID is required'),
   class: z.string().min(1, 'Class is required'),
+  parent_id: z.string().optional(),
   is_active: z.boolean().default(true),
 });
 
 export default function StudentsPage() {
-  const { organization } = useAuth();
+  const { organization, role, user } = useAuth();
   const [students, setStudents] = useState<any[]>([]);
+  const [classrooms, setClassrooms] = useState<any[]>([]);
+  const [parents, setParents] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClass, setSelectedClass] = useState<string>('all');
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<z.infer<typeof studentSchema>>({
     resolver: zodResolver(studentSchema),
     defaultValues: {
+      name: '',
+      email: '',
+      rfid_uid: '',
+      class: '',
+      parent_id: '',
       is_active: true
     }
   });
@@ -46,16 +55,38 @@ export default function StudentsPage() {
   useEffect(() => {
     if (!organization?.id) return;
 
+    // Fetch classrooms for the dropdown
+    const classroomsRef = collection(db, 'organizations', organization.id, 'classrooms');
+    const unsubClassrooms = onSnapshot(classroomsRef, (snap) => {
+      setClassrooms(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Fetch parents for the dropdown
+    const parentsQuery = query(
+      collection(db, 'users'),
+      where('org_id', '==', organization.id),
+      where('role', '==', 'parent')
+    );
+    const unsubParents = onSnapshot(parentsQuery, (snap) => {
+      setParents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Fetch students
     const q = query(
       collection(db, 'organizations', organization.id, 'students'),
       orderBy('name', 'asc')
     );
 
     const unsubscribe = onSnapshot(q, (snap) => {
-      setStudents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      let studentList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setStudents(studentList);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubClassrooms();
+      unsubParents();
+    };
   }, [organization]);
 
   const onSubmit = async (data: any) => {
@@ -83,10 +114,12 @@ export default function StudentsPage() {
     await deleteDoc(doc(db, 'organizations', organization.id, 'students', id));
   };
 
-  const filteredStudents = students.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.rfid_uid.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStudents = students.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         s.rfid_uid.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesClass = selectedClass === 'all' || s.class === selectedClass;
+    return matchesSearch && matchesClass;
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -95,13 +128,15 @@ export default function StudentsPage() {
           <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Students</h1>
           <p className="text-zinc-500 mt-1">Manage student records and RFID assignments</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-zinc-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-95"
-        >
-          <Plus size={20} />
-          Add Student
-        </button>
+        {role === 'admin' && (
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-zinc-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-95"
+          >
+            <Plus size={20} />
+            Add Student
+          </button>
+        )}
       </div>
 
       {/* Filters & Search */}
@@ -117,10 +152,16 @@ export default function StudentsPage() {
               className="w-full pl-10 pr-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
             />
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 hover:bg-zinc-50">
-            <Filter size={18} />
-            Filters
-          </button>
+          <select 
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+            className="px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 outline-none focus:ring-2 ring-zinc-100"
+          >
+            <option value="all">All Classes</option>
+            {classrooms.map(c => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
+          </select>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 hover:bg-zinc-50">
           <Download size={18} />
@@ -239,13 +280,29 @@ export default function StudentsPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Class</label>
-                  <input 
+                  <select 
                     {...register('class')}
                     className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
-                    placeholder="Grade 10A"
-                  />
+                  >
+                    <option value="">Select Class</option>
+                    {classrooms.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
                   {errors.class && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.class.message}</p>}
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Parent / Guardian</label>
+                <select 
+                  {...register('parent_id')}
+                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                >
+                  <option value="">Select Parent (Optional)</option>
+                  {parents.map(p => (
+                    <option key={p.id} value={p.id}>{p.name || p.email}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">RFID UID</label>

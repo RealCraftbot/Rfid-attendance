@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import Link from 'next/link';
 import { 
   BarChart, 
   Bar, 
@@ -224,10 +225,13 @@ export default function SuperAdminDashboard() {
             )}
           </div>
 
-          <button className="mt-6 w-full py-3 bg-brand-navy text-white text-sm font-bold rounded-xl transition-all hover:bg-brand-navy/90 flex items-center justify-center gap-2">
+          <Link 
+            href="/super-admin/organizations"
+            className="mt-6 w-full py-3 bg-brand-navy text-white text-sm font-bold rounded-xl transition-all hover:bg-brand-navy/90 flex items-center justify-center gap-2"
+          >
             Manage Organizations
             <ExternalLink size={14} />
-          </button>
+          </Link>
         </div>
       </div>
     </div>

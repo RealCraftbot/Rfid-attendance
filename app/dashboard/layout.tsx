@@ -11,9 +11,14 @@ import {
   LogOut,
   Bell,
   Search,
-  ShieldCheck
+  ShieldCheck,
+  BookOpen,
+  Baby,
+  MessageSquare,
+  UserCog
 } from 'lucide-react';
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { auth } from '@/lib/firebase';
@@ -71,41 +76,84 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <aside className="w-64 border-r border-zinc-200 bg-brand-navy flex flex-col text-white">
         <div className="p-6">
-          <div className="flex flex-col gap-1 mb-8">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-brand-blue rounded-lg flex items-center justify-center">
-                <ShieldCheck size={20} className="text-white" />
-              </div>
-              <span className="font-bold text-xl tracking-tight">Craft<span className="text-brand-purple">Innovations</span></span>
-            </div>
-            <p className="text-[10px] font-bold text-brand-purple/60 uppercase tracking-[0.2em] ml-10">Nigeria Limited</p>
-          </div>
+          <Link href="/dashboard" className="block mb-8">
+            <Logo 
+              textColor="text-white" 
+              subtextColor="text-brand-purple/60" 
+            />
+          </Link>
 
           <nav className="space-y-1">
-            <SidebarItem 
-              icon={LayoutDashboard} 
-              label="Overview" 
-              href="/dashboard" 
-              active={pathname === '/dashboard'} 
-            />
-            <SidebarItem 
-              icon={Users} 
-              label="Students" 
-              href="/dashboard/students" 
-              active={pathname === '/dashboard/students'} 
-            />
-            <SidebarItem 
-              icon={Cpu} 
-              label="Devices" 
-              href="/dashboard/devices" 
-              active={pathname === '/dashboard/devices'} 
-            />
-            <SidebarItem 
-              icon={History} 
-              label="Attendance" 
-              href="/dashboard/attendance" 
-              active={pathname === '/dashboard/attendance'} 
-            />
+            {/* Common for Admin and Teacher */}
+            {(role === 'admin' || role === 'teacher') && (
+              <>
+                <SidebarItem 
+                  icon={LayoutDashboard} 
+                  label="Overview" 
+                  href="/dashboard" 
+                  active={pathname === '/dashboard'} 
+                />
+                <SidebarItem 
+                  icon={BookOpen} 
+                  label="Classrooms" 
+                  href="/dashboard/classrooms" 
+                  active={pathname === '/dashboard/classrooms'} 
+                />
+                <SidebarItem 
+                  icon={Users} 
+                  label="Students" 
+                  href="/dashboard/students" 
+                  active={pathname === '/dashboard/students'} 
+                />
+                {role === 'admin' && (
+                  <SidebarItem 
+                    icon={UserCog} 
+                    label="Staff" 
+                    href="/dashboard/staff" 
+                    active={pathname === '/dashboard/staff'} 
+                  />
+                )}
+              </>
+            )}
+
+            {/* Admin Only */}
+            {role === 'admin' && (
+              <SidebarItem 
+                icon={Cpu} 
+                label="Devices" 
+                href="/dashboard/devices" 
+                active={pathname === '/dashboard/devices'} 
+              />
+            )}
+
+            {/* Parent Only */}
+            {role === 'parent' && (
+              <>
+                <SidebarItem 
+                  icon={LayoutDashboard} 
+                  label="My Children" 
+                  href="/dashboard" 
+                  active={pathname === '/dashboard'} 
+                />
+                <SidebarItem 
+                  icon={MessageSquare} 
+                  label="Notifications" 
+                  href="/dashboard/notifications" 
+                  active={pathname === '/dashboard/notifications'} 
+                />
+              </>
+            )}
+
+            {/* Common History */}
+            {(role === 'admin' || role === 'teacher') && (
+              <SidebarItem 
+                icon={History} 
+                label="Attendance" 
+                href="/dashboard/attendance" 
+                active={pathname === '/dashboard/attendance'} 
+              />
+            )}
+
             {role === 'super-admin' && (
               <SidebarItem 
                 icon={ShieldCheck} 
@@ -160,14 +208,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <p className="text-sm font-semibold text-zinc-900">{user?.displayName || 'Admin User'}</p>
                 <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">{organization?.name || 'Loading...'}</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-zinc-100 border border-zinc-200 overflow-hidden relative">
+              <div className="w-10 h-10 rounded-full bg-brand-blue/10 border border-brand-blue/20 overflow-hidden relative flex items-center justify-center">
                 <Image 
-                  src={user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`} 
+                  src={user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'default'}`} 
                   alt="Avatar" 
                   fill
                   className="object-cover"
                   referrerPolicy="no-referrer"
                 />
+                <div className="absolute inset-0 flex items-center justify-center bg-brand-blue/10 text-brand-blue font-bold text-xs -z-10">
+                  {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                </div>
               </div>
             </div>
           </div>

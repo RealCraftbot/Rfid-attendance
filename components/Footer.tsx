@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ShieldCheck, Mail, Phone, MapPin, Twitter, Linkedin, Github } from 'lucide-react';
+import { Mail, Phone, MapPin, Twitter, Linkedin, Github } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -12,16 +13,11 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-24">
         {/* Brand Column */}
         <div className="space-y-6">
-          <Link href="/" className="flex flex-col gap-0">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-brand-blue rounded-lg flex items-center justify-center">
-                <ShieldCheck size={20} className="text-white" />
-              </div>
-              <span className="font-bold text-xl tracking-tight text-white">
-                Craft<span className="text-brand-purple">Innovations</span>
-              </span>
-            </div>
-            <p className="text-[8px] font-bold text-brand-purple/40 uppercase tracking-[0.2em] ml-10">Nigeria Limited</p>
+          <Link href="/">
+            <Logo 
+              textColor="text-white" 
+              subtextColor="text-brand-purple/40" 
+            />
           </Link>
           <p className="text-brand-purple/60 text-sm leading-relaxed max-w-xs">
             Enterprise-grade RFID attendance solutions designed for the next generation of educational and organizational management.

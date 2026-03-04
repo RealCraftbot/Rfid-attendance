@@ -7,11 +7,11 @@ import {
   Users, 
   Settings, 
   LogOut,
-  ShieldCheck,
   Search,
   Bell
 } from 'lucide-react';
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { auth } from '@/lib/firebase';
@@ -72,15 +72,12 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       {/* Sidebar */}
       <aside className="w-64 border-r border-zinc-200 bg-brand-navy flex flex-col text-white">
         <div className="p-6">
-          <div className="flex flex-col gap-1 mb-8">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-brand-green rounded-lg flex items-center justify-center">
-                <ShieldCheck size={20} className="text-brand-navy" />
-              </div>
-              <span className="font-bold text-xl tracking-tight">SaaS<span className="text-brand-green">Admin</span></span>
-            </div>
-            <p className="text-[10px] font-bold text-brand-purple/60 uppercase tracking-[0.2em] ml-10">Platform Control</p>
-          </div>
+          <Link href="/super-admin" className="block mb-8">
+            <Logo 
+              textColor="text-white" 
+              subtextColor="text-brand-purple/60" 
+            />
+          </Link>
 
           <nav className="space-y-1">
             <SidebarItem 

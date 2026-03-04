@@ -23,6 +23,7 @@ import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/f
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { format } from 'date-fns';
+import ParentDashboard from './parent/page';
 
 const StatCard = ({ title, value, change, icon: Icon, trend }: any) => (
   <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -45,7 +46,7 @@ const StatCard = ({ title, value, change, icon: Icon, trend }: any) => (
 );
 
 export default function DashboardPage() {
-  const { organization } = useAuth();
+  const { organization, role } = useAuth();
   const [stats, setStats] = useState({
     totalStudents: 0,
     presentToday: 0,
@@ -64,7 +65,7 @@ export default function DashboardPage() {
   ]);
 
   useEffect(() => {
-    if (!organization?.id) return;
+    if (!organization?.id || (role !== 'admin' && role !== 'teacher')) return;
 
     // 1. Real-time stats
     const studentsRef = collection(db, 'organizations', organization.id, 'students');
@@ -104,7 +105,11 @@ export default function DashboardPage() {
       unsubPresent();
       unsubRecent();
     };
-  }, [organization]);
+  }, [organization, role]);
+
+  if (role === 'parent') {
+    return <ParentDashboard />;
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">

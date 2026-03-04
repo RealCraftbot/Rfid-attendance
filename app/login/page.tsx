@@ -6,15 +6,16 @@ import {
   Mail, 
   Lock, 
   ArrowRight,
-  ShieldCheck,
   ShieldAlert,
   Cpu,
-  Users
+  Users,
+  ShieldCheck
 } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -54,15 +55,12 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10">
-          <div className="flex flex-col gap-1 mb-12">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center">
-                <ShieldCheck size={24} className="text-white" />
-              </div>
-              <span className="text-2xl font-bold text-white tracking-tight">Craft<span className="text-brand-purple">Innovations</span></span>
-            </div>
-            <p className="text-[10px] font-bold text-brand-purple/60 uppercase tracking-[0.2em] ml-13">Nigeria Limited</p>
-          </div>
+          <Link href="/" className="block mb-12">
+            <Logo 
+              textColor="text-white" 
+              subtextColor="text-brand-purple/60" 
+            />
+          </Link>
 
           <h1 className="text-6xl font-bold text-white tracking-tighter leading-none mb-6">
             Secure <br />

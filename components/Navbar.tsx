@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Logo from '@/components/Logo';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -24,16 +25,8 @@ export default function Navbar() {
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-        <Link href="/" className="flex flex-col gap-0">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-brand-blue rounded-lg flex items-center justify-center">
-              <ShieldCheck size={20} className="text-white" />
-            </div>
-            <span className={`font-bold text-xl tracking-tight ${isScrolled ? 'text-brand-navy' : 'text-brand-navy'}`}>
-              Craft<span className="text-brand-blue">Innovations</span>
-            </span>
-          </div>
-          <p className="text-[8px] font-bold text-brand-navy/40 uppercase tracking-[0.2em] ml-10">Nigeria Limited</p>
+        <Link href="/">
+          <Logo />
         </Link>
 
         {/* Desktop Nav */}

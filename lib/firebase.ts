@@ -12,15 +12,8 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let app;
-try {
-  app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-} catch (error) {
-  console.error('Firebase initialization error:', error);
-  // Fallback or handle error
-}
-
-const auth = app ? getAuth(app) : null;
-const db = app ? getFirestore(app) : null;
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
 export { app, auth, db };
