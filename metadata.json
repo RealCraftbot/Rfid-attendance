@@ -1,0 +1,5 @@
+{
+  "name": "RFID Attendance SaaS",
+  "description": "Commercial-grade RFID Attendance Management System with real-time dashboard, multi-tenant architecture, and secure device authentication.",
+  "requestFramePermissions": []
+}

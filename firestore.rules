@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper to check if user belongs to the organization
+    // In a production app, you'd check a user_organizations collection or custom claims
+    function isOrgAdmin(orgId) {
+      return isAuthenticated() && (request.auth.uid == orgId || exists(/databases/$(database)/documents/organizations/$(orgId)/admins/$(request.auth.uid)));
+    }
+
+    // Organizations collection
+    match /organizations/{orgId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only via admin panel/functions
+
+      // Devices subcollection
+      match /devices/{deviceId} {
+        allow read: if isOrgAdmin(orgId);
+        allow write: if isOrgAdmin(orgId);
+      }
+
+      // Students subcollection
+      match /students/{studentId} {
+        allow read: if isOrgAdmin(orgId);
+        allow write: if isOrgAdmin(orgId);
+      }
+
+      // Attendance records subcollection
+      match /attendance_records/{recordId} {
+        allow read: if isOrgAdmin(orgId);
+        allow write: if false; // Only via Cloud Functions
+      }
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
