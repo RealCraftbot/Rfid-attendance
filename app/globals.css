@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+@theme {
+  --color-brand-navy: #01012E;
+  --color-brand-blue: #0143DF;
+  --color-brand-green: #3FF29C;
+  --color-brand-purple: #C6CCFF;
+  --color-brand-lime: #DBE70C;
+
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply font-sans antialiased;
+  }
+}

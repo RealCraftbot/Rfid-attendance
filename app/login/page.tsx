@@ -43,55 +43,58 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex">
       {/* Left Side - Branding */}
-      <div className="hidden lg:flex flex-1 bg-zinc-900 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex flex-1 bg-brand-navy p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-100 via-transparent to-transparent" />
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-brand-blue via-transparent to-transparent" />
           <div className="grid grid-cols-10 gap-4 p-4">
             {Array.from({ length: 100 }).map((_, i) => (
-              <div key={i} className="w-1 h-1 bg-white rounded-full" />
+              <div key={i} className="w-1 h-1 bg-brand-purple rounded-full" />
             ))}
           </div>
         </div>
 
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
-              <div className="w-5 h-5 border-2 border-zinc-900 rounded-full border-t-transparent animate-spin-slow" />
+          <div className="flex flex-col gap-1 mb-12">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center">
+                <ShieldCheck size={24} className="text-white" />
+              </div>
+              <span className="text-2xl font-bold text-white tracking-tight">Craft<span className="text-brand-purple">Innovations</span></span>
             </div>
-            <span className="text-2xl font-bold text-white tracking-tight">RFID<span className="text-zinc-500">SaaS</span></span>
+            <p className="text-[10px] font-bold text-brand-purple/60 uppercase tracking-[0.2em] ml-13">Nigeria Limited</p>
           </div>
 
           <h1 className="text-6xl font-bold text-white tracking-tighter leading-none mb-6">
             Secure <br />
             Attendance <br />
-            <span className="text-zinc-500 italic font-serif">Simplified.</span>
+            <span className="text-brand-green italic">Simplified.</span>
           </h1>
-          <p className="text-zinc-400 text-lg max-w-md leading-relaxed">
+          <p className="text-brand-purple/60 text-lg max-w-md leading-relaxed">
             Enterprise-grade RFID attendance management for schools and organizations. Real-time tracking, secure device authentication, and instant analytics.
           </p>
         </div>
 
         <div className="relative z-10 grid grid-cols-3 gap-8">
           <div className="space-y-2">
-            <div className="p-2 bg-zinc-800 w-fit rounded-lg text-white">
+            <div className="p-2 bg-white/5 w-fit rounded-lg text-brand-green">
               <ShieldCheck size={20} />
             </div>
             <p className="text-white font-bold text-sm">HMAC Secure</p>
-            <p className="text-zinc-500 text-xs">Device-level signing</p>
+            <p className="text-brand-purple/40 text-xs">Device-level signing</p>
           </div>
           <div className="space-y-2">
-            <div className="p-2 bg-zinc-800 w-fit rounded-lg text-white">
+            <div className="p-2 bg-white/5 w-fit rounded-lg text-brand-blue">
               <Cpu size={20} />
             </div>
             <p className="text-white font-bold text-sm">Edge Ready</p>
-            <p className="text-zinc-500 text-xs">ESP32 & Arduino support</p>
+            <p className="text-brand-purple/40 text-xs">ESP32 & Arduino support</p>
           </div>
           <div className="space-y-2">
-            <div className="p-2 bg-zinc-800 w-fit rounded-lg text-white">
+            <div className="p-2 bg-white/5 w-fit rounded-lg text-brand-purple">
               <Users size={20} />
             </div>
             <p className="text-white font-bold text-sm">Multi-tenant</p>
-            <p className="text-zinc-500 text-xs">Scalable architecture</p>
+            <p className="text-brand-purple/40 text-xs">Scalable architecture</p>
           </div>
         </div>
       </div>
@@ -154,7 +157,7 @@ export default function LoginPage() {
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full bg-zinc-900 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-[0.98] disabled:opacity-50"
+              className="w-full bg-brand-blue text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-brand-blue/90 transition-all shadow-lg shadow-brand-blue/20 active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? 'Authenticating...' : 'Sign In'}
               {!loading && <ArrowRight size={18} />}

@@ -27,11 +27,11 @@ import { format } from 'date-fns';
 const StatCard = ({ title, value, change, icon: Icon, trend }: any) => (
   <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-shadow duration-300">
     <div className="flex justify-between items-start mb-4">
-      <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100">
-        <Icon size={24} className="text-zinc-900" />
+      <div className="p-3 bg-brand-navy/5 rounded-xl border border-brand-navy/10">
+        <Icon size={24} className="text-brand-navy" />
       </div>
       <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${
-        trend === 'up' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+        trend === 'up' ? 'bg-brand-green/10 text-brand-green' : 'bg-red-50 text-red-600'
       }`}>
         {trend === 'up' ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
         {change}%
@@ -164,8 +164,8 @@ export default function DashboardPage() {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#18181b" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#18181b" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#0143DF" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#0143DF" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f1f1" />
@@ -192,7 +192,7 @@ export default function DashboardPage() {
                 <Area 
                   type="monotone" 
                   dataKey="present" 
-                  stroke="#18181b" 
+                  stroke="#0143DF" 
                   strokeWidth={3}
                   fillOpacity={1} 
                   fill="url(#colorPresent)" 
@@ -216,7 +216,7 @@ export default function DashboardPage() {
             {recentAttendance.length > 0 ? recentAttendance.map((record) => (
               <div key={record.id} className="flex items-start gap-4 group">
                 <div className={`mt-1 p-2 rounded-lg ${
-                  record.check_type === 'check-in' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+                  record.check_type === 'check-in' ? 'bg-brand-green/10 text-brand-green' : 'bg-brand-blue/10 text-brand-blue'
                 }`}>
                   <Clock size={16} />
                 </div>

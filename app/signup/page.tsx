@@ -77,41 +77,44 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex">
       {/* Left Side - Branding */}
-      <div className="hidden lg:flex flex-1 bg-zinc-900 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex flex-1 bg-brand-navy p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="grid grid-cols-10 gap-4 p-4">
             {Array.from({ length: 100 }).map((_, i) => (
-              <div key={i} className="w-1 h-1 bg-white rounded-full" />
+              <div key={i} className="w-1 h-1 bg-brand-purple rounded-full" />
             ))}
           </div>
         </div>
 
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
-              <div className="w-5 h-5 border-2 border-zinc-900 rounded-full border-t-transparent animate-spin-slow" />
+          <div className="flex flex-col gap-1 mb-12">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center">
+                <ShieldCheck size={24} className="text-white" />
+              </div>
+              <span className="text-2xl font-bold text-white tracking-tight">Craft<span className="text-brand-purple">Innovations</span></span>
             </div>
-            <span className="text-2xl font-bold text-white tracking-tight">RFID<span className="text-zinc-500">SaaS</span></span>
+            <p className="text-[10px] font-bold text-brand-purple/60 uppercase tracking-[0.2em] ml-13">Nigeria Limited</p>
           </div>
 
           <h1 className="text-6xl font-bold text-white tracking-tighter leading-none mb-6">
             Start <br />
             Tracking <br />
-            <span className="text-zinc-500 italic font-serif">Today.</span>
+            <span className="text-brand-green italic">Today.</span>
           </h1>
-          <p className="text-zinc-400 text-lg max-w-md leading-relaxed">
+          <p className="text-brand-purple/60 text-lg max-w-md leading-relaxed">
             Join hundreds of organizations using our enterprise-grade RFID attendance management system.
           </p>
         </div>
 
         <div className="relative z-10">
-          <div className="flex items-center gap-4 p-4 bg-zinc-800/50 rounded-2xl border border-white/5 backdrop-blur-sm">
-            <div className="w-12 h-12 bg-zinc-700 rounded-xl flex items-center justify-center text-white">
+          <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-sm">
+            <div className="w-12 h-12 bg-brand-blue rounded-xl flex items-center justify-center text-white">
               <ShieldCheck size={24} />
             </div>
             <div>
               <p className="text-white font-bold text-sm">Secure by Design</p>
-              <p className="text-zinc-500 text-xs">End-to-end encryption & HMAC signing</p>
+              <p className="text-brand-purple/40 text-xs">End-to-end encryption & HMAC signing</p>
             </div>
           </div>
         </div>
@@ -182,7 +185,7 @@ export default function SignupPage() {
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full bg-zinc-900 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-[0.98] disabled:opacity-50"
+              className="w-full bg-brand-blue text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-brand-blue/90 transition-all shadow-lg shadow-brand-blue/20 active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? 'Creating Account...' : 'Get Started'}
               {!loading && <ArrowRight size={18} />}

@@ -1,31 +1,28 @@
 'use client';
 
-import React from 'react';
-import Image from 'next/image';
+import React, { useEffect } from 'react';
 import { 
-  LayoutDashboard, 
+  BarChart3, 
+  Building2, 
   Users, 
-  Cpu, 
-  History, 
   Settings, 
   LogOut,
-  Bell,
+  ShieldCheck,
   Search,
-  ShieldCheck
+  Bell
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
-import { useEffect } from 'react';
 
 const SidebarItem = ({ icon: Icon, label, href, active }: { icon: any, label: string, href: string, active: boolean }) => (
   <Link 
     href={href}
     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
       active 
-        ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/20' 
+        ? 'bg-brand-green text-brand-navy shadow-lg shadow-brand-green/20' 
         : 'text-brand-purple/60 hover:bg-white/5 hover:text-white'
     }`}
   >
@@ -34,16 +31,20 @@ const SidebarItem = ({ icon: Icon, label, href, active }: { icon: any, label: st
   </Link>
 );
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading, organization, role } = useAuth();
+  const { user, loading, role } = useAuth();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
+    if (!loading) {
+      if (!user) {
+        router.push('/login');
+      } else if (role !== 'super-admin') {
+        router.push('/dashboard');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, loading, role, router]);
 
   const handleLogout = async () => {
     if (auth) {
@@ -56,13 +57,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="h-screen w-full flex items-center justify-center bg-[#F8F9FA]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-4 border-zinc-900 rounded-full border-t-transparent animate-spin" />
-          <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest">Loading Dashboard...</p>
+          <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest">Loading Admin Console...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
+  if (role !== 'super-admin') {
     return null;
   }
 
@@ -73,56 +74,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="p-6">
           <div className="flex flex-col gap-1 mb-8">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-brand-blue rounded-lg flex items-center justify-center">
-                <ShieldCheck size={20} className="text-white" />
+              <div className="w-8 h-8 bg-brand-green rounded-lg flex items-center justify-center">
+                <ShieldCheck size={20} className="text-brand-navy" />
               </div>
-              <span className="font-bold text-xl tracking-tight">Craft<span className="text-brand-purple">Innovations</span></span>
+              <span className="font-bold text-xl tracking-tight">SaaS<span className="text-brand-green">Admin</span></span>
             </div>
-            <p className="text-[10px] font-bold text-brand-purple/60 uppercase tracking-[0.2em] ml-10">Nigeria Limited</p>
+            <p className="text-[10px] font-bold text-brand-purple/60 uppercase tracking-[0.2em] ml-10">Platform Control</p>
           </div>
 
           <nav className="space-y-1">
             <SidebarItem 
-              icon={LayoutDashboard} 
-              label="Overview" 
-              href="/dashboard" 
-              active={pathname === '/dashboard'} 
+              icon={BarChart3} 
+              label="Global Stats" 
+              href="/super-admin" 
+              active={pathname === '/super-admin'} 
+            />
+            <SidebarItem 
+              icon={Building2} 
+              label="Organizations" 
+              href="/super-admin/organizations" 
+              active={pathname === '/super-admin/organizations'} 
             />
             <SidebarItem 
               icon={Users} 
-              label="Students" 
-              href="/dashboard/students" 
-              active={pathname === '/dashboard/students'} 
+              label="User Management" 
+              href="/super-admin/users" 
+              active={pathname === '/super-admin/users'} 
             />
-            <SidebarItem 
-              icon={Cpu} 
-              label="Devices" 
-              href="/dashboard/devices" 
-              active={pathname === '/dashboard/devices'} 
-            />
-            <SidebarItem 
-              icon={History} 
-              label="Attendance" 
-              href="/dashboard/attendance" 
-              active={pathname === '/dashboard/attendance'} 
-            />
-            {role === 'super-admin' && (
-              <SidebarItem 
-                icon={ShieldCheck} 
-                label="Super Admin" 
-                href="/super-admin" 
-                active={false} 
-              />
-            )}
           </nav>
         </div>
 
         <div className="mt-auto p-6 space-y-1 border-t border-white/10">
           <SidebarItem 
             icon={Settings} 
-            label="Settings" 
-            href="/dashboard/settings" 
-            active={pathname === '/dashboard/settings'} 
+            label="System Settings" 
+            href="/super-admin/settings" 
+            active={pathname === '/super-admin/settings'} 
           />
           <button 
             onClick={handleLogout}
@@ -142,7 +129,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Search size={18} className="text-zinc-400" />
             <input 
               type="text" 
-              placeholder="Search students, records..." 
+              placeholder="Search organizations, admins..." 
               className="bg-transparent border-none outline-none text-sm w-full text-zinc-900 placeholder:text-zinc-400"
             />
           </div>
@@ -157,17 +144,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <p className="text-sm font-semibold text-zinc-900">{user?.displayName || 'Admin User'}</p>
-                <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">{organization?.name || 'Loading...'}</p>
+                <p className="text-sm font-semibold text-zinc-900">Super Admin</p>
+                <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Platform Owner</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-zinc-100 border border-zinc-200 overflow-hidden relative">
-                <Image 
-                  src={user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email}`} 
-                  alt="Avatar" 
-                  fill
-                  className="object-cover"
-                  referrerPolicy="no-referrer"
-                />
+              <div className="w-10 h-10 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 font-bold">
+                SA
               </div>
             </div>
           </div>

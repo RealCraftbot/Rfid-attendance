@@ -9,18 +9,21 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   organization: any | null;
+  role: 'admin' | 'super-admin' | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   organization: null,
+  role: null,
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<any | null>(null);
+  const [role, setRole] = useState<'admin' | 'super-admin' | null>(null);
 
   useEffect(() => {
     if (!auth || !db) {
@@ -31,15 +34,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
-        // In a real SaaS, we'd store the user's orgId in their profile or a mapping table
-        // For this demo, we'll assume the user's UID is linked to an organization document
-        const orgRef = doc(db, 'organizations', user.uid);
-        const orgSnap = await getDoc(orgRef);
-        if (orgSnap.exists()) {
-          setOrganization({ id: orgSnap.id, ...orgSnap.data() });
+        // 1. Check if user is a Super Admin
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists() && userSnap.data().role === 'super-admin') {
+          setRole('super-admin');
+          setOrganization(null); // Super admins don't necessarily belong to one org
+        } else {
+          // 2. Check for Organization Admin
+          setRole('admin');
+          const orgRef = doc(db, 'organizations', user.uid);
+          const orgSnap = await getDoc(orgRef);
+          if (orgSnap.exists()) {
+            setOrganization({ id: orgSnap.id, ...orgSnap.data() });
+          }
         }
       } else {
         setOrganization(null);
+        setRole(null);
       }
       setLoading(false);
     });
@@ -48,7 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, organization }}>
+    <AuthContext.Provider value={{ user, loading, organization, role }}>
       {children}
     </AuthContext.Provider>
   );

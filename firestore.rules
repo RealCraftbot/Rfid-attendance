@@ -7,33 +7,46 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Helper to check if user is a super admin
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super-admin';
+    }
+
     // Helper to check if user belongs to the organization
-    // In a production app, you'd check a user_organizations collection or custom claims
     function isOrgAdmin(orgId) {
-      return isAuthenticated() && (request.auth.uid == orgId || exists(/databases/$(database)/documents/organizations/$(orgId)/admins/$(request.auth.uid)));
+      return isAuthenticated() && (request.auth.uid == orgId || isSuperAdmin());
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      allow write: if isSuperAdmin();
     }
 
     // Organizations collection
     match /organizations/{orgId} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Only via admin panel/functions
+      allow list: if isSuperAdmin();
+      allow get: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == orgId;
+      allow update: if isOrgAdmin(orgId);
+      allow delete: if isSuperAdmin();
 
       // Devices subcollection
       match /devices/{deviceId} {
-        allow read: if isOrgAdmin(orgId);
-        allow write: if isOrgAdmin(orgId);
+        allow read, write: if isOrgAdmin(orgId);
       }
 
       // Students subcollection
       match /students/{studentId} {
-        allow read: if isOrgAdmin(orgId);
-        allow write: if isOrgAdmin(orgId);
+        allow read, write: if isOrgAdmin(orgId);
       }
 
       // Attendance records subcollection
       match /attendance_records/{recordId} {
         allow read: if isOrgAdmin(orgId);
-        allow write: if false; // Only via Cloud Functions
+        allow write: if isSuperAdmin(); // Usually via Cloud Functions, but allow super admin
       }
     }
     
