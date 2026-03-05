@@ -164,16 +164,16 @@ export default function ParentDashboard() {
     );
   };
 
-  const calculateAttendanceRate = () => {
+ const calculateAttendanceRate = () => {
     if (attendanceHistory.length === 0) return 0;
     const uniqueDays = new Set(attendanceHistory
       .filter(r => r.check_type === 'check-in')
-      .map(r => r.scan_time?.toDate?.toDateString())
+      .map(r => r.scan_time?.toDate()?.toDateString()) // <-- The missing () are added here!
     ).size;
     const daysSinceFirstRecord = Math.max(1, Math.ceil((new Date().getTime() - (attendanceHistory[attendanceHistory.length - 1]?.scan_time?.toDate()?.getTime() || Date.now())) / (1000 * 60 * 60 * 24)));
     return Math.round((uniqueDays / daysSinceFirstRecord) * 100);
   };
-
+  
   const renderCalendar = () => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(monthStart);
