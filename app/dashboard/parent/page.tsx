@@ -113,7 +113,7 @@ export default function ParentDashboard() {
       
       const snap = await getDocs(q);
       const results = snap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
         .filter(s => !s.parent_id); // Only show unlinked students
       setSearchResults(results);
     } catch (err) {
@@ -148,7 +148,7 @@ export default function ParentDashboard() {
       setTimeout(() => {
         setShowLinkModal(false);
         setLinkSuccess(false);
-        setSearchQuery('');
+        searchQuery && setSearchQuery('');
         setSearchResults([]);
       }, 2000);
     } catch (err) {
