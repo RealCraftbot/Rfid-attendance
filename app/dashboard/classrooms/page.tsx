@@ -104,7 +104,7 @@ export default function ClassroomsPage() {
 
     const unsub = onSnapshot(q, (snap) => {
       const records = snap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
         .filter(r => classStudents.some(s => s.id === r.student_id));
       setWeekAttendance(records);
     });
