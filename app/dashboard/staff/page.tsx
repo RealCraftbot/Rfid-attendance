@@ -10,7 +10,8 @@ import {
   XCircle,
   UserCog,
   Mail,
-  Shield
+  Shield,
+  User
 } from 'lucide-react';
 import { collection, onSnapshot, query, where, addDoc, deleteDoc, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -45,10 +46,11 @@ export default function StaffPage() {
   useEffect(() => {
     if (!organization?.id) return;
 
-    // Fetch users belonging to this organization
+    // Fetch users belonging to this organization (exclude parents - they are managed in Parents page)
     const q = query(
       collection(db, 'users'),
-      where('org_id', '==', organization.id)
+      where('org_id', '==', organization.id),
+      where('role', 'in', ['admin', 'teacher'])
     );
 
     const unsubscribe = onSnapshot(q, (snap) => {
@@ -158,10 +160,14 @@ export default function StaffPage() {
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                     member.role === 'admin' 
                       ? 'bg-brand-blue/5 text-brand-blue border-brand-blue/10' 
+                      : member.role === 'parent'
+                      ? 'bg-emerald-500/5 text-emerald-600 border-emerald-500/10'
                       : 'bg-brand-purple/5 text-brand-purple border-brand-purple/10'
                   }`}>
-                    {member.role === 'admin' ? <Shield size={12} /> : <UserCog size={12} />}
-                    {member.role === 'admin' ? 'Admin' : 'Teacher'}
+                    {member.role === 'admin' && <Shield size={12} />}
+                    {member.role === 'teacher' && <UserCog size={12} />}
+                    {member.role === 'parent' && <User size={12} />}
+                    {member.role === 'admin' ? 'Admin' : member.role === 'parent' ? 'Parent' : 'Teacher'}
                   </span>
                 </td>
                 <td className="px-6 py-4">

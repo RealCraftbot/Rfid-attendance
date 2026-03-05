@@ -165,6 +165,9 @@ export default function LoginPage() {
           <p className="text-center text-sm text-zinc-500">
             Don&apos;t have an account? <Link href="/signup" className="font-bold text-zinc-900 hover:underline">Create Account</Link>
           </p>
+          <p className="text-center text-sm text-zinc-400">
+            Are you a parent? <Link href="/parent-signup" className="font-bold text-brand-blue hover:underline">Register Here</Link>
+          </p>
         </div>
       </div>
     </div>

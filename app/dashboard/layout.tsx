@@ -15,7 +15,8 @@ import {
   BookOpen,
   Baby,
   MessageSquare,
-  UserCog
+  UserCog,
+  UserPlus
 } from 'lucide-react';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
@@ -42,7 +43,7 @@ const SidebarItem = ({ icon: Icon, label, href, active }: { icon: any, label: st
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading, organization, role } = useAuth();
+  const { user, loading, organization, role, userData } = useAuth();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -104,6 +105,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   label="Students" 
                   href="/dashboard/students" 
                   active={pathname === '/dashboard/students'} 
+                />
+                <SidebarItem 
+                  icon={UserPlus} 
+                  label="Parents" 
+                  href="/dashboard/parents" 
+                  active={pathname === '/dashboard/parents'} 
                 />
                 {role === 'admin' && (
                   <SidebarItem 
@@ -205,18 +212,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <p className="text-sm font-semibold text-zinc-900">{user?.displayName || 'Admin User'}</p>
-                <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">{organization?.name || 'Loading...'}</p>
+                <p className="text-sm font-semibold text-zinc-900">{userData?.name || user?.displayName || user?.email?.split('@')[0] || 'User'}</p>
+                <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
+                  {role === 'parent' ? 'Parent/Guardian' : role === 'teacher' ? 'Teacher' : role === 'admin' ? organization?.name || 'Admin' : organization?.name || 'Loading...'}
+                </p>
               </div>
               <div className="w-10 h-10 rounded-full bg-brand-blue/10 border border-brand-blue/20 overflow-hidden relative flex items-center justify-center">
-                <Image 
-                  src={user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'default'}`} 
-                  alt="Avatar" 
-                  fill
-                  className="object-cover"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-brand-blue/10 text-brand-blue font-bold text-xs -z-10">
+                {user?.photoURL ? (
+                  <Image 
+                    src={user.photoURL} 
+                    alt="Avatar" 
+                    fill
+                    className="object-cover"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      // Hide the image on error and show initials
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                ) : null}
+                <div className="absolute inset-0 flex items-center justify-center bg-brand-blue/10 text-brand-blue font-bold text-xs">
                   {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
                 </div>
               </div>

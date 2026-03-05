@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   organization: any | null;
   role: 'admin' | 'super-admin' | 'teacher' | 'parent' | null;
+  userData: any | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   organization: null,
   role: null,
+  userData: null,
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -24,6 +26,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [organization, setOrganization] = useState<any | null>(null);
   const [role, setRole] = useState<'admin' | 'super-admin' | 'teacher' | 'parent' | null>(null);
+  const [userData, setUserData] = useState<any | null>(null);
 
   useEffect(() => {
     if (!auth || !db) {
@@ -41,6 +44,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (userSnap.exists()) {
           const userData = userSnap.data();
           setRole(userData.role);
+          setUserData(userData);
           
           if (userData.org_id) {
             const orgRef = doc(db, 'organizations', userData.org_id);
@@ -61,6 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setOrganization(null);
         setRole(null);
+        setUserData(null);
       }
       setLoading(false);
     });
@@ -69,7 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, organization, role }}>
+    <AuthContext.Provider value={{ user, loading, organization, role, userData }}>
       {children}
     </AuthContext.Provider>
   );

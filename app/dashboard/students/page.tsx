@@ -13,9 +13,11 @@ import {
   Edit2,
   CheckCircle2,
   XCircle,
-  Users
+  Users,
+  Link2,
+  UserPlus
 } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc, updateDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { useForm } from 'react-hook-form';
@@ -26,7 +28,7 @@ const studentSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Invalid email'),
   rfid_uid: z.string().min(4, 'RFID UID is required'),
-  class: z.string().min(1, 'Class is required'),
+  class: z.string().optional(),
   parent_id: z.string().optional(),
   is_active: z.boolean().default(true),
 });
@@ -37,6 +39,8 @@ export default function StudentsPage() {
   const [classrooms, setClassrooms] = useState<any[]>([]);
   const [parents, setParents] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('all');
 
@@ -114,6 +118,27 @@ export default function StudentsPage() {
     await deleteDoc(doc(db, 'organizations', organization.id, 'students', id));
   };
 
+  const openLinkModal = (student: any) => {
+    setSelectedStudent(student);
+    setIsLinkModalOpen(true);
+  };
+
+  const linkParent = async (parentId: string) => {
+    if (!organization?.id || !selectedStudent) return;
+    const ref = doc(db, 'organizations', organization.id, 'students', selectedStudent.id);
+    await updateDoc(ref, { parent_id: parentId });
+    setIsLinkModalOpen(false);
+    setSelectedStudent(null);
+  };
+
+  const unlinkParent = async () => {
+    if (!organization?.id || !selectedStudent) return;
+    const ref = doc(db, 'organizations', organization.id, 'students', selectedStudent.id);
+    await updateDoc(ref, { parent_id: null });
+    setIsLinkModalOpen(false);
+    setSelectedStudent(null);
+  };
+
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          s.rfid_uid.toLowerCase().includes(searchTerm.toLowerCase());
@@ -177,6 +202,7 @@ export default function StudentsPage() {
               <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Student</th>
               <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Class</th>
               <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">RFID UID</th>
+              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Parent</th>
               <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Status</th>
               <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest text-right">Actions</th>
             </tr>
@@ -204,6 +230,29 @@ export default function StudentsPage() {
                   <code className="text-xs font-mono bg-zinc-50 px-2 py-1 rounded border border-zinc-200 text-zinc-600">
                     {student.rfid_uid}
                   </code>
+                </td>
+                <td className="px-6 py-4">
+                  {student.parent_id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-zinc-600">
+                        {parents.find(p => p.id === student.parent_id)?.name || 'Linked'}
+                      </span>
+                      <button
+                        onClick={() => openLinkModal(student)}
+                        className="text-xs text-brand-blue hover:underline"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => openLinkModal(student)}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-colors"
+                    >
+                      <Link2 size={12} />
+                      Link Parent
+                    </button>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <button 
@@ -329,6 +378,67 @@ export default function StudentsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Link Parent Modal */}
+      {isLinkModalOpen && selectedStudent && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-zinc-900">Link Parent</h3>
+                <p className="text-sm text-zinc-500 mt-1">Link a parent/guardian to {selectedStudent.name}</p>
+              </div>
+              <button onClick={() => setIsLinkModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
+                <XCircle size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {parents.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Available Parents</p>
+                  {parents.map((parent) => (
+                    <button
+                      key={parent.id}
+                      onClick={() => linkParent(parent.id)}
+                      className="w-full p-4 text-left bg-zinc-50 hover:bg-brand-blue/5 border border-zinc-200 hover:border-brand-blue rounded-xl transition-colors group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-zinc-200 flex items-center justify-center text-zinc-900 font-bold">
+                            {parent.name?.charAt(0) || parent.email?.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-zinc-900">{parent.name || 'Unnamed'}</p>
+                            <p className="text-xs text-zinc-500">{parent.email}</p>
+                          </div>
+                        </div>
+                        {selectedStudent.parent_id === parent.id && (
+                          <CheckCircle2 size={20} className="text-brand-blue" />
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <UserPlus size={48} className="mx-auto text-zinc-300 mb-4" />
+                  <p className="text-zinc-500">No parent accounts available.</p>
+                  <p className="text-xs text-zinc-400 mt-1">Add parents from the Staff page first.</p>
+                </div>
+              )}
+              
+              {selectedStudent.parent_id && (
+                <button
+                  onClick={unlinkParent}
+                  className="w-full py-3 text-red-600 font-bold text-sm hover:bg-red-50 rounded-xl transition-colors"
+                >
+                  Unlink Current Parent
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
