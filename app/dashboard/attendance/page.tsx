@@ -37,11 +37,11 @@ export default function AttendancePage() {
     return () => unsubscribe();
   }, [organization]);
 
-  const filteredRecords = records.filter(r => 
-    r.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.device_id.toLowerCase().includes(searchTerm.toLowerCase())
+ const filteredRecords = records.filter(r => 
+    (r.student_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (r.device_id || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
-
+  
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center">

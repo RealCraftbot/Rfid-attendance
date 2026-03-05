@@ -4,9 +4,9 @@ const crypto = require('crypto');
 const DEVICE_SECRET = "a6edbebd6aae5c0837d521eae24f8e61"; 
 const DEVICE_NAME = "ESP32_GATE"; 
 const STUDENT_RFID_UID = "1A2B3C44"; // Peter's RFID tag
-const ORG_ID = "rleoecOLicTNrKz8NLkKZvTrQYS2"; // Your Organization ID
+const ORG_ID = "rleoec0LicTNrKz8NLkKZvTrQYS2"; // Your Organization ID
 
-const API_URL = "https://rfid-saas.netlify.app/api/scanAttendance"; 
+const API_URL = "https://rfid-saas.netlify.app/api/scanAttendance";
 
 const payload = {
   rfid_uid: STUDENT_RFID_UID,
