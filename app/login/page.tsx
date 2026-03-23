@@ -1,18 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  LogIn, 
-  Mail, 
-  Lock, 
-  ArrowRight,
-  ShieldAlert,
-  Cpu,
-  Users,
-  ShieldCheck
-} from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { Mail, Lock, ArrowRight, ShieldAlert, Cpu, Users, ShieldCheck } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
@@ -28,14 +18,21 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
+
     try {
-      if (!auth) {
-        throw new Error('Firebase Auth is not initialized. Please check your configuration.');
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError('Invalid email or password');
+      } else {
+        router.push('/dashboard');
       }
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Failed to login');
+    } catch {
+      setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -43,63 +40,58 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex">
-      {/* Left Side - Branding */}
-      <div className="hidden lg:flex flex-1 bg-brand-navy p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex flex-1 bg-blue-900 p-12 flex-col justify-between relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-brand-blue via-transparent to-transparent" />
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-500 via-transparent to-transparent" />
           <div className="grid grid-cols-10 gap-4 p-4">
             {Array.from({ length: 100 }).map((_, i) => (
-              <div key={i} className="w-1 h-1 bg-brand-purple rounded-full" />
+              <div key={i} className="w-1 h-1 bg-purple-500 rounded-full" />
             ))}
           </div>
         </div>
 
         <div className="relative z-10">
           <Link href="/" className="block mb-12">
-            <Logo 
-              textColor="text-white" 
-              subtextColor="text-brand-purple/60" 
-            />
+            <Logo textColor="text-white" subtextColor="text-purple-400/60" />
           </Link>
 
           <h1 className="text-6xl font-bold text-white tracking-tighter leading-none mb-6">
             Secure <br />
             Attendance <br />
-            <span className="text-brand-green italic">Simplified.</span>
+            <span className="text-green-400 italic">Simplified.</span>
           </h1>
-          <p className="text-brand-purple/60 text-lg max-w-md leading-relaxed">
+          <p className="text-purple-400/60 text-lg max-w-md leading-relaxed">
             Enterprise-grade RFID attendance management for schools and organizations. Real-time tracking, secure device authentication, and instant analytics.
           </p>
         </div>
 
         <div className="relative z-10 grid grid-cols-3 gap-8">
           <div className="space-y-2">
-            <div className="p-2 bg-white/5 w-fit rounded-lg text-brand-green">
+            <div className="p-2 bg-white/5 w-fit rounded-lg text-green-400">
               <ShieldCheck size={20} />
             </div>
             <p className="text-white font-bold text-sm">HMAC Secure</p>
-            <p className="text-brand-purple/40 text-xs">Device-level signing</p>
+            <p className="text-purple-400/40 text-xs">Device-level signing</p>
           </div>
           <div className="space-y-2">
-            <div className="p-2 bg-white/5 w-fit rounded-lg text-brand-blue">
+            <div className="p-2 bg-white/5 w-fit rounded-lg text-blue-400">
               <Cpu size={20} />
             </div>
             <p className="text-white font-bold text-sm">Edge Ready</p>
-            <p className="text-brand-purple/40 text-xs">ESP32 & Arduino support</p>
+            <p className="text-purple-400/40 text-xs">ESP32 & Arduino support</p>
           </div>
           <div className="space-y-2">
-            <div className="p-2 bg-white/5 w-fit rounded-lg text-brand-purple">
+            <div className="p-2 bg-white/5 w-fit rounded-lg text-purple-400">
               <Users size={20} />
             </div>
             <p className="text-white font-bold text-sm">Multi-tenant</p>
-            <p className="text-brand-purple/40 text-xs">Scalable architecture</p>
+            <p className="text-purple-400/40 text-xs">Scalable architecture</p>
           </div>
         </div>
       </div>
 
-      {/* Right Side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
+        <div className="w-full max-w-md space-y-8">
           <div>
             <h2 className="text-3xl font-bold text-zinc-900 tracking-tight">Sign In</h2>
             <p className="text-zinc-500 mt-2">Enter your credentials to access your dashboard</p>
@@ -118,8 +110,8 @@ export default function LoginPage() {
                 <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -132,8 +124,8 @@ export default function LoginPage() {
                 <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                  <input 
-                    type="password" 
+                  <input
+                    type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -152,10 +144,10 @@ export default function LoginPage() {
               <button type="button" className="text-sm font-bold text-zinc-900 hover:underline">Forgot password?</button>
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={loading}
-              className="w-full bg-brand-blue text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-brand-blue/90 transition-all shadow-lg shadow-brand-blue/20 active:scale-[0.98] disabled:opacity-50"
+              className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? 'Authenticating...' : 'Sign In'}
               {!loading && <ArrowRight size={18} />}
@@ -164,9 +156,6 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-zinc-500">
             Don&apos;t have an account? <Link href="/signup" className="font-bold text-zinc-900 hover:underline">Create Account</Link>
-          </p>
-          <p className="text-center text-sm text-zinc-400">
-            Are you a parent? <Link href="/parent-signup" className="font-bold text-brand-blue hover:underline">Register Here</Link>
           </p>
         </div>
       </div>

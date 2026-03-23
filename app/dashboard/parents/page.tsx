@@ -1,26 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Plus, 
   Search, 
   UserPlus,
   Calendar,
-  CheckCircle2,
-  XCircle,
   Users,
   Phone,
   Mail,
-  Home,
-  FileText,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  AlertCircle
+  XCircle
 } from 'lucide-react';
-import { collection, onSnapshot, query, where, addDoc, doc, updateDoc, getDocs, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/lib/auth-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -46,16 +38,33 @@ const studentSchema = z.object({
   studentIdNumber: z.string().optional(),
 });
 
+const mockParents = [
+  { id: 'p1', name: 'Mrs. Adebayo', email: 'adebayo@email.com', phone: '+2348012345678', address: '15 Lagos Street, Ikeja' },
+  { id: 'p2', name: 'Mr. Okonkwo', email: 'okonkwo@email.com', phone: '+2348098765432', address: '42 Abuja Road, Victoria Island' },
+  { id: 'p3', name: 'Mrs. Nnamdi', email: 'nnamdi@email.com', phone: '+2348055551234', address: '78 Port Harcourt Ave, Lekki' },
+];
+
+let parentCounter = 10;
+const nextParentId = () => `p${++parentCounter}`;
+
+const mockStudents = [
+  { id: 's1', name: 'Adebayo Oluwaseun', rfid_uid: '1A2B3C4D', class: 'Primary 1', parent_id: 'p1' },
+  { id: 's2', name: 'Chukwu Adaobi', rfid_uid: '5E6F7G8H', class: 'Primary 1', parent_id: 'p1' },
+  { id: 's3', name: 'Okonkwo Chibueze', rfid_uid: '9I0J1K2L', class: 'Primary 2', parent_id: 'p2' },
+  { id: 's4', name: 'Nnamdi Somtochi', rfid_uid: '3M4N5O6P', class: 'JSS 1', parent_id: 'p3' },
+  { id: 's5', name: 'Eze Ifeoma', rfid_uid: '7Q8R9S0T', class: 'SSS 2', parent_id: 'p3' },
+];
+
+const role = 'admin';
+
 export default function ParentRegistrationPage() {
-  const { organization, role } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [parents, setParents] = useState<any[]>([]);
+  const [parents, setParents] = useState(mockParents);
   const [selectedParent, setSelectedParent] = useState<any>(null);
-  const [students, setStudents] = useState<any[]>([]);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarStudent, setCalendarStudent] = useState<any>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [attendanceData, setAttendanceData] = useState<any[]>([]);
+  const [attendanceData] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
   const parentForm = useForm<z.infer<typeof parentSchema>>({
@@ -84,89 +93,26 @@ export default function ParentRegistrationPage() {
     }
   });
 
-  useEffect(() => {
-    if (!organization?.id) return;
+  const students = selectedParent 
+    ? mockStudents.filter(s => s.parent_id === selectedParent.id)
+    : [];
 
-    const q = query(
-      collection(db, 'users'),
-      where('org_id', '==', organization.id),
-      where('role', '==', 'parent')
-    );
-
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setParents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    return () => unsubscribe();
-  }, [organization]);
-
-  useEffect(() => {
-    if (!organization?.id || !selectedParent) return;
-
-    const q = query(
-      collection(db, 'organizations', organization.id, 'students'),
-      where('parent_id', '==', selectedParent.id)
-    );
-
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setStudents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    return () => unsubscribe();
-  }, [organization, selectedParent]);
-
-  useEffect(() => {
-    if (!organization?.id || !calendarStudent) return;
-
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
-
-    const q = query(
-      collection(db, 'organizations', organization.id, 'attendance_records'),
-      where('student_id', '==', calendarStudent.id)
-    );
-
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setAttendanceData(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    return () => unsubscribe();
-  }, [organization, calendarStudent, currentMonth]);
-
-  const onParentSubmit = async (data: z.infer<typeof parentSchema>) => {
-    if (!organization?.id) return;
-    try {
-      await addDoc(collection(db, 'users'), {
-        name: data.parentName,
-        email: data.parentEmail,
-        phone: data.parentPhone,
-        address: data.parentAddress,
-        idNumber: data.parentIdNumber,
-        org_id: organization.id,
-        role: 'parent',
-        is_active: true,
-        created_at: new Date(),
-      });
-      setIsModalOpen(false);
-      parentForm.reset();
-    } catch (error) {
-      console.error('Error adding parent:', error);
-    }
+  const onParentSubmit = (data: z.infer<typeof parentSchema>) => {
+    const newParent = {
+      id: nextParentId(),
+      name: data.parentName,
+      email: data.parentEmail,
+      phone: data.parentPhone,
+      address: data.parentAddress
+    };
+    setParents([...parents, newParent]);
+    setIsModalOpen(false);
+    parentForm.reset();
   };
 
-  const onStudentSubmit = async (data: z.infer<typeof studentSchema>) => {
-    if (!organization?.id || !selectedParent) return;
-    try {
-      await addDoc(collection(db, 'organizations', organization.id, 'students'), {
-        ...data,
-        parent_id: selectedParent.id,
-        is_active: true,
-        created_at: new Date(),
-      });
-      studentForm.reset();
-    } catch (error) {
-      console.error('Error adding student:', error);
-    }
+  const onStudentSubmit = (data: z.infer<typeof studentSchema>) => {
+    console.log('Add student:', data);
+    studentForm.reset();
   };
 
   const openCalendar = (student: any) => {
@@ -240,7 +186,6 @@ export default function ParentRegistrationPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Parent & Student Registration</h1>
@@ -255,7 +200,6 @@ export default function ParentRegistrationPage() {
         </button>
       </div>
 
-      {/* Search */}
       <div className="bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
@@ -269,7 +213,6 @@ export default function ParentRegistrationPage() {
         </div>
       </div>
 
-      {/* Parents List */}
       <div className="grid gap-4">
         {filteredParents.length > 0 ? filteredParents.map((parent) => (
           <div 
@@ -297,7 +240,6 @@ export default function ParentRegistrationPage() {
               <ChevronRight className={`text-zinc-400 transition-transform ${selectedParent?.id === parent.id ? 'rotate-90' : ''}`} />
             </div>
 
-            {/* Expanded Student List */}
             {selectedParent?.id === parent.id && (
               <div className="border-t border-zinc-100 p-4 bg-zinc-50/50">
                 <div className="flex justify-between items-center mb-4">
@@ -310,7 +252,6 @@ export default function ParentRegistrationPage() {
                   </button>
                 </div>
 
-                {/* Add Student Form */}
                 <div className="mb-4 p-4 bg-white rounded-xl border border-zinc-200">
                   <h5 className="font-bold text-sm mb-3">Register New Student</h5>
                   <form onSubmit={studentForm.handleSubmit(onStudentSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -366,7 +307,6 @@ export default function ParentRegistrationPage() {
                   </form>
                 </div>
 
-                {/* Students */}
                 {students.length > 0 ? (
                   <div className="space-y-2">
                     {students.map((student) => (
@@ -412,7 +352,6 @@ export default function ParentRegistrationPage() {
         )}
       </div>
 
-      {/* Add Parent Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
@@ -462,7 +401,7 @@ export default function ParentRegistrationPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">ID Number (NIN/Voter's Card) *</label>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">ID Number (NIN/Voter&apos;s Card) *</label>
                 <input 
                   {...parentForm.register('parentIdNumber')}
                   className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
@@ -489,7 +428,6 @@ export default function ParentRegistrationPage() {
         </div>
       )}
 
-      {/* Calendar Modal */}
       {isCalendarOpen && calendarStudent && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">

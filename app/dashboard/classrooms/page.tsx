@@ -1,51 +1,54 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   BookOpen, 
   Plus, 
   Search, 
   Users, 
   User, 
-  Trash2, 
-  Edit2,
+  Trash2,
   ChevronRight,
   X,
-  Calendar,
-  Clock,
   TrendingUp,
   CheckCircle2,
   XCircle,
-  FileText,
-  Award,
-  AlertCircle
+  FileText
 } from 'lucide-react';
-import { 
-  collection, 
-  onSnapshot, 
-  query, 
-  addDoc, 
-  deleteDoc,
-  doc, 
-  updateDoc,
-  where,
-  getDocs,
-  orderBy
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/lib/auth-context';
-import { format, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
+
+const mockClassrooms = [
+  { id: '1', name: 'Primary 1', section: 'A', teacher_name: 'Mrs. Sarah Johnson', student_count: 28, description: 'Introduction to basic subjects and social skills.' },
+  { id: '2', name: 'Primary 2', section: 'A', teacher_name: 'Mr. Michael Brown', student_count: 32, description: 'Building foundational literacy and numeracy skills.' },
+  { id: '3', name: 'Primary 3', section: 'A', teacher_name: 'Mrs. Emily Davis', student_count: 30, description: 'Developing critical thinking and problem solving.' },
+  { id: '4', name: 'JSS 1', section: 'Science', teacher_name: 'Mr. James Wilson', student_count: 25, description: 'Science and technology focused curriculum.' },
+  { id: '5', name: 'SSS 2', section: 'Commercial', teacher_name: 'Mrs. Patricia Moore', student_count: 35, description: 'Commerce, accounting and business studies.' },
+];
+
+const mockTeachers = [
+  { id: 't1', name: 'Mrs. Sarah Johnson', email: 'sarah.johnson@school.com' },
+  { id: 't2', name: 'Mr. Michael Brown', email: 'michael.brown@school.com' },
+  { id: 't3', name: 'Mrs. Emily Davis', email: 'emily.davis@school.com' },
+  { id: 't4', name: 'Mr. James Wilson', email: 'james.wilson@school.com' },
+  { id: 't5', name: 'Mrs. Patricia Moore', email: 'patricia.moore@school.com' },
+];
+
+const mockStudents = [
+  { id: 's1', name: 'Adebayo Oluwaseun', rfid_uid: '1A2B3C4D', studentIdNumber: 'STD001', is_active: true, class: 'Primary 1' },
+  { id: 's2', name: 'Chukwu Adaobi', rfid_uid: '5E6F7G8H', studentIdNumber: 'STD002', is_active: true, class: 'Primary 1' },
+  { id: 's3', name: 'Okonkwo Chibueze', rfid_uid: '9I0J1K2L', studentIdNumber: 'STD003', is_active: true, class: 'Primary 2' },
+  { id: 's4', name: 'Nnamdi Somtochi', rfid_uid: '3M4N5O6P', studentIdNumber: 'STD004', is_active: true, class: 'JSS 1' },
+  { id: 's5', name: 'Eze Ifeoma', rfid_uid: '7Q8R9S0T', studentIdNumber: 'STD005', is_active: false, class: 'SSS 2' },
+];
+
+const role = 'admin';
 
 export default function ClassroomsPage() {
-  const { organization, role } = useAuth();
-  const [classrooms, setClassrooms] = useState<any[]>([]);
-  const [teachers, setTeachers] = useState<any[]>([]);
+  const [classrooms] = useState(mockClassrooms);
+  const [teachers] = useState(mockTeachers);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<any>(null);
-  const [classStudents, setClassStudents] = useState<any[]>([]);
-  const [weekAttendance, setWeekAttendance] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     section: '',
@@ -54,107 +57,32 @@ export default function ClassroomsPage() {
     description: ''
   });
 
-  useEffect(() => {
-    if (!organization?.id) return;
+  const classStudents = selectedClass 
+    ? mockStudents.filter(s => s.class === selectedClass.name)
+    : [];
 
-    const classroomsRef = collection(db, 'organizations', organization.id, 'classrooms');
-    const unsubClassrooms = onSnapshot(classroomsRef, (snap) => {
-      const classes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setClassrooms(classes);
-      setLoading(false);
-    });
+  const stats = {
+    present: Math.floor(classStudents.length * 0.85),
+    total: classStudents.length * 5,
+    rate: 85
+  };
 
-    const fetchTeachers = async () => {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('org_id', '==', organization.id), where('role', '==', 'teacher'));
-      const snap = await getDocs(q);
-      setTeachers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    };
-
-    fetchTeachers();
-    return () => unsubClassrooms();
-  }, [organization]);
-
-  useEffect(() => {
-    if (!organization?.id || !selectedClass) return;
-
-    const studentsRef = collection(db, 'organizations', organization.id, 'students');
-    const q = query(studentsRef, where('class', '==', selectedClass.name));
-    
-    const unsub = onSnapshot(q, (snap) => {
-      setClassStudents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    return () => unsub();
-  }, [organization, selectedClass]);
-
-  useEffect(() => {
-    if (!organization?.id || !selectedClass) return;
-
-    const now = new Date();
-    const weekStart = startOfWeek(now);
-    const weekEnd = endOfWeek(now);
-
-    const attendanceRef = collection(db, 'organizations', organization.id, 'attendance_records');
-    const q = query(
-      attendanceRef,
-      where('scan_time', '>=', weekStart),
-      orderBy('scan_time', 'desc')
-    );
-
-    const unsub = onSnapshot(q, (snap) => {
-      const records = snap.docs
-        .map(doc => ({ id: doc.id, ...(doc.data() as any) }))
-        .filter(r => classStudents.some(s => s.id === r.student_id));
-      setWeekAttendance(records);
-    });
-
-    return () => unsub();
-  }, [organization, selectedClass, classStudents]);
-
-  const handleCreateClass = async (e: React.FormEvent) => {
+  const handleCreateClass = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!organization?.id) return;
-
-    try {
-      const classroomsRef = collection(db, 'organizations', organization.id, 'classrooms');
-      const selectedTeacher = teachers.find(t => t.id === formData.teacher_id);
-      
-      await addDoc(classroomsRef, {
-        ...formData,
-        teacher_name: selectedTeacher?.name || 'Unassigned',
-        student_count: 0,
-        created_at: new Date()
-      });
-
-      setIsModalOpen(false);
-      setFormData({ name: '', section: '', teacher_id: '', teacher_name: '', description: '' });
-    } catch (error) {
-      console.error('Error creating classroom:', error);
-    }
+    setIsModalOpen(false);
+    setFormData({ name: '', section: '', teacher_id: '', teacher_name: '', description: '' });
   };
 
-  const handleDelete = async (id: string) => {
-    if (!organization?.id || !confirm('Are you sure you want to delete this classroom?')) return;
-    try {
-      await deleteDoc(doc(db, 'organizations', organization.id, 'classrooms', id));
-    } catch (error) {
-      console.error('Error deleting classroom:', error);
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this classroom?')) {
+      console.log('Delete classroom:', id);
     }
-  };
-
-  const getWeekStats = () => {
-    const present = weekAttendance.filter(r => r.check_type === 'check-in').length;
-    const total = classStudents.length * 5; // 5 school days
-    return { present, total: Math.min(total, weekAttendance.length), rate: total > 0 ? Math.round((present / total) * 100) : 0 };
   };
 
   const filteredClasses = classrooms.filter(c => 
     c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.teacher_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const stats = getWeekStats();
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -174,7 +102,6 @@ export default function ClassroomsPage() {
         )}
       </div>
 
-      {/* Search & Stats */}
       <div className="flex flex-wrap gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
         <div className="relative flex-1 min-w-[300px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
@@ -199,7 +126,6 @@ export default function ClassroomsPage() {
         </div>
       </div>
 
-      {/* Class Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredClasses.map((classroom) => (
           <div key={classroom.id} className="bg-white rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all group overflow-hidden">
@@ -248,7 +174,6 @@ export default function ClassroomsPage() {
         ))}
       </div>
 
-      {/* Empty State */}
       {!loading && filteredClasses.length === 0 && (
         <div className="py-20 flex flex-col items-center justify-center text-zinc-400 space-y-4 bg-white rounded-3xl border border-dashed border-zinc-200">
           <BookOpen size={64} strokeWidth={1} />
@@ -259,7 +184,6 @@ export default function ClassroomsPage() {
         </div>
       )}
 
-      {/* Class Details Modal */}
       {selectedClass && (
         <div className="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -281,7 +205,6 @@ export default function ClassroomsPage() {
             </div>
 
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
-              {/* Class Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200">
                   <div className="flex items-center gap-2 text-zinc-500 mb-1">
@@ -313,7 +236,6 @@ export default function ClassroomsPage() {
                 </div>
               </div>
 
-              {/* Teacher Info */}
               <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 mb-6">
                 <h3 className="font-bold text-zinc-900 mb-3 flex items-center gap-2">
                   <User size={18} /> Class Teacher
@@ -329,7 +251,6 @@ export default function ClassroomsPage() {
                 </div>
               </div>
 
-              {/* Student List */}
               <div>
                 <h3 className="font-bold text-zinc-900 mb-4 flex items-center gap-2">
                   <FileText size={18} /> Student Roster ({classStudents.length})
@@ -375,7 +296,6 @@ export default function ClassroomsPage() {
         </div>
       )}
 
-      {/* Create Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Settings, 
   Building, 
@@ -8,42 +8,26 @@ import {
   Shield, 
   Save, 
   Copy, 
-  CheckCircle2,
-  AlertCircle
+  CheckCircle2
 } from 'lucide-react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/lib/auth-context';
+
+const organization = { name: 'Greenfield Academy', id: 'org_123', admin_email: 'admin@greenfield.edu' };
 
 export default function SettingsPage() {
-  const { organization } = useAuth();
-  const [orgName, setOrgName] = useState('');
+  const [orgName, setOrgName] = useState(organization.name);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  useEffect(() => {
-    if (organization?.name) {
-      setOrgName(organization.name);
-    }
-  }, [organization]);
-
-  const handleUpdateOrg = async (e: React.FormEvent) => {
+  const handleUpdateOrg = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!organization?.id) return;
-    
     setLoading(true);
     setMessage({ type: '', text: '' });
     
-    try {
-      const orgRef = doc(db, 'organizations', organization.id);
-      await updateDoc(orgRef, { name: orgName });
+    setTimeout(() => {
       setMessage({ type: 'success', text: 'Organization settings updated successfully!' });
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to update settings.' });
-    } finally {
       setLoading(false);
-    }
+    }, 1000);
   };
 
   const copyToClipboard = async (text: string) => {
@@ -51,7 +35,6 @@ export default function SettingsPage() {
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(text);
       } else {
-        // Fallback for older browsers
         const textArea = document.createElement('textarea');
         textArea.value = text;
         textArea.style.position = 'fixed';
@@ -81,13 +64,12 @@ export default function SettingsPage() {
             ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
             : 'bg-red-50 text-red-600 border-red-100'
         }`}>
-          {message.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+          <CheckCircle2 size={18} />
           {message.text}
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-8">
-        {/* Organization Profile */}
         <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-zinc-100 bg-zinc-50/50 flex items-center gap-3">
             <div className="p-2 bg-white rounded-lg border border-zinc-200 text-zinc-600">
@@ -112,7 +94,7 @@ export default function SettingsPage() {
                 <input 
                   type="email" 
                   disabled
-                  value={organization?.admin_email || ''}
+                  value={organization.admin_email}
                   className="w-full px-4 py-2.5 bg-zinc-100 border border-zinc-200 rounded-xl text-zinc-400 text-sm cursor-not-allowed"
                 />
                 <p className="text-[10px] text-zinc-400 mt-1 font-medium italic">Email cannot be changed from the dashboard.</p>
@@ -129,7 +111,6 @@ export default function SettingsPage() {
           </form>
         </section>
 
-        {/* API & Security */}
         <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-zinc-100 bg-zinc-50/50 flex items-center gap-3">
             <div className="p-2 bg-white rounded-lg border border-zinc-200 text-zinc-600">
@@ -144,10 +125,10 @@ export default function SettingsPage() {
                 <p className="text-xs text-zinc-500 mb-3">Unique identifier for your organization used by RFID devices.</p>
                 <div className="flex gap-2">
                   <code className="flex-1 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-mono text-zinc-600 flex items-center">
-                    {organization?.id || 'Loading...'}
+                    {organization.id}
                   </code>
                   <button 
-                    onClick={() => copyToClipboard(organization?.id || '')}
+                    onClick={() => copyToClipboard(organization.id)}
                     className="p-2.5 border border-zinc-200 rounded-xl hover:bg-zinc-50 text-zinc-500 transition-colors"
                   >
                     {copied ? <CheckCircle2 size={18} className="text-emerald-500" /> : <Copy size={18} />}

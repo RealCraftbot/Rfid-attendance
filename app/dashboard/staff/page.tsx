@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Plus, 
   Search, 
@@ -9,13 +9,10 @@ import {
   CheckCircle2,
   XCircle,
   UserCog,
-  Mail,
   Shield,
-  User
+  User,
+  XCircle as XCircleIcon
 } from 'lucide-react';
-import { collection, onSnapshot, query, where, addDoc, deleteDoc, doc, updateDoc, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/lib/auth-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -27,9 +24,21 @@ const staffSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
+const mockStaff = [
+  { id: '1', name: 'Mrs. Sarah Johnson', email: 'sarah.johnson@school.com', role: 'teacher', is_active: true },
+  { id: '2', name: 'Mr. Michael Brown', email: 'michael.brown@school.com', role: 'teacher', is_active: true },
+  { id: '3', name: 'Mrs. Emily Davis', email: 'emily.davis@school.com', role: 'admin', is_active: true },
+  { id: '4', name: 'Mr. James Wilson', email: 'james.wilson@school.com', role: 'teacher', is_active: true },
+  { id: '5', name: 'Mrs. Patricia Moore', email: 'patricia.moore@school.com', role: 'teacher', is_active: false },
+];
+
+let staffCounter = 10;
+const nextStaffId = () => `s${++staffCounter}`;
+
+const currentUserRole = 'admin';
+
 export default function StaffPage() {
-  const { organization, role: currentUserRole } = useAuth();
-  const [staff, setStaff] = useState<any[]>([]);
+  const [staff, setStaff] = useState(mockStaff);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -43,49 +52,26 @@ export default function StaffPage() {
     }
   });
 
-  useEffect(() => {
-    if (!organization?.id) return;
+  const onSubmit = (data: any) => {
+    const newStaff = {
+      id: nextStaffId(),
+      ...data
+    };
+    setStaff([...staff, newStaff]);
+    setIsModalOpen(false);
+    reset();
+  };
 
-    // Fetch users belonging to this organization (exclude parents - they are managed in Parents page)
-    const q = query(
-      collection(db, 'users'),
-      where('org_id', '==', organization.id),
-      where('role', 'in', ['admin', 'teacher'])
-    );
+  const toggleStatus = (id: string) => {
+    setStaff(staff.map(s => 
+      s.id === id ? { ...s, is_active: !s.is_active } : s
+    ));
+  };
 
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setStaff(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    return () => unsubscribe();
-  }, [organization]);
-
-  const onSubmit = async (data: any) => {
-    if (!organization?.id) return;
-    try {
-      // In a real app, you'd probably use a Firebase Cloud Function to create the user in Auth too
-      // For this demo, we'll just add to the 'users' collection
-      await addDoc(collection(db, 'users'), {
-        ...data,
-        org_id: organization.id,
-        created_at: new Date()
-      });
-      setIsModalOpen(false);
-      reset();
-    } catch (error) {
-      console.error('Error adding staff:', error);
+  const deleteStaff = (id: string) => {
+    if (confirm('Are you sure?')) {
+      setStaff(staff.filter(s => s.id !== id));
     }
-  };
-
-  const toggleStatus = async (member: any) => {
-    if (!organization?.id) return;
-    const ref = doc(db, 'users', member.id);
-    await updateDoc(ref, { is_active: !member.is_active });
-  };
-
-  const deleteStaff = async (id: string) => {
-    if (!organization?.id || !confirm('Are you sure?')) return;
-    await deleteDoc(doc(db, 'users', id));
   };
 
   const filteredStaff = staff.filter(s => 
@@ -117,7 +103,6 @@ export default function StaffPage() {
         </button>
       </div>
 
-      {/* Filters & Search */}
       <div className="bg-white p-4 rounded-2xl border border-zinc-200 flex flex-wrap gap-4 items-center justify-between shadow-sm">
         <div className="relative flex-1 min-w-[300px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
@@ -131,7 +116,6 @@ export default function StaffPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -172,7 +156,7 @@ export default function StaffPage() {
                 </td>
                 <td className="px-6 py-4">
                   <button 
-                    onClick={() => toggleStatus(member)}
+                    onClick={() => toggleStatus(member.id)}
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                       member.is_active 
                         ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
@@ -213,14 +197,13 @@ export default function StaffPage() {
         )}
       </div>
 
-      {/* Add Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
               <h3 className="text-xl font-bold text-zinc-900">Add Staff Member</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
-                <XCircle size={24} />
+                <XCircleIcon size={24} />
               </button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">

@@ -1,19 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  UserPlus, 
-  Mail, 
-  Lock, 
-  ArrowRight,
-  Building,
-  ShieldAlert,
-  CheckCircle2,
-  ShieldCheck
-} from 'lucide-react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { UserPlus, Mail, Lock, ArrowRight, Building, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
@@ -31,105 +19,73 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
-      if (!auth || !db) {
-        throw new Error('Firebase is not initialized. Please check your configuration.');
-      }
-
-      // 1. Create User
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // 2. Create Organization Document
-      await setDoc(doc(db, 'organizations', user.uid), {
-        name: orgName,
-        admin_email: email,
-        created_at: new Date(),
-        plan: 'free',
-        status: 'active'
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, orgName }),
       });
 
-      setSuccess(true);
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 2000);
+      const data = await res.json();
 
+      if (!res.ok) {
+        throw new Error(data.error || 'Signup failed');
+      }
+
+      setSuccess(true);
+      setTimeout(() => router.push('/login'), 2000);
     } catch (err: any) {
-      setError(err.message || 'Failed to create account');
+      setError(err.message || 'An error occurred');
+    } finally {
       setLoading(false);
     }
   };
 
-  if (success) {
-    return (
-      <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center p-8">
-        <div className="w-full max-w-md text-center space-y-6 animate-in zoom-in duration-500">
-          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle2 size={40} />
-          </div>
-          <h2 className="text-3xl font-bold text-zinc-900">Account Created!</h2>
-          <p className="text-zinc-500">Welcome to RFID SaaS. Redirecting you to your dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex">
-      {/* Left Side - Branding */}
-      <div className="hidden lg:flex flex-1 bg-brand-navy p-12 flex-col justify-between relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="grid grid-cols-10 gap-4 p-4">
-            {Array.from({ length: 100 }).map((_, i) => (
-              <div key={i} className="w-1 h-1 bg-brand-purple rounded-full" />
+    <div className="min-h-screen bg-zinc-50 flex">
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-blue-900 via-blue-800 to-purple-900 p-12 flex-col justify-center">
+        <div className="max-w-lg">
+          <Link href="/" className="block mb-12">
+            <Logo textColor="text-white" subtextColor="text-purple-300" />
+          </Link>
+
+          <h1 className="text-5xl font-bold text-white tracking-tight mb-6">
+            Start managing attendance in minutes
+          </h1>
+          <p className="text-blue-100/80 text-lg mb-8">
+            Set up your organization, connect your RFID devices, and start tracking attendance in real-time.
+          </p>
+
+          <div className="space-y-4">
+            {['Quick 5-minute setup', 'No hardware required to start', 'Free tier available'].map((item, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <CheckCircle2 className="text-green-400" size={20} />
+                <span className="text-white">{item}</span>
+              </div>
             ))}
           </div>
         </div>
-
-        <div className="relative z-10">
-          <Link href="/" className="block mb-12">
-            <Logo 
-              textColor="text-white" 
-              subtextColor="text-brand-purple/60" 
-            />
-          </Link>
-
-          <h1 className="text-6xl font-bold text-white tracking-tighter leading-none mb-6">
-            Start <br />
-            Tracking <br />
-            <span className="text-brand-green italic">Today.</span>
-          </h1>
-          <p className="text-brand-purple/60 text-lg max-w-md leading-relaxed">
-            Join hundreds of organizations using our enterprise-grade RFID attendance management system.
-          </p>
-        </div>
-
-        <div className="relative z-10">
-          <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-sm">
-            <div className="w-12 h-12 bg-brand-blue rounded-xl flex items-center justify-center text-white">
-              <ShieldCheck size={24} />
-            </div>
-            <div>
-              <p className="text-white font-bold text-sm">Secure by Design</p>
-              <p className="text-brand-purple/40 text-xs">End-to-end encryption & HMAC signing</p>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Right Side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
+        <div className="w-full max-w-md space-y-8">
           <div>
-            <h2 className="text-3xl font-bold text-zinc-900 tracking-tight">Create Account</h2>
-            <p className="text-zinc-500 mt-2">Register your organization to get started</p>
+            <h2 className="text-3xl font-bold text-zinc-900">Create Organization</h2>
+            <p className="text-zinc-500 mt-2">Get started with your free account</p>
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-100 p-4 rounded-xl text-red-600 text-sm font-medium flex items-center gap-3">
+            <div className="bg-red-50 border border-red-200 p-4 rounded-xl text-red-600 text-sm flex items-center gap-3">
               <ShieldAlert size={18} />
               {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="bg-green-50 border border-green-200 p-4 rounded-xl text-green-600 text-sm flex items-center gap-3">
+              <CheckCircle2 size={18} />
+              Organization created! Redirecting...
             </div>
           )}
 
@@ -139,53 +95,54 @@ export default function SignupPage() {
                 <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Organization Name</label>
                 <div className="relative">
                   <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     required
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 transition-all text-sm"
-                    placeholder="e.g. St. Mary's High School"
+                    placeholder="Acme School"
                   />
                 </div>
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Admin Email</label>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 transition-all text-sm"
-                    placeholder="admin@organization.com"
+                    placeholder="admin@acme.edu"
                   />
                 </div>
               </div>
+
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                  <input 
-                    type="password" 
+                  <input
+                    type="password"
                     required
-                    minLength={6}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-12 pr-4 py-3 bg-white border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 transition-all text-sm"
-                    placeholder="••••••••"
+                    placeholder="Min 8 characters"
                   />
                 </div>
               </div>
             </div>
 
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="w-full bg-brand-blue text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-brand-blue/90 transition-all shadow-lg shadow-brand-blue/20 active:scale-[0.98] disabled:opacity-50"
+            <button
+              type="submit"
+              disabled={loading || success}
+              className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-all disabled:opacity-50"
             >
-              {loading ? 'Creating Account...' : 'Get Started'}
+              {loading ? 'Creating...' : 'Create Organization'}
               {!loading && <ArrowRight size={18} />}
             </button>
           </form>

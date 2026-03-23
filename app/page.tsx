@@ -23,7 +23,7 @@ import { useAuth } from '@/lib/auth-context';
 export default function LandingPage() {
   const { user, role } = useAuth();
 
-  const dashboardHref = role === 'super-admin' ? '/super-admin' : '/dashboard';
+  const dashboardHref = role === 'SUPER_ADMIN' ? '/super-admin' : '/dashboard';
 
   return (
     <div className="min-h-screen bg-white font-sans selection:bg-brand-blue selection:text-white">

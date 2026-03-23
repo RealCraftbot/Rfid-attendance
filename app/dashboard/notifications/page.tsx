@@ -1,66 +1,29 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { 
   Bell,
   CheckCircle2,
   XCircle,
   Clock,
-  Info,
   Trash2
 } from 'lucide-react';
-import { collection, query, where, onSnapshot, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/lib/auth-context';
 import { format } from 'date-fns';
 
+const mockNotifications = [
+  { id: 'n1', title: 'Check-in Alert', message: 'Adebayo Oluwaseun checked in at Main Entrance', type: 'success', created_at: new Date(Date.now() - 1000 * 60 * 30) },
+  { id: 'n2', title: 'Check-out Alert', message: 'Chukwu Adaobi checked out at Back Gate', type: 'success', created_at: new Date(Date.now() - 1000 * 60 * 60 * 2) },
+  { id: 'n3', title: 'Late Arrival', message: 'Okonkwo Chibueze arrived late at 8:45 AM', type: 'alert', created_at: new Date(Date.now() - 1000 * 60 * 60 * 5) },
+  { id: 'n4', title: 'System Update', message: 'RFID reader firmware updated successfully', type: 'info', created_at: new Date(Date.now() - 1000 * 60 * 60 * 24) },
+  { id: 'n5', title: 'Weekly Report', message: 'Weekly attendance report is now available', type: 'info', created_at: new Date(Date.now() - 1000 * 60 * 60 * 48) },
+];
+
 export default function NotificationsPage() {
-  const { user, organization, role } = useAuth();
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState(mockNotifications);
 
-  useEffect(() => {
-    if (!user?.uid || !organization?.id) return;
-
-    const notificationsRef = collection(db, 'organizations', organization.id, 'notifications');
-    
-    // If parent, only show their notifications
-    // If admin, show all? Or maybe just parent notifications for now
-    let q;
-    if (role === 'parent') {
-      q = query(
-        notificationsRef,
-        where('parent_id', '==', user.uid),
-        orderBy('created_at', 'desc')
-      );
-    } else {
-      q = query(
-        notificationsRef,
-        orderBy('created_at', 'desc'),
-        limit(50)
-      );
-    }
-
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setNotifications(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [user, organization, role]);
-
-  const deleteNotification = async (id: string) => {
-    if (!organization?.id) return;
-    await deleteDoc(doc(db, 'organizations', organization.id, 'notifications', id));
+  const deleteNotification = (id: string) => {
+    setNotifications(notifications.filter(n => n.id !== id));
   };
-
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-brand-blue rounded-full border-t-transparent animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -92,14 +55,14 @@ export default function NotificationsPage() {
                     <p className="text-sm text-zinc-600 mt-1">{notif.message}</p>
                   </div>
                   <span className="text-xs font-medium text-zinc-400 whitespace-nowrap">
-                    {notif.created_at?.toDate ? format(notif.created_at.toDate(), 'MMM d, HH:mm') : 'Just now'}
+                    {format(notif.created_at, 'MMM d, HH:mm')}
                   </span>
                 </div>
                 
                 <div className="mt-4 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                     <Clock size={12} />
-                    <span>{notif.created_at?.toDate ? format(notif.created_at.toDate(), 'p') : ''}</span>
+                    <span>{format(notif.created_at, 'p')}</span>
                   </div>
                   
                   <button 

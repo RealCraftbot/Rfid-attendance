@@ -1,25 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Plus, 
   Search, 
-  Filter, 
   Download, 
-  MoreHorizontal, 
-  Mail, 
-  Tag,
-  Trash2,
   Edit2,
   CheckCircle2,
   XCircle,
   Users,
   Link2,
-  UserPlus
+  UserPlus,
+  XCircle as XCircleIcon
 } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy, addDoc, deleteDoc, doc, updateDoc, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/lib/auth-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -33,11 +26,45 @@ const studentSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
+const mockClassrooms = [
+  { id: '1', name: 'Primary 1' },
+  { id: '2', name: 'Primary 2' },
+  { id: '3', name: 'Primary 3' },
+  { id: '4', name: 'JSS 1' },
+  { id: '5', name: 'SSS 2' },
+];
+
+const mockParents = [
+  { id: 'p1', name: 'Mrs. Adebayo', email: 'adebayo@email.com' },
+  { id: 'p2', name: 'Mr. Okonkwo', email: 'okonkwo@email.com' },
+  { id: 'p3', name: 'Mrs. Nnamdi', email: 'nnamdi@email.com' },
+];
+
+const mockStudents: Array<{
+  id: string;
+  name: string;
+  email: string;
+  rfid_uid: string;
+  class: string;
+  parent_id: string | null;
+  is_active: boolean;
+}> = [
+  { id: 's1', name: 'Adebayo Oluwaseun', email: 'adebayo.j@student.com', rfid_uid: '1A2B3C4D', class: 'Primary 1', parent_id: 'p1', is_active: true },
+  { id: 's2', name: 'Chukwu Adaobi', email: 'adaobi.c@student.com', rfid_uid: '5E6F7G8H', class: 'Primary 1', parent_id: 'p1', is_active: true },
+  { id: 's3', name: 'Okonkwo Chibueze', email: 'chibueze.o@student.com', rfid_uid: '9I0J1K2L', class: 'Primary 2', parent_id: 'p2', is_active: true },
+  { id: 's4', name: 'Nnamdi Somtochi', email: 'somtochi.n@student.com', rfid_uid: '3M4N5O6P', class: 'JSS 1', parent_id: 'p3', is_active: true },
+  { id: 's5', name: 'Eze Ifeoma', email: 'ifeoma.e@student.com', rfid_uid: '7Q8R9S0T', class: 'SSS 2', parent_id: 'p3', is_active: false },
+];
+
+let studentCounter = 10;
+const nextStudentId = () => `s${++studentCounter}`;
+
+const role = 'admin';
+
 export default function StudentsPage() {
-  const { organization, role, user } = useAuth();
-  const [students, setStudents] = useState<any[]>([]);
-  const [classrooms, setClassrooms] = useState<any[]>([]);
-  const [parents, setParents] = useState<any[]>([]);
+  const [students, setStudents] = useState(mockStudents);
+  const [classrooms] = useState(mockClassrooms);
+  const [parents] = useState(mockParents);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -56,66 +83,26 @@ export default function StudentsPage() {
     }
   });
 
-  useEffect(() => {
-    if (!organization?.id) return;
-
-    // Fetch classrooms for the dropdown
-    const classroomsRef = collection(db, 'organizations', organization.id, 'classrooms');
-    const unsubClassrooms = onSnapshot(classroomsRef, (snap) => {
-      setClassrooms(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    // Fetch parents for the dropdown
-    const parentsQuery = query(
-      collection(db, 'users'),
-      where('org_id', '==', organization.id),
-      where('role', '==', 'parent')
-    );
-    const unsubParents = onSnapshot(parentsQuery, (snap) => {
-      setParents(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    // Fetch students
-    const q = query(
-      collection(db, 'organizations', organization.id, 'students'),
-      orderBy('name', 'asc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snap) => {
-      let studentList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setStudents(studentList);
-    });
-
-    return () => {
-      unsubscribe();
-      unsubClassrooms();
-      unsubParents();
+  const onSubmit = (data: any) => {
+    const newStudent = {
+      id: nextStudentId(),
+      ...data
     };
-  }, [organization]);
+    setStudents([...students, newStudent]);
+    setIsModalOpen(false);
+    reset();
+  };
 
-  const onSubmit = async (data: any) => {
-    if (!organization?.id) return;
-    try {
-      await addDoc(collection(db, 'organizations', organization.id, 'students'), {
-        ...data,
-        created_at: new Date()
-      });
-      setIsModalOpen(false);
-      reset();
-    } catch (error) {
-      console.error('Error adding student:', error);
+  const toggleStatus = (studentId: string) => {
+    setStudents(students.map(s => 
+      s.id === studentId ? { ...s, is_active: !s.is_active } : s
+    ));
+  };
+
+  const deleteStudent = (id: string) => {
+    if (confirm('Are you sure?')) {
+      setStudents(students.filter(s => s.id !== id));
     }
-  };
-
-  const toggleStatus = async (student: any) => {
-    if (!organization?.id) return;
-    const ref = doc(db, 'organizations', organization.id, 'students', student.id);
-    await updateDoc(ref, { is_active: !student.is_active });
-  };
-
-  const deleteStudent = async (id: string) => {
-    if (!organization?.id || !confirm('Are you sure?')) return;
-    await deleteDoc(doc(db, 'organizations', organization.id, 'students', id));
   };
 
   const openLinkModal = (student: any) => {
@@ -123,18 +110,18 @@ export default function StudentsPage() {
     setIsLinkModalOpen(true);
   };
 
-  const linkParent = async (parentId: string) => {
-    if (!organization?.id || !selectedStudent) return;
-    const ref = doc(db, 'organizations', organization.id, 'students', selectedStudent.id);
-    await updateDoc(ref, { parent_id: parentId });
+  const linkParent = (parentId: string) => {
+    setStudents(students.map(s => 
+      s.id === selectedStudent.id ? { ...s, parent_id: parentId } : s
+    ));
     setIsLinkModalOpen(false);
     setSelectedStudent(null);
   };
 
-  const unlinkParent = async () => {
-    if (!organization?.id || !selectedStudent) return;
-    const ref = doc(db, 'organizations', organization.id, 'students', selectedStudent.id);
-    await updateDoc(ref, { parent_id: null });
+  const unlinkParent = () => {
+    setStudents(students.map(s => 
+      s.id === selectedStudent.id ? { ...s, parent_id: null } : s
+    ));
     setIsLinkModalOpen(false);
     setSelectedStudent(null);
   };
@@ -164,7 +151,6 @@ export default function StudentsPage() {
         )}
       </div>
 
-      {/* Filters & Search */}
       <div className="bg-white p-4 rounded-2xl border border-zinc-200 flex flex-wrap gap-4 items-center justify-between shadow-sm">
         <div className="flex items-center gap-4 flex-1 min-w-[300px]">
           <div className="relative flex-1">
@@ -194,7 +180,6 @@ export default function StudentsPage() {
         </button>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -256,7 +241,7 @@ export default function StudentsPage() {
                 </td>
                 <td className="px-6 py-4">
                   <button 
-                    onClick={() => toggleStatus(student)}
+                    onClick={() => toggleStatus(student.id)}
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                       student.is_active 
                         ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
@@ -276,7 +261,7 @@ export default function StudentsPage() {
                       onClick={() => deleteStudent(student.id)}
                       className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
-                      <Trash2 size={16} />
+                      <Users size={16} />
                     </button>
                   </div>
                 </td>
@@ -297,14 +282,13 @@ export default function StudentsPage() {
         )}
       </div>
 
-      {/* Add Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
               <h3 className="text-xl font-bold text-zinc-900">Add New Student</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
-                <XCircle size={24} />
+                <XCircleIcon size={24} />
               </button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
@@ -382,7 +366,6 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* Link Parent Modal */}
       {isLinkModalOpen && selectedStudent && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">
@@ -392,7 +375,7 @@ export default function StudentsPage() {
                 <p className="text-sm text-zinc-500 mt-1">Link a parent/guardian to {selectedStudent.name}</p>
               </div>
               <button onClick={() => setIsLinkModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
-                <XCircle size={24} />
+                <XCircleIcon size={24} />
               </button>
             </div>
             <div className="p-6 space-y-4">

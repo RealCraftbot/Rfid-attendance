@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Plus, 
   Cpu, 
@@ -12,9 +12,6 @@ import {
   Check,
   RefreshCw
 } from 'lucide-react';
-import { collection, onSnapshot, query, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/lib/auth-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -25,9 +22,17 @@ const deviceSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
+const mockDevices = [
+  { id: 'd1', name: 'Main Entrance Scanner', device_id: 'ESP32_FRONT_01', is_active: true, secret_key: 'a1b2c3d4e5f678901234567890123456' },
+  { id: 'd2', name: 'Back Gate Reader', device_id: 'ESP32_BACK_01', is_active: true, secret_key: 'b2c3d4e5f6789012345678901234567' },
+  { id: 'd3', name: 'Library Exit Scanner', device_id: 'ESP32_LIB_01', is_active: false, secret_key: 'c3d4e5f6789012345678901234567890' },
+];
+
+let deviceCounter = 10;
+const nextDeviceId = () => `d${++deviceCounter}`;
+
 export default function DevicesPage() {
-  const { organization } = useAuth();
-  const [devices, setDevices] = useState<any[]>([]);
+  const [devices, setDevices] = useState(mockDevices);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -40,47 +45,33 @@ export default function DevicesPage() {
     }
   });
 
-  useEffect(() => {
-    if (!organization?.id) return;
-
-    const q = query(collection(db, 'organizations', organization.id, 'devices'));
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setDevices(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    return () => unsubscribe();
-  }, [organization]);
-
   const generateSecret = () => {
     return Array.from(crypto.getRandomValues(new Uint8Array(16)))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
   };
 
-  const onSubmit = async (data: any) => {
-    if (!organization?.id) return;
-    try {
-      await addDoc(collection(db, 'organizations', organization.id, 'devices'), {
-        ...data,
-        secret_key: generateSecret(),
-        created_at: new Date()
-      });
-      setIsModalOpen(false);
-      reset();
-    } catch (error) {
-      console.error('Error adding device:', error);
+  const onSubmit = (data: any) => {
+    const newDevice = {
+      ...data,
+      id: nextDeviceId(),
+      secret_key: generateSecret()
+    };
+    setDevices([...devices, newDevice]);
+    setIsModalOpen(false);
+    reset();
+  };
+
+  const toggleStatus = (deviceId: string) => {
+    setDevices(devices.map(d => 
+      d.id === deviceId ? { ...d, is_active: !d.is_active } : d
+    ));
+  };
+
+  const deleteDevice = (id: string) => {
+    if (confirm('Are you sure?')) {
+      setDevices(devices.filter(d => d.id !== id));
     }
-  };
-
-  const toggleStatus = async (device: any) => {
-    if (!organization?.id) return;
-    const ref = doc(db, 'organizations', organization.id, 'devices', device.id);
-    await updateDoc(ref, { is_active: !device.is_active });
-  };
-
-  const deleteDevice = async (id: string) => {
-    if (!organization?.id || !confirm('Are you sure?')) return;
-    await deleteDoc(doc(db, 'organizations', organization.id, 'devices', id));
   };
 
   const copyToClipboard = (text: string, id: string) => {
@@ -117,7 +108,7 @@ export default function DevicesPage() {
                 </div>
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => toggleStatus(device)}
+                    onClick={() => toggleStatus(device.id)}
                     className={`p-2 rounded-lg transition-colors ${
                       device.is_active ? 'text-emerald-600 hover:bg-emerald-50' : 'text-zinc-400 hover:bg-zinc-100'
                     }`}
@@ -156,7 +147,7 @@ export default function DevicesPage() {
               <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                 <span>Status</span>
                 <span className={device.is_active ? 'text-emerald-600' : 'text-red-500'}>
-                  {device.is_active ? 'Active &amp; Authorized' : 'Disabled'}
+                  {device.is_active ? 'Active & Authorized' : 'Disabled'}
                 </span>
               </div>
             </div>
@@ -174,7 +165,6 @@ export default function DevicesPage() {
         )}
       </div>
 
-      {/* Add Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">

@@ -1,152 +1,107 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Search, 
-  Filter, 
-  Shield, 
-  ShieldCheck, 
-  ShieldAlert,
-  MoreVertical,
-  Mail,
-  Calendar,
-  UserPlus
-} from 'lucide-react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { format } from 'date-fns';
+import React, { useState } from 'react';
+import { Users, Search, Shield, ShieldCheck, ShieldAlert, UserPlus } from 'lucide-react';
+
+const mockUsers = [
+  { id: '1', name: 'John Admin', email: 'john@admin.com', role: 'SUPER_ADMIN', org: 'Platform', status: 'active' },
+  { id: '2', name: 'Jane Smith', email: 'jane@greenwood.edu', role: 'ADMIN', org: 'Greenwood Academy', status: 'active' },
+  { id: '3', name: 'Bob Teacher', email: 'bob@sunrise.edu', role: 'TEACHER', org: 'Sunrise School', status: 'active' },
+  { id: '4', name: 'Alice Parent', email: 'alice@email.com', role: 'PARENT', org: 'Greenwood Academy', status: 'active' },
+];
+
+const RoleBadge = ({ role }: { role: string }) => {
+  const colors = {
+    SUPER_ADMIN: 'bg-red-100 text-red-700',
+    ADMIN: 'bg-purple-100 text-purple-700',
+    TEACHER: 'bg-blue-100 text-blue-700',
+    PARENT: 'bg-green-100 text-green-700',
+  };
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${colors[role as keyof typeof colors]}`}>
+      <ShieldCheck size={12} />
+      {role.replace('_', ' ')}
+    </span>
+  );
+};
 
 export default function SuperAdminUsers() {
-  const [users, setUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
+  const users = mockUsers;
 
-  useEffect(() => {
-    if (!db) return;
-
-    const q = query(collection(db, 'users'), orderBy('role', 'asc'));
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const filteredUsers = users.filter(user => 
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = users.filter(user =>
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">User Management</h1>
-          <p className="text-zinc-500 mt-1">Manage platform administrators and super admin access</p>
+          <h1 className="text-3xl font-bold text-zinc-900">User Management</h1>
+          <p className="text-zinc-500 mt-1">Manage platform administrators and users</p>
         </div>
-        <button className="flex items-center gap-2 bg-zinc-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-95">
+        <button className="flex items-center gap-2 bg-zinc-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-zinc-800">
           <UserPlus size={20} />
-          Invite Admin
+          Add User
         </button>
       </div>
 
-      {/* Filters & Search */}
-      <div className="bg-white p-4 rounded-2xl border border-zinc-200 flex flex-wrap gap-4 items-center justify-between shadow-sm">
-        <div className="flex items-center gap-4 flex-1 min-w-[300px]">
-          <div className="relative flex-1">
+      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm">
+        <div className="p-4 border-b border-zinc-200">
+          <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search by email or role..." 
+            <input
+              type="text"
+              placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+              className="w-full pl-10 pr-4 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900"
             />
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 hover:bg-zinc-50">
-            <Filter size={18} />
-            Filters
-          </button>
         </div>
-      </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-zinc-50/50 border-b border-zinc-200">
-              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">User</th>
-              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Role</th>
-              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">UID</th>
-              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-zinc-50/50 transition-colors group">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold border ${
-                      user.role === 'super-admin' 
-                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
-                        : 'bg-zinc-100 text-zinc-900 border-zinc-200'
-                    }`}>
-                      {user.email?.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-zinc-900">{user.email}</p>
-                      <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-medium">Verified User</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                    user.role === 'super-admin' 
-                      ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                      : 'bg-zinc-100 text-zinc-600 border-zinc-200'
-                  }`}>
-                    {user.role === 'super-admin' ? <ShieldCheck size={12} /> : <Shield size={12} />}
-                    {user.role || 'User'}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <code className="text-[10px] font-mono bg-zinc-50 px-2 py-1 rounded border border-zinc-200 text-zinc-500">
-                    {user.id}
-                  </code>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors">
-                      <ShieldAlert size={16} />
-                    </button>
-                    <button className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors">
-                      <MoreVertical size={16} />
-                    </button>
-                  </div>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-zinc-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">User</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Organization</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        
-        {loading && (
-          <div className="py-20 flex flex-col items-center justify-center text-zinc-400 space-y-4">
-            <div className="w-8 h-8 border-4 border-zinc-900 rounded-full border-t-transparent animate-spin" />
-            <p className="text-sm font-bold uppercase tracking-widest">Loading Users...</p>
-          </div>
-        )}
-
-        {!loading && filteredUsers.length === 0 && (
-          <div className="py-20 flex flex-col items-center justify-center text-zinc-400 space-y-4">
-            <Users size={48} strokeWidth={1} />
-            <div className="text-center">
-              <p className="font-bold text-zinc-900">No users found</p>
-              <p className="text-sm">Try adjusting your search or filters.</p>
-            </div>
-          </div>
-        )}
+            </thead>
+            <tbody className="divide-y divide-zinc-200">
+              {filteredUsers.map((user) => (
+                <tr key={user.id} className="hover:bg-zinc-50">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center">
+                        <Users size={20} className="text-zinc-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-zinc-900">{user.name}</p>
+                        <p className="text-sm text-zinc-500">{user.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <RoleBadge role={user.role} />
+                  </td>
+                  <td className="px-6 py-4 text-sm text-zinc-600">{user.org}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${
+                      user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {user.status === 'active' ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
+                      {user.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

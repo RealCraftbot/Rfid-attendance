@@ -1,14 +1,15 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
+import Link from 'next/link';
+import Logo from '@/components/Logo';
+import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Users, 
   Cpu, 
   History, 
   Settings, 
-  LogOut,
   Bell,
   Search,
   ShieldCheck,
@@ -18,13 +19,11 @@ import {
   UserCog,
   UserPlus
 } from 'lucide-react';
-import Link from 'next/link';
-import Logo from '@/components/Logo';
-import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
-import { useEffect } from 'react';
+
+const role: string = 'admin';
+const user = { displayName: 'Admin User', email: 'admin@school.com', photoURL: null };
+const userData = { name: 'Admin User' };
+const organization = { name: 'Greenfield Academy', id: 'org_123' };
 
 const SidebarItem = ({ icon: Icon, label, href, active }: { icon: any, label: string, href: string, active: boolean }) => (
   <Link 
@@ -42,39 +41,9 @@ const SidebarItem = ({ icon: Icon, label, href, active }: { icon: any, label: st
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, loading, organization, role, userData } = useAuth();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
-
-  const handleLogout = async () => {
-    if (auth) {
-      await signOut(auth);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#F8F9FA]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-zinc-900 rounded-full border-t-transparent animate-spin" />
-          <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest">Loading Dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <div className="flex h-screen bg-[#F8F9FA]">
-      {/* Sidebar */}
       <aside className="w-64 border-r border-zinc-200 bg-brand-navy flex flex-col text-white">
         <div className="p-6">
           <Link href="/dashboard" className="block mb-8">
@@ -85,7 +54,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
 
           <nav className="space-y-1">
-            {/* Common for Admin and Teacher */}
             {(role === 'admin' || role === 'teacher') && (
               <>
                 <SidebarItem 
@@ -123,7 +91,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </>
             )}
 
-            {/* Admin Only */}
             {role === 'admin' && (
               <SidebarItem 
                 icon={Cpu} 
@@ -133,7 +100,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               />
             )}
 
-            {/* Parent Only */}
             {role === 'parent' && (
               <>
                 <SidebarItem 
@@ -151,7 +117,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </>
             )}
 
-            {/* Common History */}
             {(role === 'admin' || role === 'teacher') && (
               <SidebarItem 
                 icon={History} 
@@ -179,19 +144,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             href="/dashboard/settings" 
             active={pathname === '/dashboard/settings'} 
           />
-          <button 
-            onClick={handleLogout}
+          <Link 
+            href="/login"
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-500/10 transition-all duration-200"
           >
-            <LogOut size={20} />
-            <span className="font-medium text-sm">Logout</span>
-          </button>
+            Logout
+          </Link>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
         <header className="h-16 bg-white border-b border-zinc-200 flex items-center justify-between px-8">
           <div className="flex items-center gap-4 bg-zinc-50 px-4 py-2 rounded-full border border-zinc-200 w-96">
             <Search size={18} className="text-zinc-400" />
@@ -218,21 +180,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </p>
               </div>
               <div className="w-10 h-10 rounded-full bg-brand-blue/10 border border-brand-blue/20 overflow-hidden relative flex items-center justify-center">
-                {user?.photoURL ? (
-                  <Image 
-                    src={user.photoURL} 
-                    alt="Avatar" 
-                    fill
-                    className="object-cover"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      // Hide the image on error and show initials
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
-                  />
-                ) : null}
-                <div className="absolute inset-0 flex items-center justify-center bg-brand-blue/10 text-brand-blue font-bold text-xs">
+                <div className="flex items-center justify-center bg-brand-blue/10 text-brand-blue font-bold text-xs">
                   {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
                 </div>
               </div>
@@ -240,7 +188,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {/* Page Content */}
         <div className="flex-1 overflow-y-auto p-8">
           {children}
         </div>
