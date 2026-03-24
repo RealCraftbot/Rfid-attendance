@@ -9,6 +9,7 @@ const exportQuerySchema = z.object({
   format: z.enum(['pdf', 'csv']),
   date: z.string().datetime(),
   orgId: z.string().cuid(),
+  classroomId: z.string().cuid().optional(),
 });
 
 /**
@@ -276,11 +277,13 @@ export async function GET(request: NextRequest) {
     const formatParam = searchParams.get('format') || 'csv';
     const dateParam = searchParams.get('date') || new Date().toISOString();
     const orgIdParam = searchParams.get('orgId') || 'org_123';
+    const classroomIdParam = searchParams.get('classroomId') || undefined;
 
     const queryParams = {
       format: formatParam,
       date: dateParam,
       orgId: orgIdParam,
+      classroomId: classroomIdParam,
     };
 
     const validation = exportQuerySchema.safeParse(queryParams);
@@ -288,14 +291,32 @@ export async function GET(request: NextRequest) {
       return badRequest('Invalid query parameters', validation.error.issues);
     }
 
-    const { format, date, orgId } = validation.data;
+    const { format, date, orgId, classroomId } = validation.data;
     const selectedDate = new Date(date);
 
     // Get attendance data from service
-    const { attendance, stats } = await attendanceService.getGroupedAttendance(
-      orgId,
-      selectedDate
-    );
+    let attendance, stats, classroomName;
+    
+    if (classroomId) {
+      // Get classroom-specific attendance
+      const result = await attendanceService.getAttendanceByClassroom(
+        orgId,
+        classroomId,
+        selectedDate
+      );
+      attendance = result.attendance;
+      stats = result.stats;
+      classroomName = result.classroom?.name || 'Classroom';
+    } else {
+      // Get all attendance
+      const result = await attendanceService.getGroupedAttendance(
+        orgId,
+        selectedDate
+      );
+      attendance = result.attendance;
+      stats = result.stats;
+      classroomName = 'All Classes';
+    }
 
     if (format === 'csv') {
       // Generate CSV
@@ -305,7 +326,7 @@ export async function GET(request: NextRequest) {
         status: 200,
         headers: {
           'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="attendance-${selectedDate.toISOString().split('T')[0]}.csv"`,
+          'Content-Disposition': `attachment; filename="attendance-${classroomName.replace(/\s+/g, '-')}-${selectedDate.toISOString().split('T')[0]}.csv"`,
         },
       });
     } else {
@@ -316,7 +337,7 @@ export async function GET(request: NextRequest) {
         status: 200,
         headers: {
           'Content-Type': 'text/html',
-          'Content-Disposition': `attachment; filename="attendance-${selectedDate.toISOString().split('T')[0]}.html"`,
+          'Content-Disposition': `attachment; filename="attendance-${classroomName.replace(/\s+/g, '-')}-${selectedDate.toISOString().split('T')[0]}.html"`,
         },
       });
     }

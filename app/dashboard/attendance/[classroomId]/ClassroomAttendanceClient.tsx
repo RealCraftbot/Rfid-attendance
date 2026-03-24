@@ -195,6 +195,57 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
     return `${hours}h ${mins}m`;
   };
 
+  // Export functions
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      const dateStr = selectedDate.toISOString();
+      const response = await fetch(`/api/attendance/export?format=csv&date=${dateStr}&classroomId=${classroomId}`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `attendance-${mockClassroom.name}-${format(selectedDate, 'yyyy-MM-dd')}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error('Export failed:', await response.text());
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    setIsExporting(true);
+    try {
+      const dateStr = selectedDate.toISOString();
+      const response = await fetch(`/api/attendance/export?format=pdf&date=${dateStr}&classroomId=${classroomId}`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `attendance-${mockClassroom.name}-${format(selectedDate, 'yyyy-MM-dd')}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error('Export failed:', await response.text());
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const getStatusColor = (status: AttendanceRecord['status']) => {
     switch (status) {
       case 'present':
@@ -241,11 +292,19 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
           </div>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <button className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-white border border-zinc-200 text-zinc-700 rounded-lg hover:bg-zinc-50 text-xs sm:text-sm font-medium">
+          <button 
+            onClick={handleExportCSV}
+            disabled={isExporting}
+            className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-white border border-zinc-200 text-zinc-700 rounded-lg hover:bg-zinc-50 text-xs sm:text-sm font-medium disabled:opacity-50"
+          >
             <Table size={14} />
             <span className="hidden sm:inline">CSV</span>
           </button>
-          <button className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs sm:text-sm font-medium">
+          <button 
+            onClick={handleExportPDF}
+            disabled={isExporting}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs sm:text-sm font-medium disabled:opacity-50"
+          >
             <FileText size={14} />
             <span>Export PDF</span>
           </button>
