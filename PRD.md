@@ -222,8 +222,8 @@ A comprehensive RFID-based attendance management system designed for Nigerian sc
 
 #### 3.7.2 Channels
 - In-app notifications
-- Email notifications
-- SMS notifications (Twilio)
+- Email notifications (SMTP)
+- SMS notifications (Termii - Nigerian SMS gateway)
 - Push notifications (mobile app)
 
 ### 3.8 Reporting & Analytics
@@ -319,8 +319,8 @@ A comprehensive RFID-based attendance management system designed for Nigerian sc
 - **Hosting**: Railway (Docker)
 - **Database**: Railway PostgreSQL
 - **File Storage**: AWS S3 / Cloudinary
-- **Email**: SendGrid / AWS SES
-- **SMS**: Twilio
+- **Email**: SMTP (Gmail, Outlook, etc.)
+- **SMS**: Termii (Nigerian SMS gateway)
 
 ### 5.2 Database Schema Highlights
 
@@ -442,8 +442,8 @@ POST   /api/signup                   # User registration
 - **Bank APIs**: For verification (future)
 
 ### 7.2 Communication
-- **Twilio**: SMS notifications
-- **SendGrid**: Email delivery
+- **Termii**: SMS notifications (Nigerian gateway)
+- **SMTP**: Email delivery (Gmail, Outlook, corporate)
 - **Firebase**: Push notifications (future)
 
 ### 7.3 Hardware

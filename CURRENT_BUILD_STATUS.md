@@ -246,8 +246,8 @@ The RFID Attendance SaaS is a comprehensive school management system built for N
 
 **Channels:**
 - In-app notification center
-- Email notifications (SendGrid ready)
-- SMS notifications (Twilio integration ready)
+- Email notifications (SMTP with nodemailer)
+- SMS notifications (Termii Nigerian SMS gateway)
 
 ---
 
@@ -276,6 +276,52 @@ The RFID Attendance SaaS is a comprehensive school management system built for N
 - All queries scoped to `orgId`
 - Foreign key constraints
 - Soft deletes via `isActive` flags
+
+---
+
+## Notification System
+
+### SMS Notifications (Termii)
+- **Provider**: Termii (Nigerian SMS gateway - https://termii.com)
+- **Features**:
+  - Attendance check-in/out alerts
+  - Bus status updates
+  - Fee payment confirmations
+  - Grade publication notifications
+  - Phone number formatting (+234)
+- **Sender ID**: Configurable (e.g., "RFIDSCHOOL")
+
+### Email Notifications (SMTP)
+- **Provider**: Any SMTP server (Gmail, Outlook, corporate)
+- **Features**:
+  - HTML and plain text emails
+  - Password reset emails
+  - Fee payment receipts
+  - Report card notifications
+  - Attendance summaries
+- **Library**: Nodemailer
+
+### Notification Types
+- ✅ Attendance alerts (check-in/out)
+- ✅ Bus status updates
+- ✅ Fee payment confirmations
+- ✅ Fee reminders
+- ✅ Grade publication alerts
+- ✅ Password reset emails
+
+### Configuration
+```env
+# Termii SMS
+TERMII_API_KEY=your-termii-api-key
+TERMII_SENDER_ID=RFIDSCHOOL
+
+# SMTP Email
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=RFID Attendance <noreply@yourdomain.com>
+```
 
 ---
 
@@ -434,7 +480,7 @@ npm run db:seed  # Seed test data
 ### High Priority:
 1. Online payment integration (Paystack)
 2. Mobile apps (React Native)
-3. SMS notification system (Twilio)
+3. SMS notification system (Termii - configured)
 4. Advanced analytics dashboard
 5. Bulk data import tools
 
@@ -470,7 +516,8 @@ lib/                       # Utilities
 prisma/
 └── schema.prisma           # Database schema
 services/
-└── attendance-service.ts   # Business logic
+├── attendance-service.ts   # Business logic
+└── notification-service.ts # SMS/Email notifications (Termii + SMTP)
 ```
 
 ---

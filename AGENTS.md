@@ -174,7 +174,8 @@ lib/
 └── api-response.ts           # Response helpers
 
 services/
-└── attendance-service.ts     # Business logic
+├── attendance-service.ts     # Business logic
+└── notification-service.ts   # SMS/Email notifications (Termii + SMTP)
 
 prisma/
 └── schema.prisma             # Database schema
@@ -185,9 +186,28 @@ prisma/
 ## Environment Variables
 
 ```env
+# Database
 DATABASE_URL=postgresql://...
+
+# NextAuth
 NEXTAUTH_URL=https://...
 NEXTAUTH_SECRET=...
+
+# Termii SMS (Nigerian SMS Gateway)
+# Get API key from: https://termii.com
+TERMII_API_KEY=your-termii-api-key
+TERMII_SENDER_ID=RFIDSCHOOL
+
+# SMTP Email Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=RFID Attendance <noreply@yourdomain.com>
+
+# Application
+APP_URL=https://yourdomain.com
+APP_NAME=RFID Attendance
 ```
 
 ## Key Enums
