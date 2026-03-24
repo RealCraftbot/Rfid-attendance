@@ -22,7 +22,6 @@ import {
   Menu,
   X,
   LogOut,
-  ChevronDown,
   Bus,
   Wallet,
   GraduationCap,
@@ -59,7 +58,6 @@ const SidebarItem = ({ icon: Icon, label, href, active, onClick }: SidebarItemPr
 
 // Navigation items configuration with role-based access
 const getNavItems = (role: string) => {
-  // Admin navigation
   const adminItems = [
     { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
     { icon: BookOpen, label: 'Classrooms', href: '/dashboard/classrooms' },
@@ -74,7 +72,6 @@ const getNavItems = (role: string) => {
     { icon: GraduationCap, label: 'Grades', href: '/dashboard/grades' },
   ];
 
-  // Teacher navigation
   const teacherItems = [
     { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
     { icon: BookOpen, label: 'My Classes', href: '/dashboard/classrooms' },
@@ -83,14 +80,12 @@ const getNavItems = (role: string) => {
     { icon: GraduationCap, label: 'Grades', href: '/dashboard/grades' },
   ];
 
-  // Bursar navigation
   const bursarItems = [
     { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
     { icon: Users, label: 'Students', href: '/dashboard/students' },
     { icon: Wallet, label: 'Fees & Payments', href: '/dashboard/bursar' },
   ];
 
-  // Parent navigation
   const parentItems = [
     { icon: Baby, label: 'My Children', href: '/dashboard/parent' },
     { icon: History, label: 'Attendance', href: '/dashboard/attendance' },
@@ -118,42 +113,29 @@ const getNavItems = (role: string) => {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const sessionData = useSession();
+  const { data: session, status } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isClient, setIsClient] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
+    setMounted(true);
   }, []);
 
-  // Handle loading state safely
-  const status = sessionData?.status || 'loading';
-  const session = sessionData?.data;
-  
-  // Get user role and data from session
-  const userRole = session?.user?.role || '';
-  const userData = session?.user;
-  const organization = userData?.organization;
-
-  // Navigation items based on role
-  const navItems = getNavItems(userRole);
-
+  // Handle authentication
   useEffect(() => {
-    // Only run on client side
-    if (!isClient) return;
+    if (!mounted) return;
     
-    // Redirect if not authenticated
     if (status === 'unauthenticated') {
+      console.log('Not authenticated, redirecting to login...');
       router.push('/login');
     }
-  }, [status, router, isClient]);
+  }, [status, router, mounted]);
 
   const handleLogout = async () => {
     await signOut({ redirect: false });
     router.push('/login');
   };
 
-  // Check if a nav item is active (supports nested routes)
   const isActive = (href: string) => {
     if (href === '/dashboard') {
       return pathname === '/dashboard';
@@ -161,8 +143,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return pathname.startsWith(href);
   };
 
-  // Show loading state during SSR or while loading
-  if (!isClient || status === 'loading') {
+  // Don't render anything until mounted (prevent hydration mismatch)
+  if (!mounted) {
     return (
       <div className="min-h-screen bg-zinc-100 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -173,8 +155,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Show access denied if no valid role
-  if (status === 'authenticated' && (!userRole || navItems.length === 0)) {
+  // Show loading while checking session
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-zinc-100 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 size={48} className="animate-spin text-blue-600" />
+          <p className="text-zinc-600">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, show nothing (will redirect)
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen bg-zinc-100 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 size={48} className="animate-spin text-blue-600" />
+          <p className="text-zinc-600">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Get user data
+  const userRole = session?.user?.role || '';
+  const userData = session?.user;
+  const organization = userData?.organization;
+  const navItems = getNavItems(userRole);
+
+  // If authenticated but no valid role
+  if (!userRole || navItems.length === 0) {
     return (
       <div className="min-h-screen bg-zinc-100 flex items-center justify-center">
         <div className="text-center">
