@@ -32,10 +32,26 @@ enum SubscriptionStatus {
 
 enum BusStatus {
   WAITING
-  ON_BUS
+  ON_BUS_TO_SCHOOL
   AT_SCHOOL
-  ON_RETURN
+  ON_BUS_TO_HOME
   HOME
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+}
+
+enum GradeLevel {
+  A
+  B
+  C
+  D
+  E
+  F
 }
 
 model Organization {
@@ -55,6 +71,8 @@ model Organization {
   classrooms    Classroom[]
   attendance    AttendanceRecord[]
   busRoutes     BusRoute[]
+  feeStructures FeeStructure[]
+  invoices      Invoice[]
 
   @@index([slug])
   @@index([status])
@@ -88,13 +106,14 @@ model Student {
   isActive        Boolean  @default(true)
   dateOfBirth     DateTime?
   guardianName    String?
-  guardianPhone    String?
-  guardianEmail    String?
+  guardianPhone   String?
+  guardianEmail   String?
   currentStatus   CheckType?
   lastSeen        DateTime?
   usesSchoolBus   Boolean  @default(false)
   busRouteId      String?
   busStatus       BusStatus?
+  admissionNumber String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -102,6 +121,8 @@ model Student {
   classroom   Classroom?       @relation(fields: [classroomId], references: [id], onDelete: SetNull)
   busRoute    BusRoute?       @relation(fields: [busRouteId], references: [id])
   attendance  AttendanceRecord[]
+  invoices    Invoice[]
+  grades      Grade[]
 
   @@unique([orgId, rfidUid])
   @@index([orgId])
@@ -204,6 +225,74 @@ model AttendanceRecord {
   @@index([orgId, scanTime])
   @@index([deviceId, scanTime])
   @@index([busRouteId])
+}
+
+model FeeStructure {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  amount      Float
+  dueDate    DateTime
+  academicYear String
+  term       Int
+  isActive   Boolean  @default(true)
+  orgId      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+
+  @@index([orgId])
+  @@index([academicYear, term])
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  studentId       String
+  feeStructureId  String
+  orgId          String
+  amount         Float
+  paidAmount     Float    @default(0)
+  status         PaymentStatus @default(PENDING)
+  dueDate        DateTime
+  paidDate       DateTime?
+  academicYear   String
+  term           Int
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id])
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([orgId])
+  @@index([status])
+  @@index([academicYear, term])
+}
+
+model Grade {
+  id              String   @id @default(cuid())
+  studentId       String
+  subject         String
+  academicYear    String
+  term            Int
+  testScore       Float?
+  examScore       Float?
+  totalScore     Float?
+  grade           GradeLevel?
+  remarks         String?
+  teacherId       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, subject, academicYear, term])
+  @@index([studentId])
+  @@index([academicYear, term])
 }
 
 model Session {

@@ -162,7 +162,7 @@ export class AttendanceService {
       };
     }
 
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: any) => {
       const record = await tx.attendanceRecord.create({
         data: {
           studentId: student.id,
@@ -245,13 +245,15 @@ export class AttendanceService {
   }
 
   async getBusStats(orgId: string) {
+    const busStatusFilter = (status: string) => ({ orgId, usesSchoolBus: true, isActive: true, busStatus: status as any });
+
     const [totalBusStudents, waitingHome, onBusToSchool, atSchool, onBusToHome, home] = await Promise.all([
       prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true } }),
-      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true, busStatus: 'WAITING' } }),
-      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true, busStatus: 'ON_BUS_TO_SCHOOL' } }),
-      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true, busStatus: 'AT_SCHOOL' } }),
-      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true, busStatus: 'ON_BUS_TO_HOME' } }),
-      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true, busStatus: 'HOME' } }),
+      prisma.student.count({ where: busStatusFilter('WAITING') }),
+      prisma.student.count({ where: busStatusFilter('ON_BUS_TO_SCHOOL') }),
+      prisma.student.count({ where: busStatusFilter('AT_SCHOOL') }),
+      prisma.student.count({ where: busStatusFilter('ON_BUS_TO_HOME') }),
+      prisma.student.count({ where: busStatusFilter('HOME') }),
     ]);
 
     return {
