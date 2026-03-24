@@ -197,15 +197,49 @@ export default function BursarDashboardClient() {
     }
   };
 
+  // Export to CSV function
+  const exportToCSV = () => {
+    const headers = ['ID', 'Student', 'Class', 'Amount', 'Method', 'Status', 'Date', 'Reference', 'Paid By'].join(',');
+    const rows = filteredPayments.map(p => [
+      p.id,
+      p.studentName,
+      p.studentClass,
+      p.amount,
+      p.paymentMethod,
+      p.transactionStatus,
+      format(new Date(p.transactionDate), 'yyyy-MM-dd HH:mm'),
+      p.transactionRef || '',
+      p.paidByName
+    ].join(','));
+    
+    const csvContent = [headers, ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payments-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleReview = async () => {
     if (!selectedPayment || !reviewAction) return;
     
-    // In production, call API
-    console.log('Reviewing payment:', {
-      paymentId: selectedPayment.id,
-      action: reviewAction,
-      notes: reviewNotes,
-      rejectionReason: reviewAction === 'reject' ? rejectionReason : undefined,
+    // Update payment status locally (in production, call API)
+    const updatedPayments = mockPayments.map(p => {
+      if (p.id === selectedPayment.id) {
+        return {
+          ...p,
+          transactionStatus: reviewAction === 'approve' ? 'VERIFIED' : 'REJECTED',
+          reviewedByName: 'Current User',
+          reviewedAt: new Date().toISOString(),
+          reviewNotes: reviewNotes || undefined,
+          rejectionReason: reviewAction === 'reject' ? rejectionReason : undefined,
+        };
+      }
+      return p;
     });
     
     // Reset and close
@@ -214,6 +248,9 @@ export default function BursarDashboardClient() {
     setReviewAction(null);
     setReviewNotes('');
     setRejectionReason('');
+    
+    // Show success message (in production, update state properly)
+    alert(`Payment ${reviewAction === 'approve' ? 'approved' : 'rejected'} successfully!`);
   };
 
   const formatAmount = (amount: number) => {
@@ -232,11 +269,17 @@ export default function BursarDashboardClient() {
           <p className="text-zinc-500 mt-1 text-xs sm:text-sm">Manage school fees and payments</p>
         </div>
         <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+          <button 
+            onClick={() => router.push('/dashboard/admin/fees?tab=bank-accounts')}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+          >
             <Building2 size={18} />
             <span>Bank Accounts</span>
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 text-sm font-medium">
+          <button 
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 text-sm font-medium"
+          >
             <Download size={18} />
             <span>Export Report</span>
           </button>
