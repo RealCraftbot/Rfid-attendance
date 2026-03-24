@@ -14,212 +14,200 @@ import {
   FileText,
   Printer,
   Upload,
-  Camera
+  Camera,
+  Wallet
 } from 'lucide-react';
 
-type GradeLevel = 'A1' | 'B2' | 'B3' | 'C4' | 'C5' | 'C6' | 'D7' | 'E8' | 'F9';
+type GradeLevel = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+type RatingLevel = 1 | 2 | 3 | 4 | 5;
 
 interface SubjectGrade {
   subject: string;
-  testScore: number;
-  examScore: number;
-  totalScore: number;
+  firstCA: number;
+  secondCA: number;
+  exam: number;
+  total: number;
   grade: GradeLevel;
   remarks: string;
+}
+
+interface AffectiveDomain {
+  punctuality: RatingLevel;
+  attendance: RatingLevel;
+  selfControl: RatingLevel;
+  neatness: RatingLevel;
+  responsibility: RatingLevel;
+  diligence: RatingLevel;
+  attentiveness: RatingLevel;
+  leadership: RatingLevel;
+  accuracy: RatingLevel;
+  sports: RatingLevel;
 }
 
 interface StudentReport {
   id: string;
-  student: string;
-  studentImage?: string;
+  name: string;
   class: string;
+  gender: 'Male' | 'Female';
   term: number;
-  academicYear: string;
+  session: string;
+  noInClass: number;
+  dateOfBirth: string;
+  timesSchoolOpened: number;
+  timesPresent: number;
+  timesAbsent: number;
+  closingDate: string;
+  resumptionDate: string;
+  overallTotal: number;
   average: number;
-  grade: GradeLevel;
+  percentage: number;
   position: number;
   subjects: SubjectGrade[];
-  attendance: number;
-  classSize: number;
-  remarks: string;
-  principalName: string;
-  schoolName: string;
-  schoolLogo?: string;
+  affective: AffectiveDomain;
+  classTeacherRemark: string;
+  headTeacherRemark: string;
+  fees: {
+    tuition: number;
+    exam: number;
+    sport: number;
+    lesson: number;
+    other: number;
+    outstanding: number;
+    total: number;
+  };
 }
 
-const NIGERIAN_PRIMARY_SUBJECTS = [
-  'Mathematics',
-  'English',
-  'Basic Science',
-  'Social Studies',
-  'Civic Education',
-  'Computer Studies',
-  'Agricultural Science',
-  'Home Economics',
-  'French',
-  'Christian Religious Studies',
-  'Islamic Studies',
-  ' Yoruba Language',
-  'Hausa Language',
-  'Igbo Language',
-  'Fine Arts',
-  'Music',
-  'Physical & Health Education',
-];
-
-const NIGERIAN_JSS_SUBJECTS = [
+// Nigerian Primary School Subjects
+const PRIMARY_SUBJECTS = [
   'Mathematics',
   'English Language',
-  'Basic Science',
-  'Basic Technology',
+  'Igbo Language',
   'Social Studies',
-  'Civic Education',
-  'Computer Studies',
-  'Agricultural Science',
-  'Home Economics',
-  'French',
-  'Christian Religious Studies',
-  'Islamic Studies',
-  'Yoruba Language',
-  'Hausa Language',
-  'Igbo Language',
-  'Fine Arts',
-  'Music',
-  'Physical & Health Education',
-  'Business Studies',
+  'Health Habit',
+  'General Science',
+  'C.R.S',
+  'Food & Nutrition',
+  'Writing',
+  'Poem',
+  'Drawing / Colouring',
+  'Dictation',
 ];
 
-const NIGERIAN_SSS_SUBJECTS = [
-  'Mathematics',
-  'English Language',
-  'Physics',
-  'Chemistry',
-  'Biology',
-  'Economics',
-  'Government',
-  'Literature in English',
-  'Civic Education',
-  'Computer Science',
-  'Agricultural Science',
-  'Financial Accounting',
-  'Commerce',
-  'Geography',
-  'History',
-  'Christian Religious Studies',
-  'Islamic Studies',
-  'Yoruba Language',
-  'Hausa Language',
-  'Igbo Language',
-  'French',
-  'Government',
-  'Marketing',
-  'Office Practice',
+// Grading Keys
+const GRADING_KEYS = [
+  { range: '70 & Above', grade: 'A', remark: 'Excellent' },
+  { range: '60-69', grade: 'B', remark: 'Very Good' },
+  { range: '50-59', grade: 'C', remark: 'Good' },
+  { range: '45-49', grade: 'D', remark: 'Fair' },
+  { range: '40-44', grade: 'E', remark: 'Poor' },
+  { range: '0-39', grade: 'F', remark: 'Fail' },
 ];
 
-const getGradeInfo = (score: number): { grade: GradeLevel; remark: string; color: string } => {
-  if (score >= 90) return { grade: 'A1', remark: 'Excellent', color: 'bg-green-100 text-green-800' };
-  if (score >= 80) return { grade: 'B2', remark: 'Very Good', color: 'bg-green-100 text-green-700' };
-  if (score >= 70) return { grade: 'B3', remark: 'Good', color: 'bg-blue-100 text-blue-700' };
-  if (score >= 65) return { grade: 'C4', remark: 'Credit', color: 'bg-blue-100 text-blue-600' };
-  if (score >= 60) return { grade: 'C5', remark: 'Credit', color: 'bg-cyan-100 text-cyan-700' };
-  if (score >= 55) return { grade: 'C6', remark: 'Credit', color: 'bg-cyan-100 text-cyan-600' };
-  if (score >= 50) return { grade: 'D7', remark: 'Pass', color: 'bg-yellow-100 text-yellow-700' };
-  if (score >= 45) return { grade: 'E8', remark: 'Pass', color: 'bg-orange-100 text-orange-700' };
-  return { grade: 'F9', remark: 'Fail', color: 'bg-red-100 text-red-700' };
+// Rating Keys
+const RATING_KEYS = [
+  { level: 5, desc: 'Excellent' },
+  { level: 4, desc: 'Very Good' },
+  { level: 3, desc: 'Good' },
+  { level: 2, desc: 'Poor' },
+  { level: 1, desc: 'Very Poor' },
+];
+
+const getGradeInfo = (score: number): { grade: GradeLevel; remark: string } => {
+  if (score >= 70) return { grade: 'A', remark: 'Excellent' };
+  if (score >= 60) return { grade: 'B', remark: 'Very Good' };
+  if (score >= 50) return { grade: 'C', remark: 'Good' };
+  if (score >= 45) return { grade: 'D', remark: 'Fair' };
+  if (score >= 40) return { grade: 'E', remark: 'Poor' };
+  return { grade: 'F', remark: 'Fail' };
+};
+
+const calculateSubjectGrade = (firstCA: number, secondCA: number, exam: number): SubjectGrade => {
+  const total = firstCA + secondCA + exam;
+  const info = getGradeInfo(total);
+  return {
+    subject: '',
+    firstCA,
+    secondCA,
+    exam,
+    total,
+    grade: info.grade,
+    remarks: info.remark,
+  };
 };
 
 const mockReports: StudentReport[] = [
   {
     id: '1',
-    student: 'Chukwuemeka Okafor',
-    class: 'JSS 3A',
+    name: 'Chukwuemeka Okafor',
+    class: 'Primary 5',
+    gender: 'Male',
     term: 1,
-    academicYear: '2025/2026',
-    average: 87,
-    grade: 'B2',
-    position: 1,
-    attendance: 95,
-    classSize: 45,
-    remarks: 'Excellent performance. Keep up the good work!',
-    principalName: 'Mrs. Ngozi Adeyemi',
-    schoolName: 'Greenfield Academy',
-    subjects: [
-      { subject: 'Mathematics', testScore: 28, examScore: 58, totalScore: 86, grade: 'B2', remarks: 'Very Good' },
-      { subject: 'English Language', testScore: 26, examScore: 55, totalScore: 81, grade: 'B2', remarks: 'Very Good' },
-      { subject: 'Basic Science', testScore: 27, examScore: 60, totalScore: 87, grade: 'B2', remarks: 'Very Good' },
-      { subject: 'Computer Studies', testScore: 29, examScore: 65, totalScore: 94, grade: 'A1', remarks: 'Excellent' },
-      { subject: 'Social Studies', testScore: 25, examScore: 54, totalScore: 79, grade: 'B3', remarks: 'Good' },
-    ]
-  },
-  {
-    id: '2',
-    student: 'Adaeze Nwosu',
-    class: 'JSS 3A',
-    term: 1,
-    academicYear: '2025/2026',
-    average: 78,
-    grade: 'B3',
-    position: 2,
-    attendance: 92,
-    classSize: 45,
-    remarks: 'Good effort. Focus on Mathematics.',
-    principalName: 'Mrs. Ngozi Adeyemi',
-    schoolName: 'Greenfield Academy',
-    subjects: [
-      { subject: 'Mathematics', testScore: 22, examScore: 48, totalScore: 70, grade: 'C4', remarks: 'Credit' },
-      { subject: 'English Language', testScore: 26, examScore: 55, totalScore: 81, grade: 'B2', remarks: 'Very Good' },
-      { subject: 'Basic Science', testScore: 25, examScore: 52, totalScore: 77, grade: 'B3', remarks: 'Good' },
-      { subject: 'Computer Studies', testScore: 27, examScore: 60, totalScore: 87, grade: 'B2', remarks: 'Very Good' },
-      { subject: 'Social Studies', testScore: 24, examScore: 50, totalScore: 74, grade: 'C4', remarks: 'Credit' },
-    ]
-  },
-  {
-    id: '3',
-    student: 'Oluwaseun Adebayo',
-    class: 'SS 2 Science',
-    term: 1,
-    academicYear: '2025/2026',
-    average: 72,
-    grade: 'C4',
+    session: '2025/2026',
+    noInClass: 45,
+    dateOfBirth: '2015-03-12',
+    timesSchoolOpened: 120,
+    timesPresent: 112,
+    timesAbsent: 8,
+    closingDate: '2025-12-20',
+    resumptionDate: '2026-01-06',
+    overallTotal: 1056,
+    average: 88,
+    percentage: 88,
     position: 3,
-    attendance: 88,
-    classSize: 35,
-    remarks: 'Satisfactory. More effort needed in Physics.',
-    principalName: 'Mrs. Ngozi Adeyemi',
-    schoolName: 'Greenfield Academy',
     subjects: [
-      { subject: 'Mathematics', testScore: 20, examScore: 45, totalScore: 65, grade: 'C4', remarks: 'Credit' },
-      { subject: 'English Language', testScore: 22, examScore: 50, totalScore: 72, grade: 'C4', remarks: 'Credit' },
-      { subject: 'Physics', testScore: 18, examScore: 38, totalScore: 56, grade: 'C5', remarks: 'Credit' },
-      { subject: 'Chemistry', testScore: 20, examScore: 48, totalScore: 68, grade: 'C4', remarks: 'Credit' },
-      { subject: 'Biology', testScore: 23, examScore: 52, totalScore: 75, grade: 'B3', remarks: 'Good' },
-      { subject: 'Economics', testScore: 24, examScore: 55, totalScore: 79, grade: 'B3', remarks: 'Good' },
-    ]
+      { subject: 'Mathematics', firstCA: 18, secondCA: 18, exam: 56, total: 92, grade: 'A', remarks: 'Excellent' },
+      { subject: 'English Language', firstCA: 16, secondCA: 17, exam: 52, total: 85, grade: 'A', remarks: 'Excellent' },
+      { subject: 'Igbo Language', firstCA: 15, secondCA: 16, exam: 48, total: 79, grade: 'B', remarks: 'Very Good' },
+      { subject: 'Social Studies', firstCA: 14, secondCA: 15, exam: 45, total: 74, grade: 'B', remarks: 'Very Good' },
+      { subject: 'Health Habit', firstCA: 17, secondCA: 18, exam: 54, total: 89, grade: 'A', remarks: 'Excellent' },
+      { subject: 'General Science', firstCA: 16, secondCA: 17, exam: 53, total: 86, grade: 'A', remarks: 'Excellent' },
+      { subject: 'C.R.S', firstCA: 18, secondCA: 18, exam: 55, total: 91, grade: 'A', remarks: 'Excellent' },
+      { subject: 'Food & Nutrition', firstCA: 15, secondCA: 16, exam: 47, total: 78, grade: 'B', remarks: 'Very Good' },
+      { subject: 'Writing', firstCA: 17, secondCA: 17, exam: 51, total: 85, grade: 'A', remarks: 'Excellent' },
+      { subject: 'Poem', firstCA: 14, secondCA: 15, exam: 46, total: 75, grade: 'B', remarks: 'Very Good' },
+      { subject: 'Drawing / Colouring', firstCA: 16, secondCA: 16, exam: 50, total: 82, grade: 'A', remarks: 'Excellent' },
+      { subject: 'Dictation', firstCA: 15, secondCA: 15, exam: 45, total: 75, grade: 'B', remarks: 'Very Good' },
+    ],
+    affective: {
+      punctuality: 4,
+      attendance: 4,
+      selfControl: 5,
+      neatness: 5,
+      responsibility: 5,
+      diligence: 5,
+      attentiveness: 4,
+      leadership: 4,
+      accuracy: 4,
+      sports: 5,
+    },
+    classTeacherRemark: 'Chukwuemeka is a diligent student who shows great promise. He participates actively in class and maintains excellent conduct.',
+    headTeacherRemark: 'A well-behaved and hardworking pupil. Keep up the good work.',
+    fees: {
+      tuition: 50000,
+      exam: 1000,
+      sport: 233,
+      lesson: 1300,
+      other: 4500,
+      outstanding: 5000,
+      total: 65533,
+    },
   },
-];
-
-const NIGERIAN_CLASSES = [
-  'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6',
-  'JSS 1', 'JSS 2', 'JSS 3',
-  'SS 1', 'SS 2', 'SS 3'
 ];
 
 export default function ReportCardPage() {
   const [showAddGradeModal, setShowAddGradeModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReport, setSelectedReport] = useState<StudentReport | null>(null);
-  const [termFilter, setTermFilter] = useState('1');
-  const [classFilter, setClassFilter] = useState('all');
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredReports = mockReports.filter(r => 
-    r.student.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    r.term === parseInt(termFilter) &&
-    (classFilter === 'all' || r.class.startsWith(classFilter))
-  );
-
-  const classAverage = Math.round(mockReports.reduce((sum, r) => sum + r.average, 0) / mockReports.length);
+  const schoolInfo = {
+    name: 'GRACELAND ACADEMY NANDO',
+    address: 'ALONG ISINYI/IGBARIAM ROAD BESIDE OYE MARKET ANAMBRA EAST L.G, ANAMBRA STATE',
+    email: 'gracelandacademy950@gmail.com',
+    phone: '07036183613, 07032440593',
+    motto: 'EDUCATION FOR EXCELLENCE',
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -236,137 +224,337 @@ export default function ReportCardPage() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const gradeInfo = getGradeInfo(report.average);
+    const termNames = ['', 'FIRST', 'SECOND', 'THIRD'];
     
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Report Card - ${report.student}</title>
+        <title>Report Card - ${report.name}</title>
+        <meta charset="UTF-8">
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-          .header { text-align: center; margin-bottom: 20px; border-bottom: 3px solid #1e40af; padding-bottom: 15px; }
-          .logo { width: 80px; height: 80px; object-fit: contain; margin-bottom: 10px; }
-          .school-name { font-size: 24px; font-weight: bold; color: #1e40af; }
-          .school-address { font-size: 12px; color: #666; }
-          .title { font-size: 18px; font-weight: bold; margin: 15px 0 5px; text-align: center; }
-          .student-info { display: flex; justify-content: space-between; margin: 15px 0; padding: 10px; background: #f3f4f6; border-radius: 8px; }
-          .info-item { text-align: center; }
-          .info-label { font-size: 11px; color: #666; }
-          .info-value { font-size: 14px; font-weight: bold; }
-          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-          th, td { border: 1px solid #ddd; padding: 8px 5px; text-align: center; font-size: 12px; }
-          th { background: #1e40af; color: white; }
-          tr:nth-child(even) { background: #f9fafb; }
-          .score-high { background: #dcfce7 !important; }
-          .score-low { background: #fee2e2 !important; }
-          .summary { display: flex; justify-content: space-around; margin: 20px 0; padding: 15px; background: #eff6ff; border-radius: 8px; }
-          .summary-item { text-align: center; }
-          .remarks { margin-top: 20px; padding: 15px; background: #fef3c7; border-radius: 8px; }
-          .footer { margin-top: 30px; display: flex; justify-content: space-between; }
-          .signature-line { border-top: 1px solid #333; width: 200px; text-align: center; }
-          @media print { body { padding: 0; } }
+          body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            max-width: 900px; 
+            margin: 0 auto;
+            font-size: 11px;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 15px; 
+            border-bottom: 2px solid #000; 
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+          }
+          .logo { width: 70px; height: 70px; object-fit: contain; }
+          .school-info { text-align: center; flex: 1; }
+          .school-name { font-size: 22px; font-weight: bold; color: #c00; margin-bottom: 3px; }
+          .school-address { font-size: 9px; color: #333; }
+          .school-contact { font-size: 9px; color: #333; }
+          .motto { font-size: 12px; font-weight: bold; color: #c00; margin-top: 3px; }
+          .title { 
+            font-size: 16px; 
+            font-weight: bold; 
+            text-align: center; 
+            margin: 15px 0 10px;
+            border: 2px solid #000;
+            padding: 5px;
+            display: inline-block;
+            width: 100%;
+          }
+          .student-info { 
+            border: 1px solid #000; 
+            padding: 8px; 
+            margin-bottom: 10px;
+          }
+          .info-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+          }
+          .info-row {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 3px;
+          }
+          .info-label { font-weight: bold; font-size: 10px; }
+          .info-value { border-bottom: 1px solid #000; flex: 1; min-width: 60px; }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 10px 0; 
+            font-size: 9px;
+          }
+          th, td { 
+            border: 1px solid #000; 
+            padding: 3px; 
+            text-align: center; 
+          }
+          th { 
+            background: #f0f0f0; 
+            font-weight: bold;
+            font-size: 8px;
+          }
+          .subject-col { text-align: left; width: 25%; }
+          .grade-A { background: #90EE90; }
+          .grade-B { background: #ADD8E6; }
+          .grade-C { background: #FFFFE0; }
+          .grade-D { background: #FFE4B5; }
+          .grade-E { background: #FFB6C1; }
+          .grade-F { background: #FF6B6B; }
+          .section-title {
+            background: #c00;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            font-size: 10px;
+            padding: 3px;
+            margin: 10px 0 5px;
+          }
+          .three-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+          }
+          .domain-table, .keys-table, .bill-table {
+            border: 1px solid #000;
+            font-size: 9px;
+          }
+          .domain-table th, .keys-table th, .bill-table th {
+            background: #f0f0f0;
+            font-size: 8px;
+          }
+          .remarks-section {
+            margin-top: 15px;
+          }
+          .remark-line {
+            display: flex;
+            margin-bottom: 8px;
+            align-items: flex-end;
+          }
+          .remark-label { 
+            font-weight: bold; 
+            font-size: 10px;
+            min-width: 150px;
+          }
+          .remark-value { 
+            border-bottom: 1px solid #000; 
+            flex: 1;
+            min-height: 20px;
+          }
+          .signature-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+          }
+          .signature-box {
+            text-align: center;
+            width: 200px;
+          }
+          .signature-line {
+            border-top: 1px solid #000;
+            margin-top: 30px;
+            padding-top: 3px;
+            font-size: 10px;
+          }
+          @media print { 
+            body { padding: 0; font-size: 10px; }
+            .no-print { display: none; }
+          }
         </style>
       </head>
       <body>
         <div class="header">
-          ${schoolLogo ? `<img src="${schoolLogo}" class="logo" alt="School Logo" />` : ''}
-          <div class="school-name">${report.schoolName}</div>
-          <div class="school-address">123 Education Street, Lagos, Nigeria | Tel: 01-234-5678</div>
+          ${schoolLogo ? `<img src="${schoolLogo}" class="logo" alt="School Logo" />` : '<div class="logo" style="width:70px;height:70px;background:#f0f0f0;"></div>'}
+          <div class="school-info">
+            <div class="school-name">${schoolInfo.name}</div>
+            <div class="school-address">${schoolInfo.address}</div>
+            <div class="school-contact">${schoolInfo.email}, ${schoolInfo.phone}</div>
+            <div class="motto">MOTTO: ${schoolInfo.motto}</div>
+          </div>
+          <div style="width:70px;height:70px;background:#f0f0f0;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:10px;color:#999;">Photo</span>
+          </div>
         </div>
         
-        <div class="title">TERMINAL REPORT</div>
+        <div class="title">${termNames[report.term]} TERM REPORT SHEET</div>
         
         <div class="student-info">
-          <div class="info-item">
-            <div class="info-label">STUDENT NAME</div>
-            <div class="info-value">${report.student}</div>
+          <div class="info-grid">
+            <div class="info-row">
+              <span class="info-label">NAME:</span>
+              <span class="info-value">${report.name}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">CLASS:</span>
+              <span class="info-value">${report.class}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">GENDER:</span>
+              <span class="info-value">${report.gender}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">TERM:</span>
+              <span class="info-value">${report.term}</span>
+            </div>
           </div>
-          <div class="info-item">
-            <div class="info-label">CLASS</div>
-            <div class="info-value">${report.class}</div>
+          <div class="info-grid" style="margin-top:5px;">
+            <div class="info-row">
+              <span class="info-label">SESSION:</span>
+              <span class="info-value">${report.session}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">NO IN CLASS:</span>
+              <span class="info-value">${report.noInClass}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">DATE OF BIRTH:</span>
+              <span class="info-value">${report.dateOfBirth}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label"></span>
+              <span class="info-value"></span>
+            </div>
           </div>
-          <div class="info-item">
-            <div class="info-label">TERM</div>
-            <div class="info-value">${report.term}</div>
+          <div style="margin-top:8px;display:flex;gap:20px;">
+            <span><strong>NO OF TIMES SCHOOL OPENED:</strong> ${report.timesSchoolOpened}</span>
+            <span><strong>NO OF TIMES PRESENT:</strong> ${report.timesPresent}</span>
+            <span><strong>NO OF TIMES ABSENT:</strong> ${report.timesAbsent}</span>
           </div>
-          <div class="info-item">
-            <div class="info-label">SESSION</div>
-            <div class="info-value">${report.academicYear}</div>
+          <div style="margin-top:5px;display:flex;gap:20px;">
+            <span><strong>CLOSING DATE:</strong> ${report.closingDate}</span>
+            <span><strong>RESUMPTION DATE:</strong> ${report.resumptionDate}</span>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:30px;">
+            <span><strong>OVERALL TOTAL:</strong> ${report.overallTotal}</span>
+            <span><strong>AVERAGE:</strong> ${report.average}</span>
+            <span><strong>PERCENTAGE:</strong> ${report.percentage}%</span>
+            <span><strong>POSITION:</strong> ${report.position}</span>
           </div>
         </div>
+
+        <div class="section-title">PUPIL'S ACADEMIC PERFORMANCE</div>
         
         <table>
           <thead>
             <tr>
-              <th>Subject</th>
-              <th>Test (30)</th>
-              <th>Exam (70)</th>
-              <th>Total (100)</th>
-              <th>Grade</th>
-              <th>Remark</th>
+              <th class="subject-col">SUBJECT</th>
+              <th>1ST C.A<br/>20%</th>
+              <th>2ND C.A<br/>20%</th>
+              <th>EXAM<br/>60%</th>
+              <th>TOTAL<br/>100%</th>
+              <th>GRADE</th>
+              <th>REMARKS</th>
             </tr>
           </thead>
           <tbody>
-            ${report.subjects.map(s => {
-              const info = getGradeInfo(s.totalScore);
-              return `
-                <tr class="${s.totalScore >= 75 ? 'score-high' : s.totalScore < 50 ? 'score-low' : ''}">
-                  <td style="text-align: left;">${s.subject}</td>
-                  <td>${s.testScore}</td>
-                  <td>${s.examScore}</td>
-                  <td><strong>${s.totalScore}</strong></td>
-                  <td><strong>${info.grade}</strong></td>
-                  <td>${info.remark}</td>
-                </tr>
-              `;
-            }).join('')}
+            ${report.subjects.map(s => `
+              <tr>
+                <td class="subject-col">${s.subject}</td>
+                <td>${s.firstCA}</td>
+                <td>${s.secondCA}</td>
+                <td>${s.exam}</td>
+                <td><strong>${s.total}</strong></td>
+                <td class="grade-${s.grade}">${s.grade}</td>
+                <td>${s.remarks}</td>
+              </tr>
+            `).join('')}
           </tbody>
         </table>
-        
-        <div class="summary">
-          <div class="summary-item">
-            <div class="info-label">AVERAGE SCORE</div>
-            <div class="info-value" style="font-size: 24px;">${report.average}%</div>
+
+        <div class="three-col">
+          <div>
+            <table class="domain-table">
+              <thead>
+                <tr><th colspan="2">DOMAINS / RATING</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>PUNCTUALITY</td><td>${report.affective.punctuality}</td></tr>
+                <tr><td>ATTENDANCE</td><td>${report.affective.attendance}</td></tr>
+                <tr><td>SELF-CONTROL</td><td>${report.affective.selfControl}</td></tr>
+                <tr><td>NEATNESS</td><td>${report.affective.neatness}</td></tr>
+                <tr><td>RESPONSIBILITY</td><td>${report.affective.responsibility}</td></tr>
+                <tr><td>DILIGENCE</td><td>${report.affective.diligence}</td></tr>
+                <tr><td>ATTENTIVENESS</td><td>${report.affective.attentiveness}</td></tr>
+                <tr><td>LEADERSHIP</td><td>${report.affective.leadership}</td></tr>
+                <tr><td>ACCURACY</td><td>${report.affective.accuracy}</td></tr>
+                <tr><td>SPORTS & GAMES</td><td>${report.affective.sports}</td></tr>
+              </tbody>
+            </table>
           </div>
-          <div class="summary-item">
-            <div class="info-label">OVERALL GRADE</div>
-            <div class="info-value" style="font-size: 24px;">${report.grade}</div>
+          
+          <div>
+            <table class="keys-table">
+              <thead>
+                <tr><th colspan="2">KEYS TO GRADING</th></tr>
+              </thead>
+              <tbody>
+                ${GRADING_KEYS.map(k => `<tr><td>${k.range}</td><td>${k.grade}=${k.remark}</td></tr>`).join('')}
+              </tbody>
+            </table>
+            <table class="keys-table" style="margin-top:5px;">
+              <thead>
+                <tr><th colspan="2">KEYS TO RATING</th></tr>
+              </thead>
+              <tbody>
+                ${RATING_KEYS.map(k => `<tr><td>${k.level}=</td><td>${k.desc}</td></tr>`).join('')}
+              </tbody>
+            </table>
           </div>
-          <div class="summary-item">
-            <div class="info-label">POSITION</div>
-            <div class="info-value" style="font-size: 24px;">${report.position} / ${report.classSize}</div>
-          </div>
-          <div class="summary-item">
-            <div class="info-label">ATTENDANCE</div>
-            <div class="info-value" style="font-size: 24px;">${report.attendance}%</div>
+          
+          <div>
+            <table class="bill-table">
+              <thead>
+                <tr><th colspan="2">SCHOOL BILL</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>TUITION FEE</td><td>₦ ${report.fees.tuition.toLocaleString()}</td></tr>
+                <tr><td>EXAMINATION FEE</td><td>₦ ${report.fees.exam.toLocaleString()}</td></tr>
+                <tr><td>SPORT WEAR FEE</td><td>₦ ${report.fees.sport.toLocaleString()}</td></tr>
+                <tr><td>LESSON FEE</td><td>₦ ${report.fees.lesson.toLocaleString()}</td></tr>
+                <tr><td></td><td>₦ ${report.fees.other.toLocaleString()}</td></tr>
+                <tr><td><strong>OUTSTANDING BILL</strong></td><td><strong>₦ ${report.fees.outstanding.toLocaleString()}</strong></td></tr>
+                <tr><td><strong>TOTAL</strong></td><td><strong>₦ ${report.fees.total.toLocaleString()}</strong></td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
-        
-        <div class="remarks">
-          <strong>Class Teacher's Comment:</strong><br/>
-          ${report.remarks}
+
+        <div class="remarks-section">
+          <div class="remark-line">
+            <span class="remark-label">CLASS TEACHER'S REMARK:</span>
+            <span class="remark-value">${report.classTeacherRemark}</span>
+          </div>
+          <div class="remark-line">
+            <span class="remark-label">HEAD TEACHER'S REMARK:</span>
+            <span class="remark-value">${report.headTeacherRemark}</span>
+          </div>
         </div>
-        
-        <div class="footer">
-          <div>
-            <div class="signature-line">Class Teacher</div>
+
+        <div class="signature-row">
+          <div class="signature-box">
+            <div class="signature-line">DATE</div>
           </div>
-          <div>
-            <div class="signature-line">Principal</div>
+          <div class="signature-box">
+            <div class="signature-line">SIGNATURE</div>
           </div>
-          <div>
-            <div class="signature-line">Date</div>
-          </div>
+        </div>
+
+        <div class="no-print" style="margin-top:30px;text-align:center;">
+          <button onclick="window.print()" style="padding:10px 20px;background:#0066cc;color:white;border:none;cursor:pointer;font-size:14px;">
+            Print Report Card
+          </button>
         </div>
       </body>
       </html>
     `);
     printWindow.document.close();
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
   };
 
   return (
@@ -374,7 +562,7 @@ export default function ReportCardPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">Report Cards</h1>
-          <p className="text-zinc-500 mt-1 text-sm sm:text-base">Nigerian curriculum grades & academic performance</p>
+          <p className="text-zinc-500 mt-1 text-sm sm:text-base">Nigerian Primary School Terminal Reports</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button 
@@ -410,7 +598,7 @@ export default function ReportCardPage() {
             </div>
             <span className="text-xs sm:text-sm text-zinc-500">Class Average</span>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-900">{classAverage}%</p>
+          <p className="text-xl sm:text-2xl font-bold text-zinc-900">88%</p>
         </div>
 
         <div className="bg-white p-4 sm:p-6 rounded-xl border border-zinc-200 shadow-sm">
@@ -420,7 +608,7 @@ export default function ReportCardPage() {
             </div>
             <span className="text-xs sm:text-sm text-zinc-500">Total Students</span>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-900">{mockReports.length}</p>
+          <p className="text-xl sm:text-2xl font-bold text-zinc-900">45</p>
         </div>
 
         <div className="bg-white p-4 sm:p-6 rounded-xl border border-zinc-200 shadow-sm">
@@ -428,9 +616,9 @@ export default function ReportCardPage() {
             <div className="p-2 bg-purple-100 rounded-lg">
               <Star size={20} className="text-purple-600" />
             </div>
-            <span className="text-xs sm:text-sm text-zinc-500">Distinctions (A1-B2)</span>
+            <span className="text-xs sm:text-sm text-zinc-500">Distinctions</span>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-900">{mockReports.filter(r => ['A1', 'B2'].includes(r.grade)).length}</p>
+          <p className="text-xl sm:text-2xl font-bold text-zinc-900">12</p>
         </div>
 
         <div className="bg-white p-4 sm:p-6 rounded-xl border border-zinc-200 shadow-sm">
@@ -438,32 +626,9 @@ export default function ReportCardPage() {
             <div className="p-2 bg-amber-100 rounded-lg">
               <TrendingUp size={20} className="text-amber-600" />
             </div>
-            <span className="text-xs sm:text-sm text-zinc-500">Needs Improvement</span>
+            <span className="text-xs sm:text-sm text-zinc-500">Promoted</span>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-900">{mockReports.filter(r => ['D7', 'E8', 'F9'].includes(r.grade)).length}</p>
-        </div>
-      </div>
-
-      {/* Nigerian Curriculum Info */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 text-white">
-        <h3 className="font-bold text-lg mb-2">Nigerian National Curriculum</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <p className="text-blue-200">Primary</p>
-            <p className="font-medium">Primary 1 - 6</p>
-          </div>
-          <div>
-            <p className="text-blue-200">Junior Secondary</p>
-            <p className="font-medium">JSS 1 - 3</p>
-          </div>
-          <div>
-            <p className="text-blue-200">Senior Secondary</p>
-            <p className="font-medium">SS 1 - 3</p>
-          </div>
-          <div>
-            <p className="text-blue-200">Grading</p>
-            <p className="font-medium">A1 (90-100) - F9 (0-44)</p>
-          </div>
+          <p className="text-xl sm:text-2xl font-bold text-zinc-900">38</p>
         </div>
       </div>
 
@@ -479,223 +644,269 @@ export default function ReportCardPage() {
             className="w-full pl-10 pr-4 py-2 border border-zinc-200 rounded-lg text-sm"
           />
         </div>
-        <select
-          value={termFilter}
-          onChange={(e) => setTermFilter(e.target.value)}
-          className="px-4 py-2 border border-zinc-200 rounded-lg text-sm"
-        >
-          <option value="1">First Term</option>
-          <option value="2">Second Term</option>
-          <option value="3">Third Term</option>
-        </select>
-        <select
-          value={classFilter}
-          onChange={(e) => setClassFilter(e.target.value)}
-          className="px-4 py-2 border border-zinc-200 rounded-lg text-sm"
-        >
-          <option value="all">All Classes</option>
-          <option value="Primary">Primary School</option>
-          <option value="JSS">Junior Secondary</option>
-          <option value="SS">Senior Secondary</option>
+        <select className="px-4 py-2 border border-zinc-200 rounded-lg text-sm">
+          <option>First Term</option>
+          <option>Second Term</option>
+          <option>Third Term</option>
         </select>
       </div>
 
       {/* Reports List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredReports.map((report) => {
-          const gradeColor = getGradeInfo(report.average).color;
-          return (
-            <div 
-              key={report.id} 
-              className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setSelectedReport(report)}
-            >
-              <div className="p-4 sm:p-6 border-b border-zinc-100">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    {report.studentImage ? (
-                      <img src={report.studentImage} className="w-12 h-12 rounded-full object-cover" alt={report.student} />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center text-lg">
-                        {report.student.split(' ').map(n => n[0]).join('')}
-                      </div>
-                    )}
-                    <div>
-                      <h3 className="font-bold text-zinc-900">{report.student}</h3>
-                      <p className="text-xs text-zinc-500">{report.class}</p>
-                    </div>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-bold ${gradeColor}`}>
-                    {report.grade}
-                  </span>
-                </div>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-xs text-zinc-500">Average</p>
-                    <p className="font-bold text-zinc-900">{report.average}%</p>
+        {mockReports.map((report) => (
+          <div 
+            key={report.id} 
+            className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => setSelectedReport(report)}
+          >
+            <div className="p-4 sm:p-6 border-b border-zinc-100">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center text-lg">
+                    {report.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </div>
                   <div>
-                    <p className="text-xs text-zinc-500">Position</p>
-                    <p className="font-bold text-zinc-900">#{report.position}/{report.classSize}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-zinc-500">Attendance</p>
-                    <p className="font-bold text-zinc-900">{report.attendance}%</p>
+                    <h3 className="font-bold text-zinc-900">{report.name}</h3>
+                    <p className="text-xs text-zinc-500">{report.class}</p>
                   </div>
                 </div>
+                <span className={`px-3 py-1 rounded-full text-sm font-bold ${getGradeInfo(report.average).grade === 'A' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                  {getGradeInfo(report.average).grade}
+                </span>
               </div>
-              <div className="p-4 sm:p-6 bg-zinc-50">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-zinc-500">Term {report.term} • {report.academicYear}</span>
-                  <button className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:text-blue-700">
-                    <FileText size={14} />
-                    View Report
-                  </button>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-xs text-zinc-500">Average</p>
+                  <p className="font-bold text-zinc-900">{report.average}%</p>
+                </div>
+                <div>
+                  <p className="text-xs text-zinc-500">Position</p>
+                  <p className="font-bold text-zinc-900">#{report.position}/{report.noInClass}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-zinc-500">Attendance</p>
+                  <p className="font-bold text-zinc-900">{Math.round((report.timesPresent/report.timesSchoolOpened)*100)}%</p>
                 </div>
               </div>
             </div>
-          );
-        })}
+            <div className="p-4 sm:p-6 bg-zinc-50">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-zinc-500">Term {report.term} • {report.session}</span>
+                <button className="flex items-center gap-1 text-blue-600 text-sm font-medium hover:text-blue-700">
+                  <FileText size={14} />
+                  View Report
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Report Detail Modal */}
       {selectedReport && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full my-8 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-zinc-200 flex justify-between items-center sticky top-0 bg-white z-10">
-              <div>
-                <h3 className="text-xl font-bold text-zinc-900">Report Card</h3>
-                <p className="text-sm text-zinc-500">{selectedReport.student} • {selectedReport.class}</p>
-              </div>
+          <div className="bg-white rounded-2xl shadow-xl max-w-5xl w-full my-8 max-h-[95vh] overflow-y-auto">
+            <div className="p-4 border-b border-zinc-200 flex justify-between items-center sticky top-0 bg-white z-10">
+              <h3 className="text-lg font-bold text-zinc-900">Report Card Preview</h3>
               <button onClick={() => setSelectedReport(null)} className="text-zinc-400 hover:text-zinc-600">
                 <X size={24} />
               </button>
             </div>
             
+            {/* Report Preview */}
             <div className="p-6">
               {/* Header */}
-              <div className="text-center mb-6">
-                {schoolLogo && (
-                  <img src={schoolLogo} className="w-16 h-16 mx-auto mb-2 object-contain" alt="School Logo" />
+              <div className="border-b-2 border-black pb-4 mb-4 flex items-center gap-4">
+                {schoolLogo ? (
+                  <img src={schoolLogo} className="w-16 h-16 object-contain" alt="School Logo" />
+                ) : (
+                  <div className="w-16 h-16 bg-zinc-100 border border-zinc-300 flex items-center justify-center">
+                    <span className="text-xs text-zinc-400">Logo</span>
+                  </div>
                 )}
-                <h2 className="text-xl font-bold text-blue-700">{selectedReport.schoolName}</h2>
-                <p className="text-sm text-zinc-500">123 Education Street, Lagos, Nigeria</p>
-                <div className="mt-2 inline-block bg-blue-100 text-blue-800 px-4 py-1 rounded-full text-sm font-bold">
-                  TERMINAL REPORT
+                <div className="flex-1 text-center">
+                  <h2 className="text-xl font-bold text-red-700">{schoolInfo.name}</h2>
+                  <p className="text-xs text-zinc-600">{schoolInfo.address}</p>
+                  <p className="text-xs text-zinc-600">{schoolInfo.email}, {schoolInfo.phone}</p>
+                  <p className="text-sm font-bold text-red-700 mt-1">MOTTO: {schoolInfo.motto}</p>
                 </div>
+                <div className="w-16 h-20 bg-zinc-100 border border-zinc-300 flex items-center justify-center">
+                  <Camera size={20} className="text-zinc-400" />
+                </div>
+              </div>
+
+              <div className="border-2 border-black text-center py-2 mb-4">
+                <h3 className="text-lg font-bold">FIRST TERM REPORT SHEET</h3>
               </div>
 
               {/* Student Info */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-zinc-50 rounded-xl">
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Student Name</p>
-                  <p className="font-bold text-zinc-900">{selectedReport.student}</p>
+              <div className="border border-black p-3 mb-4 text-sm">
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  <div className="flex gap-1"><span className="font-bold">NAME:</span> <span className="border-b border-black flex-1">{selectedReport.name}</span></div>
+                  <div className="flex gap-1"><span className="font-bold">CLASS:</span> <span className="border-b border-black flex-1">{selectedReport.class}</span></div>
+                  <div className="flex gap-1"><span className="font-bold">GENDER:</span> <span className="border-b border-black flex-1">{selectedReport.gender}</span></div>
+                  <div className="flex gap-1"><span className="font-bold">TERM:</span> <span className="border-b border-black flex-1">{selectedReport.term}</span></div>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Class</p>
-                  <p className="font-bold text-zinc-900">{selectedReport.class}</p>
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  <div className="flex gap-1"><span className="font-bold">SESSION:</span> <span className="border-b border-black flex-1">{selectedReport.session}</span></div>
+                  <div className="flex gap-1"><span className="font-bold">NO IN CLASS:</span> <span className="border-b border-black flex-1">{selectedReport.noInClass}</span></div>
+                  <div className="flex gap-1"><span className="font-bold">DATE OF BIRTH:</span> <span className="border-b border-black flex-1">{selectedReport.dateOfBirth}</span></div>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Term</p>
-                  <p className="font-bold text-zinc-900">{selectedReport.term}</p>
+                <div className="flex gap-4 text-xs mt-2">
+                  <span><strong>NO OF TIMES SCHOOL OPENED:</strong> {selectedReport.timesSchoolOpened}</span>
+                  <span><strong>NO OF TIMES PRESENT:</strong> {selectedReport.timesPresent}</span>
+                  <span><strong>NO OF TIMES ABSENT:</strong> {selectedReport.timesAbsent}</span>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-zinc-500">Session</p>
-                  <p className="font-bold text-zinc-900">{selectedReport.academicYear}</p>
+                <div className="flex gap-4 text-xs mt-1">
+                  <span><strong>CLOSING DATE:</strong> {selectedReport.closingDate}</span>
+                  <span><strong>RESUMPTION DATE:</strong> {selectedReport.resumptionDate}</span>
                 </div>
-              </div>
-
-              {/* Summary */}
-              <div className="grid grid-cols-4 gap-4 mb-6">
-                <div className="text-center p-4 bg-green-50 rounded-xl">
-                  <p className="text-xs text-zinc-500 mb-1">Average</p>
-                  <p className="text-2xl font-bold text-green-700">{selectedReport.average}%</p>
-                </div>
-                <div className="text-center p-4 bg-blue-50 rounded-xl">
-                  <p className="text-xs text-zinc-500 mb-1">Grade</p>
-                  <span className={`inline-block px-4 py-1 rounded-full text-lg font-bold ${getGradeInfo(selectedReport.average).color}`}>
-                    {selectedReport.grade}
-                  </span>
-                </div>
-                <div className="text-center p-4 bg-purple-50 rounded-xl">
-                  <p className="text-xs text-zinc-500 mb-1">Position</p>
-                  <p className="text-2xl font-bold text-purple-700">{selectedReport.position}/{selectedReport.classSize}</p>
-                </div>
-                <div className="text-center p-4 bg-amber-50 rounded-xl">
-                  <p className="text-xs text-zinc-500 mb-1">Attendance</p>
-                  <p className="text-2xl font-bold text-amber-700">{selectedReport.attendance}%</p>
+                <div className="flex gap-8 text-xs mt-2">
+                  <span><strong>OVERALL TOTAL:</strong> {selectedReport.overallTotal}</span>
+                  <span><strong>AVERAGE:</strong> {selectedReport.average}</span>
+                  <span><strong>PERCENTAGE:</strong> {selectedReport.percentage}%</span>
+                  <span><strong>POSITION:</strong> {selectedReport.position}</span>
                 </div>
               </div>
 
-              {/* Subjects */}
-              <h4 className="font-bold text-zinc-900 mb-3">Subject Performance</h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-zinc-100">
-                      <th className="px-3 py-2 text-left font-bold text-zinc-700">Subject</th>
-                      <th className="px-3 py-2 text-center font-bold text-zinc-700">Test/30</th>
-                      <th className="px-3 py-2 text-center font-bold text-zinc-700">Exam/70</th>
-                      <th className="px-3 py-2 text-center font-bold text-zinc-700">Total/100</th>
-                      <th className="px-3 py-2 text-center font-bold text-zinc-700">Grade</th>
-                      <th className="px-3 py-2 text-left font-bold text-zinc-700">Remark</th>
+              {/* Subjects Table */}
+              <div className="bg-red-700 text-white text-center py-1 text-sm font-bold mb-2">
+                PUPIL'S ACADEMIC PERFORMANCE
+              </div>
+              <table className="w-full text-xs border border-black mb-4">
+                <thead>
+                  <tr className="bg-zinc-100">
+                    <th className="border border-black p-1 text-left">SUBJECT</th>
+                    <th className="border border-black p-1">1ST C.A 20%</th>
+                    <th className="border border-black p-1">2ND C.A 20%</th>
+                    <th className="border border-black p-1">EXAM 60%</th>
+                    <th className="border border-black p-1">TOTAL 100%</th>
+                    <th className="border border-black p-1">GRADE</th>
+                    <th className="border border-black p-1">REMARKS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedReport.subjects.map((subject, idx) => (
+                    <tr key={idx}>
+                      <td className="border border-black p-1">{subject.subject}</td>
+                      <td className="border border-black p-1 text-center">{subject.firstCA}</td>
+                      <td className="border border-black p-1 text-center">{subject.secondCA}</td>
+                      <td className="border border-black p-1 text-center">{subject.exam}</td>
+                      <td className="border border-black p-1 text-center font-bold">{subject.total}</td>
+                      <td className={`border border-black p-1 text-center font-bold ${subject.grade === 'A' ? 'bg-green-200' : subject.grade === 'F' ? 'bg-red-200' : 'bg-yellow-100'}`}>{subject.grade}</td>
+                      <td className="border border-black p-1">{subject.remarks}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {selectedReport.subjects.map((subject, idx) => {
-                      const info = getGradeInfo(subject.totalScore);
-                      return (
-                        <tr key={idx} className={`border-b border-zinc-100 ${subject.totalScore >= 75 ? 'bg-green-50' : subject.totalScore < 50 ? 'bg-red-50' : ''}`}>
-                          <td className="px-3 py-2 font-medium">{subject.subject}</td>
-                          <td className="px-3 py-2 text-center">{subject.testScore}</td>
-                          <td className="px-3 py-2 text-center">{subject.examScore}</td>
-                          <td className="px-3 py-2 text-center font-bold">{subject.totalScore}</td>
-                          <td className="px-3 py-2 text-center">
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${info.color}`}>
-                              {info.grade}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-zinc-600">{info.remark}</td>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Three Column Layout */}
+              <div className="grid grid-cols-3 gap-4 text-xs">
+                {/* Domains */}
+                <div>
+                  <table className="w-full border border-black">
+                    <thead>
+                      <tr className="bg-zinc-100">
+                        <th className="border border-black p-1">DOMAINS</th>
+                        <th className="border border-black p-1">RATING</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(selectedReport.affective).map(([key, value]) => (
+                        <tr key={key}>
+                          <td className="border border-black p-1 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</td>
+                          <td className="border border-black p-1 text-center font-bold">{value}</td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Keys */}
+                <div>
+                  <table className="w-full border border-black mb-2">
+                    <thead>
+                      <tr className="bg-zinc-100">
+                        <th className="border border-black p-1" colSpan={2}>KEYS TO GRADING</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {GRADING_KEYS.map((k, i) => (
+                        <tr key={i}>
+                          <td className="border border-black p-1">{k.range}</td>
+                          <td className="border border-black p-1">{k.grade}={k.remark}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <table className="w-full border border-black">
+                    <thead>
+                      <tr className="bg-zinc-100">
+                        <th className="border border-black p-1" colSpan={2}>KEYS TO RATING</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {RATING_KEYS.map((k, i) => (
+                        <tr key={i}>
+                          <td className="border border-black p-1">{k.level}=</td>
+                          <td className="border border-black p-1">{k.desc}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* School Bill */}
+                <div>
+                  <table className="w-full border border-black">
+                    <thead>
+                      <tr className="bg-zinc-100">
+                        <th className="border border-black p-1" colSpan={2}>SCHOOL BILL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr><td className="border border-black p-1">TUITION FEE</td><td className="border border-black p-1 text-right">₦ {selectedReport.fees.tuition.toLocaleString()}</td></tr>
+                      <tr><td className="border border-black p-1">EXAMINATION FEE</td><td className="border border-black p-1 text-right">₦ {selectedReport.fees.exam.toLocaleString()}</td></tr>
+                      <tr><td className="border border-black p-1">SPORT WEAR FEE</td><td className="border border-black p-1 text-right">₦ {selectedReport.fees.sport.toLocaleString()}</td></tr>
+                      <tr><td className="border border-black p-1">LESSON FEE</td><td className="border border-black p-1 text-right">₦ {selectedReport.fees.lesson.toLocaleString()}</td></tr>
+                      <tr><td className="border border-black p-1"></td><td className="border border-black p-1 text-right">₦ {selectedReport.fees.other.toLocaleString()}</td></tr>
+                      <tr><td className="border border-black p-1 font-bold">OUTSTANDING BILL</td><td className="border border-black p-1 text-right font-bold">₦ {selectedReport.fees.outstanding.toLocaleString()}</td></tr>
+                      <tr><td className="border border-black p-1 font-bold">TOTAL</td><td className="border border-black p-1 text-right font-bold">₦ {selectedReport.fees.total.toLocaleString()}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Remarks */}
-              <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
-                <h4 className="font-bold text-amber-800 mb-2">Class Teacher&apos;s Comments</h4>
-                <p className="text-sm text-amber-900">{selectedReport.remarks}</p>
+              <div className="mt-6 space-y-4 text-sm">
+                <div className="flex items-end gap-2">
+                  <span className="font-bold whitespace-nowrap">CLASS TEACHER&apos;S REMARK:</span>
+                  <span className="border-b border-black flex-1 pb-1">{selectedReport.classTeacherRemark}</span>
+                </div>
+                <div className="flex items-end gap-2">
+                  <span className="font-bold whitespace-nowrap">HEAD TEACHER&apos;S REMARK:</span>
+                  <span className="border-b border-black flex-1 pb-1">{selectedReport.headTeacherRemark}</span>
+                </div>
               </div>
 
-              {/* Signatures */}
-              <div className="mt-6 flex justify-between">
-                <div className="text-center">
-                  <div className="border-b border-zinc-400 w-40 mb-1"></div>
-                  <p className="text-xs text-zinc-500">Class Teacher</p>
+              {/* Signature */}
+              <div className="mt-8 flex justify-between">
+                <div className="text-center w-48">
+                  <div className="border-t border-black pt-1 text-sm">DATE</div>
                 </div>
-                <div className="text-center">
-                  <div className="border-b border-zinc-400 w-40 mb-1"></div>
-                  <p className="text-xs text-zinc-500">Principal</p>
-                </div>
-                <div className="text-center">
-                  <div className="border-b border-zinc-400 w-32 mb-1"></div>
-                  <p className="text-xs text-zinc-500">Date</p>
+                <div className="text-center w-48">
+                  <div className="border-t border-black pt-1 text-sm">SIGNATURE</div>
                 </div>
               </div>
             </div>
 
-            <div className="p-6 border-t border-zinc-200 flex gap-3">
+            <div className="p-4 border-t border-zinc-200 flex gap-3">
               <button 
                 onClick={() => generatePDF(selectedReport)}
                 className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 flex items-center justify-center gap-2"
               >
                 <Printer size={18} />
                 Print / Download PDF
-              </button>
-              <button className="flex-1 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700">
-                Share to Parent
               </button>
             </div>
           </div>
@@ -714,19 +925,14 @@ export default function ReportCardPage() {
             </div>
             <form className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Student</label>
-                <select className="w-full px-4 py-3 border border-zinc-200 rounded-xl">
-                  <option>Select Student</option>
-                  {mockReports.map(r => (
-                    <option key={r.id}>{r.student}</option>
-                  ))}
-                </select>
+                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Student Name</label>
+                <input type="text" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" placeholder="Enter student name" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Class</label>
                 <select className="w-full px-4 py-3 border border-zinc-200 rounded-xl">
                   <option>Select Class</option>
-                  {NIGERIAN_CLASSES.map(c => (
+                  {['Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6', 'JSS 1', 'JSS 2', 'JSS 3'].map(c => (
                     <option key={c}>{c}</option>
                   ))}
                 </select>
@@ -735,40 +941,24 @@ export default function ReportCardPage() {
                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Subject</label>
                 <select className="w-full px-4 py-3 border border-zinc-200 rounded-xl">
                   <option>Select Subject</option>
-                  <optgroup label="Core Subjects">
-                    <option>Mathematics</option>
-                    <option>English Language</option>
-                    <option>Physics</option>
-                    <option>Chemistry</option>
-                    <option>Biology</option>
-                    <option>Economics</option>
-                  </optgroup>
-                  <optgroup label="Languages">
-                    <option>Yoruba Language</option>
-                    <option>Hausa Language</option>
-                    <option>Igbo Language</option>
-                    <option>French</option>
-                  </optgroup>
-                  <optgroup label="Others">
-                    <option>Computer Studies</option>
-                    <option>Agricultural Science</option>
-                    <option>Business Studies</option>
-                  </optgroup>
+                  {PRIMARY_SUBJECTS.map(s => (
+                    <option key={s}>{s}</option>
+                  ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Test Score (/30)</label>
-                  <input type="number" max="30" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" />
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">1st C.A</label>
+                  <input type="number" max="20" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" placeholder="/20" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Exam Score (/70)</label>
-                  <input type="number" max="70" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" />
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">2nd C.A</label>
+                  <input type="number" max="20" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" placeholder="/20" />
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Teacher&apos;s Remarks</label>
-                <textarea className="w-full px-4 py-3 border border-zinc-200 rounded-xl" rows={2} placeholder="Optional remarks..."></textarea>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Exam</label>
+                  <input type="number" max="60" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" placeholder="/60" />
+                </div>
               </div>
               <div className="pt-4 flex gap-3">
                 <button type="button" onClick={() => setShowAddGradeModal(false)} className="flex-1 py-3 bg-zinc-100 text-zinc-600 font-bold rounded-xl">Cancel</button>

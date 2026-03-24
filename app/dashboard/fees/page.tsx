@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { 
-  Naira,
   Receipt, 
   CreditCard, 
   TrendingUp,
@@ -15,7 +14,8 @@ import {
   Clock,
   Download,
   Upload,
-  Printer
+  Printer,
+  Wallet
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -136,7 +136,7 @@ export default function FeesPage() {
         <div className="bg-white p-4 sm:p-6 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-green-100 rounded-lg">
-              <Naira size={20} className="text-green-600" />
+              <Wallet size={20} className="text-green-600" />
             </div>
             <span className="text-xs sm:text-sm text-zinc-500">Total Collected</span>
           </div>
