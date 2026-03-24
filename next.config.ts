@@ -45,12 +45,9 @@ const nextConfig: NextConfig = {
   },
   output: 'standalone',
   transpilePackages: ['motion'],
-  // Disable static generation for dashboard routes
-  experimental: {
-    // This prevents static generation of pages that use browser APIs
-    workerThreads: false,
-    cpus: 1,
-  },
+  // Force all pages to be server-side rendered
+  // This prevents static generation errors with useSession
+  staticPageGenerationTimeout: 0,
   webpack: (config, {dev}) => {
     // HMR is disabled in AI Studio via DISABLE_HMR env var.
     // Do not modify—file watching is disabled to prevent flickering during agent edits.
@@ -60,6 +57,20 @@ const nextConfig: NextConfig = {
       };
     }
     return config;
+  },
+  // Add headers to prevent caching during development
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, must-revalidate',
+          },
+        ],
+      },
+    ];
   },
 };
 

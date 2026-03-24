@@ -115,7 +115,17 @@ const getNavItems = (role: string) => {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session, status } = useSession();
+  
+  // Safely call useSession - it might throw during static generation
+  let sessionData: any = { data: null, status: 'loading' };
+  try {
+    sessionData = useSession() || { data: null, status: 'unauthenticated' };
+  } catch (e) {
+    // useSession might throw during static generation
+    sessionData = { data: null, status: 'unauthenticated' };
+  }
+  
+  const { data: session, status } = sessionData;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 

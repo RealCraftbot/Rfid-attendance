@@ -11,7 +11,16 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ children, allowedRoles, fallback = null }: RoleGuardProps) {
-  const { data: session, status } = useSession();
+  // Safely call useSession - it might throw during static generation
+  let sessionData: any = { data: null, status: 'loading' };
+  try {
+    sessionData = useSession() || { data: null, status: 'unauthenticated' };
+  } catch (e) {
+    // useSession might throw during static generation
+    sessionData = { data: null, status: 'unauthenticated' };
+  }
+  
+  const { data: session, status } = sessionData;
   const role = session?.user?.role as Role;
   const isLoading = status === 'loading';
 
