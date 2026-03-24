@@ -23,8 +23,9 @@ import {
   LogOut,
   ChevronDown,
   Bus,
-  DollarSign,
-  GraduationCap
+  Wallet,
+  GraduationCap,
+  FileText
 } from 'lucide-react';
 
 const role: string = 'admin';
@@ -67,7 +68,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { icon: Cpu, label: 'Devices', href: '/dashboard/devices', show: role === 'admin' },
     { icon: Bus, label: 'Bus Tracking', href: '/dashboard/bus', show: role === 'admin' },
     { icon: History, label: 'Attendance', href: '/dashboard/attendance', show: role === 'admin' || role === 'teacher' },
-    { icon: DollarSign, label: 'Fees', href: '/dashboard/fees', show: role === 'admin' || role === 'parent' },
+    { icon: Wallet, label: 'Fees', href: '/dashboard/fees', show: role === 'admin' || role === 'parent' },
+    { icon: FileText, label: 'View Reports', href: '/dashboard/view-reports', show: role === 'parent' },
     { icon: GraduationCap, label: 'Grades', href: '/dashboard/grades', show: role === 'admin' || role === 'teacher' || role === 'parent' },
     { icon: Baby, label: 'My Children', href: '/dashboard/parent', show: role === 'parent' },
     { icon: MessageSquare, label: 'Notifications', href: '/dashboard/notifications', show: role === 'parent' },
