@@ -10,7 +10,11 @@ import {
   ShieldAlert,
   Copy,
   Check,
-  RefreshCw
+  RefreshCw,
+  Battery,
+  BatteryLow,
+  BatteryMedium,
+  BatteryFull
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,10 +27,31 @@ const deviceSchema = z.object({
 });
 
 const mockDevices = [
-  { id: 'd1', name: 'Main Entrance Scanner', device_id: 'ESP32_FRONT_01', is_active: true, secret_key: 'a1b2c3d4e5f678901234567890123456' },
-  { id: 'd2', name: 'Back Gate Reader', device_id: 'ESP32_BACK_01', is_active: true, secret_key: 'b2c3d4e5f6789012345678901234567' },
-  { id: 'd3', name: 'Library Exit Scanner', device_id: 'ESP32_LIB_01', is_active: false, secret_key: 'c3d4e5f6789012345678901234567890' },
+  { id: 'd1', name: 'Main Entrance Scanner', device_id: 'ESP32_FRONT_01', is_active: true, secret_key: 'a1b2c3d4e5f678901234567890123456', battery_level: 85, last_seen: '2 min ago' },
+  { id: 'd2', name: 'Back Gate Reader', device_id: 'ESP32_BACK_01', is_active: true, secret_key: 'b2c3d4e5f6789012345678901234567', battery_level: 23, last_seen: '5 min ago' },
+  { id: 'd3', name: 'Library Exit Scanner', device_id: 'ESP32_LIB_01', is_active: false, secret_key: 'c3d4e5f6789012345678901234567890', battery_level: 67, last_seen: '1 hour ago' },
 ];
+
+const BatteryIndicator = ({ level }: { level: number }) => {
+  const getBatteryIcon = () => {
+    if (level <= 20) return <BatteryLow size={16} />;
+    if (level <= 50) return <BatteryMedium size={16} />;
+    return <BatteryFull size={16} />;
+  };
+  
+  const getColor = () => {
+    if (level <= 20) return 'text-red-500';
+    if (level <= 50) return 'text-amber-500';
+    return 'text-emerald-500';
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {getBatteryIcon()}
+      <span className={`text-xs font-bold ${getColor()}`}>{level}%</span>
+    </div>
+  );
+};
 
 let deviceCounter = 10;
 const nextDeviceId = () => `d${++deviceCounter}`;
@@ -149,6 +174,16 @@ export default function DevicesPage() {
                 <span className={device.is_active ? 'text-emerald-600' : 'text-red-500'}>
                   {device.is_active ? 'Active & Authorized' : 'Disabled'}
                 </span>
+              </div>
+
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                <span>Battery</span>
+                <BatteryIndicator level={device.battery_level} />
+              </div>
+
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                <span>Last Seen</span>
+                <span className="text-zinc-500 normal-case tracking-normal">{device.last_seen}</span>
               </div>
             </div>
           </div>
