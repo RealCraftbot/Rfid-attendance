@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mail, Lock, ArrowRight, ShieldAlert, Cpu, Users, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ShieldAlert, Cpu, Users, ShieldCheck, Wallet, Baby } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -154,9 +154,37 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-zinc-500">
-            Don&apos;t have an account? <Link href="/signup" className="font-bold text-zinc-900 hover:underline">Create Account</Link>
-          </p>
+          <div className="space-y-3">
+            <p className="text-center text-sm text-zinc-500">
+              Don&apos;t have an account? <Link href="/signup" className="font-bold text-zinc-900 hover:underline">Create Account</Link>
+            </p>
+            <div className="pt-4 border-t border-zinc-200">
+              <p className="text-center text-xs text-zinc-400 mb-3">Other Login Options</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link 
+                  href="/login/bursar" 
+                  className="text-xs font-medium text-zinc-600 hover:text-blue-600 flex items-center gap-1 px-3 py-1.5 bg-zinc-100 rounded-full hover:bg-blue-50 transition-colors"
+                >
+                  <Wallet size={12} />
+                  Bursar Login
+                </Link>
+                <Link 
+                  href="/login/teacher" 
+                  className="text-xs font-medium text-zinc-600 hover:text-blue-600 flex items-center gap-1 px-3 py-1.5 bg-zinc-100 rounded-full hover:bg-blue-50 transition-colors"
+                >
+                  <Users size={12} />
+                  Teacher Login
+                </Link>
+                <Link 
+                  href="/login/parent" 
+                  className="text-xs font-medium text-zinc-600 hover:text-blue-600 flex items-center gap-1 px-3 py-1.5 bg-zinc-100 rounded-full hover:bg-blue-50 transition-colors"
+                >
+                  <Baby size={12} />
+                  Parent Login
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
