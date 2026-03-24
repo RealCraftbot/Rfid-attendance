@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 
-type CheckType = 'check_in' | 'check_out';
+type CheckType = 'check_in' | 'check_out' | 'bus_pickup_home' | 'bus_drop_school' | 'bus_pickup_school' | 'bus_drop_home';
+type BusStatus = 'WAITING' | 'ON_BUS_TO_SCHOOL' | 'AT_SCHOOL' | 'ON_BUS_TO_HOME' | 'HOME';
 
 const IDEMPOTENCY_WINDOW_MS = 5000;
 
@@ -11,13 +12,35 @@ export interface ScanResult {
   recordId: string;
   duplicate: boolean;
   message: string;
+  busStatus?: BusStatus;
 }
 
 export interface DeviceAuthResult {
   valid: boolean;
   deviceId: string;
   orgId: string;
+  locationType?: string;
   error?: string;
+}
+
+function getNextBusStatus(currentStatus: BusStatus | null, locationType: string): BusStatus {
+  const statusMap: Record<string, BusStatus> = {
+    home_pickup: 'WAITING',
+    school_drop: 'AT_SCHOOL',
+    school_pickup: 'ON_BUS_TO_HOME',
+    home_drop: 'HOME',
+  };
+  return statusMap[locationType] || 'WAITING';
+}
+
+function determineCheckType(locationType: string): CheckType {
+  const checkTypeMap: Record<string, CheckType> = {
+    home_pickup: 'bus_pickup_home',
+    school_drop: 'bus_drop_school',
+    school_pickup: 'bus_pickup_school',
+    home_drop: 'bus_drop_home',
+  };
+  return checkTypeMap[locationType] || 'check_in';
 }
 
 export class AttendanceService {
@@ -37,7 +60,12 @@ export class AttendanceService {
       return { valid: false, deviceId, orgId: device.orgId, error: 'Invalid device token' };
     }
 
-    return { valid: true, deviceId: device.id, orgId: device.orgId };
+    return { 
+      valid: true, 
+      deviceId: device.id, 
+      orgId: device.orgId,
+      locationType: device.locationType || 'gate'
+    };
   }
 
   async checkIdempotency(rfidUid: string, deviceId: string): Promise<boolean> {
@@ -61,22 +89,25 @@ export class AttendanceService {
         orgId,
         isActive: true,
       },
+      include: {
+        busRoute: true,
+      },
     });
   }
 
-  async getLastAttendance(studentId: string): Promise<{ checkType: CheckType; scanTime: Date } | null> {
-    const last = await prisma.attendanceRecord.findFirst({
+  async getLastAttendance(studentId: string) {
+    return prisma.attendanceRecord.findFirst({
       where: { studentId },
       orderBy: { scanTime: 'desc' },
     });
-    return last as { checkType: CheckType; scanTime: Date } | null;
   }
 
   async scan(
     rfidUid: string,
     deviceId: string,
     orgId: string,
-    batteryLevel?: number
+    batteryLevel?: number,
+    locationType?: string
   ): Promise<ScanResult> {
     const student = await this.findStudent(rfidUid, orgId);
 
@@ -98,15 +129,23 @@ export class AttendanceService {
       return {
         success: true,
         studentName: student.name,
-        checkType: lastAttendance?.checkType || 'check_in',
+        checkType: (lastAttendance?.checkType as CheckType) || 'check_in',
         recordId: '',
         duplicate: true,
         message: 'Duplicate scan ignored',
       };
     }
 
-    const lastAttendance = await this.getLastAttendance(student.id);
-    const newCheckType: CheckType = lastAttendance?.checkType === 'check_in' ? 'check_out' : 'check_in';
+    let newCheckType: CheckType = 'check_in';
+    let newBusStatus: BusStatus | undefined;
+
+    if (locationType && student.usesSchoolBus) {
+      newCheckType = determineCheckType(locationType);
+      newBusStatus = getNextBusStatus(student.busStatus as BusStatus | null, locationType);
+    } else {
+      const lastAttendance = await this.getLastAttendance(student.id);
+      newCheckType = lastAttendance?.checkType === 'check_in' ? 'check_out' : 'check_in';
+    }
 
     const device = await prisma.device.findFirst({
       where: { deviceId, orgId, isActive: true },
@@ -131,15 +170,22 @@ export class AttendanceService {
           orgId,
           deviceId,
           checkType: newCheckType,
+          busRouteId: student.busRouteId || undefined,
         },
       });
 
+      const updateData: any = {
+        currentStatus: newCheckType,
+        lastSeen: new Date(),
+      };
+
+      if (newBusStatus) {
+        updateData.busStatus = newBusStatus;
+      }
+
       await tx.student.update({
         where: { id: student.id },
-        data: {
-          currentStatus: newCheckType,
-          lastSeen: new Date(),
-        },
+        data: updateData,
       });
 
       await tx.device.update({
@@ -150,21 +196,32 @@ export class AttendanceService {
         },
       });
 
+      const actionMessages: Record<CheckType, string> = {
+        check_in: 'checked in',
+        check_out: 'checked out',
+        bus_pickup_home: 'picked up from home',
+        bus_drop_school: 'dropped at school',
+        bus_pickup_school: 'picked up from school',
+        bus_drop_home: 'dropped at home',
+      };
+
       return {
         success: true,
         studentName: student.name,
         checkType: newCheckType,
         recordId: record.id,
         duplicate: false,
-        message: `${student.name} has ${newCheckType === 'check_in' ? 'checked in' : 'checked out'}`,
+        busStatus: newBusStatus,
+        message: `${student.name} has ${actionMessages[newCheckType]}`,
       };
     });
   }
 
   async getAttendanceStats(orgId: string, startDate: Date, endDate: Date) {
-    const [totalStudents, checkedIn, records] = await Promise.all([
+    const [totalStudents, checkedIn, busStudents, records] = await Promise.all([
       prisma.student.count({ where: { orgId, isActive: true } }),
       prisma.student.count({ where: { orgId, isActive: true, currentStatus: 'check_in' } }),
+      prisma.student.count({ where: { orgId, isActive: true, usesSchoolBus: true } }),
       prisma.attendanceRecord.findMany({
         where: {
           orgId,
@@ -180,9 +237,30 @@ export class AttendanceService {
       totalStudents,
       checkedIn,
       checkedOut: totalStudents - checkedIn,
+      busStudents,
       absent: 0,
       attendanceRate: totalStudents > 0 ? Math.round((checkedIn / totalStudents) * 100) : 0,
       recentRecords: records,
+    };
+  }
+
+  async getBusStats(orgId: string) {
+    const [totalBusStudents, waitingHome, onBusToSchool, atSchool, onBusToHome, home] = await Promise.all([
+      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true } }),
+      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true, busStatus: 'WAITING' } }),
+      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true, busStatus: 'ON_BUS_TO_SCHOOL' } }),
+      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true, busStatus: 'AT_SCHOOL' } }),
+      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true, busStatus: 'ON_BUS_TO_HOME' } }),
+      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true, busStatus: 'HOME' } }),
+    ]);
+
+    return {
+      totalBusStudents,
+      waitingHome,
+      onBusToSchool,
+      atSchool,
+      onBusToHome,
+      home,
     };
   }
 }

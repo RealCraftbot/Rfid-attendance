@@ -17,6 +17,10 @@ enum Role {
 enum CheckType {
   check_in
   check_out
+  bus_pickup_home
+  bus_drop_school
+  bus_pickup_school
+  bus_drop_home
 }
 
 enum SubscriptionStatus {
@@ -24,6 +28,14 @@ enum SubscriptionStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
+}
+
+enum BusStatus {
+  WAITING
+  ON_BUS
+  AT_SCHOOL
+  ON_RETURN
+  HOME
 }
 
 model Organization {
@@ -42,6 +54,7 @@ model Organization {
   devices       Device[]
   classrooms    Classroom[]
   attendance    AttendanceRecord[]
+  busRoutes     BusRoute[]
 
   @@index([slug])
   @@index([status])
@@ -75,21 +88,26 @@ model Student {
   isActive        Boolean  @default(true)
   dateOfBirth     DateTime?
   guardianName    String?
-  guardianPhone   String?
-  guardianEmail   String?
+  guardianPhone    String?
+  guardianEmail    String?
   currentStatus   CheckType?
   lastSeen        DateTime?
+  usesSchoolBus   Boolean  @default(false)
+  busRouteId      String?
+  busStatus       BusStatus?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   org         Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   classroom   Classroom?       @relation(fields: [classroomId], references: [id], onDelete: SetNull)
+  busRoute    BusRoute?       @relation(fields: [busRouteId], references: [id])
   attendance  AttendanceRecord[]
 
   @@unique([orgId, rfidUid])
   @@index([orgId])
   @@index([rfidUid])
   @@index([classroomId])
+  @@index([busRouteId])
 }
 
 model Classroom {
@@ -109,6 +127,40 @@ model Classroom {
   @@index([orgId])
 }
 
+model BusRoute {
+  id        String   @id @default(cuid())
+  name      String
+  orgId     String
+  routeCode String
+  morningStart String?
+  eveningEnd   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  students Student[]
+  stops    BusStop[]
+
+  @@unique([orgId, routeCode])
+  @@index([orgId])
+}
+
+model BusStop {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  routeId   String
+  order     Int
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+
+  route BusRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId])
+}
+
 model Device {
   id           String    @id @default(cuid())
   deviceId     String
@@ -116,6 +168,7 @@ model Device {
   secretKey    String
   orgId        String
   location     String?
+  locationType String    @default("gate")
   isActive     Boolean   @default(true)
   batteryLevel Int?
   lastSeen     DateTime?
@@ -136,6 +189,8 @@ model AttendanceRecord {
   orgId       String
   deviceId    String
   checkType   CheckType @default(check_in)
+  busRouteId  String?
+  busStopId   String?
   scanTime    DateTime  @default(now())
   idempotencyKey String  @unique @default(cuid())
   createdAt   DateTime  @default(now())
@@ -148,6 +203,7 @@ model AttendanceRecord {
   @@index([scanTime])
   @@index([orgId, scanTime])
   @@index([deviceId, scanTime])
+  @@index([busRouteId])
 }
 
 model Session {
