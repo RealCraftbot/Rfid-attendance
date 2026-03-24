@@ -66,14 +66,15 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users         User[]
-  students      Student[]
-  devices       Device[]
-  classrooms    Classroom[]
-  attendance    AttendanceRecord[]
-  busRoutes     BusRoute[]
-  feeStructures FeeStructure[]
-  invoices      Invoice[]
+  users             User[]
+  students          Student[]
+  devices           Device[]
+  classrooms        Classroom[]
+  attendance        AttendanceRecord[]
+  teacherAttendance TeacherAttendance[]
+  busRoutes         BusRoute[]
+  feeStructures     FeeStructure[]
+  invoices          Invoice[]
 
   @@index([slug])
   @@index([status])
@@ -144,11 +145,34 @@ model Classroom {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  students Student[]
+  org               Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  students          Student[]
+  teacherAttendance TeacherAttendance[]
 
   @@unique([orgId, name])
   @@index([orgId])
+}
+
+model TeacherAttendance {
+  id          String    @id @default(cuid())
+  teacherId   String
+  teacherName String
+  classroomId String
+  orgId       String
+  deviceId    String
+  checkType   CheckType @default(check_in)
+  scanTime    DateTime  @default(now())
+  idempotencyKey String  @unique @default(cuid())
+  createdAt   DateTime  @default(now())
+
+  classroom Classroom      @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  org       Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+  @@index([classroomId])
+  @@index([orgId])
+  @@index([scanTime])
+  @@index([orgId, scanTime])
 }
 
 model BusRoute {

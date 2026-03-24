@@ -421,6 +421,286 @@ export class AttendanceService {
       date,
     };
   }
+
+  /**
+   * Get attendance records filtered by classroom
+   */
+  async getAttendanceByClassroom(
+    orgId: string,
+    classroomId: string,
+    date: Date,
+    searchQuery?: string
+  ) {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Get students in this classroom
+    const students = await prisma.student.findMany({
+      where: {
+        orgId,
+        classroomId,
+        isActive: true,
+        ...(searchQuery && {
+          name: {
+            contains: searchQuery,
+            mode: 'insensitive',
+          },
+        }),
+      },
+      select: {
+        id: true,
+        name: true,
+        rfidUid: true,
+      },
+    });
+
+    // Get attendance records for these students
+    const records = await prisma.attendanceRecord.findMany({
+      where: {
+        orgId,
+        studentId: { in: students.map((s: { id: string }) => s.id) },
+        scanTime: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      orderBy: {
+        scanTime: 'asc',
+      },
+    });
+
+    // Group by student
+    const groupedByStudent = new Map<string, typeof records>();
+    records.forEach((record: typeof records[0]) => {
+      const studentId = record.studentId;
+      if (!groupedByStudent.has(studentId)) {
+        groupedByStudent.set(studentId, []);
+      }
+      groupedByStudent.get(studentId)?.push(record);
+    });
+
+    // Build attendance data
+    const attendance = students.map((student: typeof students[0]) => {
+      const studentRecords = groupedByStudent.get(student.id) || [];
+      const checkInRecord = studentRecords.find((r: typeof records[0]) => r.checkType === 'check_in');
+      const checkOutRecord = [...studentRecords].reverse().find((r: typeof records[0]) => r.checkType === 'check_out');
+
+      let durationOnSite: number | null = null;
+      if (checkInRecord?.scanTime && checkOutRecord?.scanTime) {
+        durationOnSite = Math.round(
+          (new Date(checkOutRecord.scanTime).getTime() - new Date(checkInRecord.scanTime).getTime()) / (1000 * 60)
+        );
+      }
+
+      let status: 'present' | 'absent' | 'late' | 'on-site' | 'checked-out';
+      if (studentRecords.length === 0) {
+        status = 'absent';
+      } else if (checkInRecord && !checkOutRecord) {
+        status = 'on-site';
+      } else if (checkInRecord && checkOutRecord) {
+        status = 'checked-out';
+      } else {
+        status = 'present';
+      }
+
+      return {
+        studentId: student.id,
+        studentName: student.name,
+        status,
+        checkInTime: checkInRecord?.scanTime || null,
+        checkOutTime: checkOutRecord?.scanTime || null,
+        deviceId: checkInRecord?.deviceId || checkOutRecord?.deviceId || null,
+        durationOnSite,
+        totalScans: studentRecords.length,
+      };
+    });
+
+    const stats = {
+      total: students.length,
+      present: attendance.filter((a: typeof attendance[0]) => a.status !== 'absent').length,
+      absent: attendance.filter((a: typeof attendance[0]) => a.status === 'absent').length,
+      onSite: attendance.filter((a: typeof attendance[0]) => a.status === 'on-site').length,
+      checkedOut: attendance.filter((a: typeof attendance[0]) => a.status === 'checked-out').length,
+    };
+
+    return {
+      attendance,
+      stats,
+      classroom: await prisma.classroom.findUnique({
+        where: { id: classroomId },
+        select: { name: true, grade: true },
+      }),
+    };
+  }
+
+  /**
+   * Teacher RFID scan for classroom attendance
+   */
+  async scanTeacher(
+    rfidUid: string,
+    deviceId: string,
+    orgId: string,
+    classroomId: string,
+    batteryLevel?: number
+  ) {
+    // Find teacher by RFID (stored in User model for teachers)
+    const teacher = await prisma.user.findFirst({
+      where: {
+        orgId,
+        role: 'TEACHER',
+        // In real implementation, would need to link RFID to teacher
+        // For now, we'll search by a custom field or use the teacher's ID
+      },
+    });
+
+    if (!teacher) {
+      return {
+        success: false,
+        teacherName: '',
+        checkType: 'check_in',
+        recordId: '',
+        message: 'Teacher not found or not assigned to this organization',
+      };
+    }
+
+    // Check classroom exists
+    const classroom = await prisma.classroom.findFirst({
+      where: { id: classroomId, orgId },
+    });
+
+    if (!classroom) {
+      return {
+        success: false,
+        teacherName: teacher.name,
+        checkType: 'check_in',
+        recordId: '',
+        message: 'Classroom not found',
+      };
+    }
+
+    // Check for recent scan (idempotency)
+    const fiveSecondsAgo = new Date(Date.now() - 5000);
+    const recentScan = await prisma.teacherAttendance.findFirst({
+      where: {
+        teacherId: teacher.id,
+        classroomId,
+        scanTime: { gte: fiveSecondsAgo },
+      },
+    });
+
+    if (recentScan) {
+      return {
+        success: true,
+        teacherName: teacher.name,
+        checkType: recentScan.checkType,
+        recordId: '',
+        message: 'Duplicate scan ignored',
+      };
+    }
+
+    // Determine check type based on last scan
+    const lastScan = await prisma.teacherAttendance.findFirst({
+      where: {
+        teacherId: teacher.id,
+        classroomId,
+      },
+      orderBy: { scanTime: 'desc' },
+    });
+
+    const checkType = lastScan?.checkType === 'check_in' ? 'check_out' : 'check_in';
+
+    // Create attendance record
+    const record = await prisma.teacherAttendance.create({
+      data: {
+        teacherId: teacher.id,
+        teacherName: teacher.name,
+        classroomId,
+        orgId,
+        deviceId,
+        checkType,
+      },
+    });
+
+    // Update device last seen
+    await prisma.device.updateMany({
+      where: { deviceId, orgId },
+      data: {
+        lastSeen: new Date(),
+        ...(batteryLevel !== undefined && { batteryLevel }),
+      },
+    });
+
+    return {
+      success: true,
+      teacherName: teacher.name,
+      checkType,
+      recordId: record.id,
+      classroomName: classroom.name,
+      message: `${teacher.name} has ${checkType === 'check_in' ? 'checked in to' : 'checked out from'} ${classroom.name}`,
+    };
+  }
+
+  /**
+   * Get teacher attendance history
+   */
+  async getTeacherAttendance(
+    orgId: string,
+    teacherId?: string,
+    classroomId?: string,
+    startDate?: Date,
+    endDate?: Date
+  ) {
+    const where: any = { orgId };
+
+    if (teacherId) {
+      where.teacherId = teacherId;
+    }
+
+    if (classroomId) {
+      where.classroomId = classroomId;
+    }
+
+    if (startDate && endDate) {
+      where.scanTime = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
+
+    const records = await prisma.teacherAttendance.findMany({
+      where,
+      include: {
+        classroom: {
+          select: {
+            name: true,
+            grade: true,
+          },
+        },
+      },
+      orderBy: { scanTime: 'desc' },
+      take: 100,
+    });
+
+    // Group by date for better visualization
+    const groupedByDate = new Map<string, typeof records>();
+    records.forEach((record: typeof records[0]) => {
+      const date = new Date(record.scanTime).toDateString();
+      if (!groupedByDate.has(date)) {
+        groupedByDate.set(date, []);
+      }
+      groupedByDate.get(date)?.push(record);
+    });
+
+    return {
+      records,
+      groupedByDate: Array.from(groupedByDate.entries()).map(([date, recs]) => ({
+        date,
+        records: recs,
+      })),
+    };
+  }
 }
 
 export const attendanceService = new AttendanceService();
