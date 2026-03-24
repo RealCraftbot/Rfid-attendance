@@ -20,7 +20,9 @@ export default function LoginPage() {
     setError('');
 
     try {
-      console.log('Attempting login with:', { email });
+      console.log('=== LOGIN ATTEMPT ===');
+      console.log('Email:', email);
+      console.log('Password length:', password.length);
       
       const result = await signIn('credentials', {
         email,
@@ -28,20 +30,45 @@ export default function LoginPage() {
         redirect: false,
       });
 
-      console.log('Login result:', result);
+      console.log('=== LOGIN RESULT ===');
+      console.log('Full result:', result);
+      console.log('Result type:', typeof result);
+      console.log('Result keys:', result ? Object.keys(result) : 'null');
+      console.log('Result.ok:', result?.ok);
+      console.log('Result.error:', result?.error);
+      console.log('Result.status:', result?.status);
+      console.log('Result.url:', result?.url);
 
       if (result?.error) {
         console.error('Login error:', result.error);
         setError('Invalid email or password. Please try again.');
+      } else if (result === undefined || result === null) {
+        console.error('Result is undefined/null');
+        setError('Login failed - no response from server');
       } else {
-        console.log('Login successful, redirecting...');
-        // Small delay to ensure session is set
-        setTimeout(() => {
+        console.log('Login appears successful, attempting redirect...');
+        
+        // Try multiple redirect methods
+        try {
+          console.log('Method 1: window.location.replace');
           window.location.replace('/dashboard');
-        }, 100);
+        } catch (e) {
+          console.error('Method 1 failed:', e);
+          try {
+            console.log('Method 2: window.location.href');
+            window.location.href = '/dashboard';
+          } catch (e2) {
+            console.error('Method 2 failed:', e2);
+            console.log('Method 3: router.push');
+            router.push('/dashboard');
+          }
+        }
       }
     } catch (err) {
-      console.error('Login exception:', err);
+      console.error('=== LOGIN EXCEPTION ===');
+      console.error('Error:', err);
+      console.error('Error type:', typeof err);
+      console.error('Error message:', err instanceof Error ? err.message : 'Unknown');
       setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);
