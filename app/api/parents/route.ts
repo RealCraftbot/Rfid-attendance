@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createUser, findUserByEmail } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 const parentSignupSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -23,22 +24,32 @@ export async function POST(request: Request) {
       );
     }
 
-    const { email, password, name, phone } = parsed.data;
+    const { email, password, name } = parsed.data;
 
-    const existing = findUserByEmail(email);
-    if (existing) {
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+    
+    if (existingUser) {
       return NextResponse.json(
         { error: 'Email already registered' },
         { status: 409 }
       );
     }
 
-    const user = createUser({
-      email,
-      password,
-      name,
-      role: 'PARENT',
-      orgId: null,
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create parent user
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        role: 'PARENT',
+        orgId: null,
+      },
     });
 
     return NextResponse.json({

@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createUser, findUserByEmail } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 const teacherSignupSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -23,22 +24,49 @@ export async function POST(request: Request) {
       );
     }
 
-    const { email, password, name } = parsed.data;
+    const { email, password, name, orgCode } = parsed.data;
 
-    const existing = findUserByEmail(email);
-    if (existing) {
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+    
+    if (existingUser) {
       return NextResponse.json(
         { error: 'Email already registered' },
         { status: 409 }
       );
     }
 
-    const user = createUser({
-      email,
-      password,
-      name,
-      role: 'TEACHER',
-      orgId: null,
+    // Find organization by code (using slug as code for now)
+    const organization = await prisma.organization.findFirst({
+      where: { 
+        OR: [
+          { slug: orgCode.toLowerCase() },
+          { id: orgCode },
+        ]
+      },
+    });
+
+    if (!organization) {
+      return NextResponse.json(
+        { error: 'Invalid organization code' },
+        { status: 400 }
+      );
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create teacher user
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        role: 'TEACHER',
+        orgId: organization.id,
+      },
     });
 
     return NextResponse.json({
@@ -50,6 +78,7 @@ export async function POST(request: Request) {
           email: user.email,
           name: user.name,
           role: user.role,
+          orgId: user.orgId,
         },
       },
     });
