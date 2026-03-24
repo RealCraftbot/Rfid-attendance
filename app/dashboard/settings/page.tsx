@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Settings, 
   Building, 
@@ -8,16 +8,45 @@ import {
   Shield, 
   Save, 
   Copy, 
-  CheckCircle2
+  CheckCircle2,
+  Upload,
+  Image,
+  X,
+  Camera
 } from 'lucide-react';
 
-const organization = { name: 'Greenfield Academy', id: 'org_123', admin_email: 'admin@greenfield.edu' };
+const organization = { name: 'Greenfield Academy', id: 'org_123', admin_email: 'admin@greenfield.edu', logoUrl: null };
 
 export default function SettingsPage() {
   const [orgName, setOrgName] = useState(organization.name);
+  const [orgLogo, setOrgLogo] = useState<string | null>(organization.logoUrl);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setMessage({ type: 'error', text: 'Logo must be less than 2MB' });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setOrgLogo(reader.result as string);
+        setMessage({ type: 'success', text: 'School logo uploaded successfully!' });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setOrgLogo(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleUpdateOrg = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,14 +84,16 @@ export default function SettingsPage() {
     <div className="p-4 md:p-6 max-w-4xl space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tight">Settings</h1>
-        <p className="text-zinc-500 mt-1 text-sm md:text-base">Manage your organization profile and security credentials</p>
+        <p className="text-zinc-500 mt-1 text-sm md:text-base">Manage your organization profile, branding, and security credentials</p>
       </div>
 
       {message.text && (
         <div className={`p-3 md:p-4 rounded-xl flex items-center gap-3 text-sm font-medium border ${
           message.type === 'success' 
             ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-            : 'bg-red-50 text-red-600 border-red-100'
+            : message.type === 'error'
+            ? 'bg-red-50 text-red-600 border-red-100'
+            : 'bg-blue-50 text-blue-600 border-blue-100'
         }`}>
           <CheckCircle2 size={18} />
           {message.text}
@@ -70,6 +101,93 @@ export default function SettingsPage() {
       )}
 
       <div className="grid grid-cols-1 gap-6 md:gap-8">
+        {/* School Branding */}
+        <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+          <div className="p-4 md:p-6 border-b border-zinc-100 bg-blue-50/50 flex items-center gap-3">
+            <div className="p-2 bg-white rounded-lg border border-blue-200 text-blue-600">
+              <Image size={18} className="md:w-5 md:h-5" />
+            </div>
+            <h3 className="font-bold text-zinc-900 text-sm md:text-base">School Branding</h3>
+          </div>
+          <div className="p-4 md:p-8">
+            <p className="text-xs text-zinc-500 mb-6">Upload your school logo. This will appear on all report cards, receipts, and printed documents.</p>
+            
+            <div className="flex flex-col sm:flex-row gap-6 items-start">
+              {/* Logo Preview */}
+              <div className="flex-shrink-0">
+                <div className="w-32 h-32 rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50 flex items-center justify-center overflow-hidden">
+                  {orgLogo ? (
+                    <img src={orgLogo} alt="School Logo" className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <div className="text-center text-zinc-400">
+                      <Building size={32} className="mx-auto mb-1" />
+                      <p className="text-xs">No logo</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Upload Controls */}
+              <div className="flex-1 space-y-4">
+                <div>
+                  <h4 className="text-sm font-bold text-zinc-900 mb-1">School Logo</h4>
+                  <p className="text-xs text-zinc-500 mb-3">PNG, JPG or WebP. Max 2MB. Recommended: 400x400px</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors"
+                    >
+                      <Upload size={16} />
+                      Upload Logo
+                    </button>
+                    {orgLogo && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogo}
+                        className="flex items-center gap-2 bg-red-50 text-red-600 border border-red-200 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors"
+                      >
+                        <X size={16} />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Logo Preview on Documents */}
+                <div className="p-4 bg-zinc-50 rounded-xl">
+                  <p className="text-xs font-bold text-zinc-500 uppercase mb-3">Preview on Report Card</p>
+                  <div className="bg-white rounded-lg p-4 border border-zinc-200 max-w-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-blue-100 rounded flex items-center justify-center overflow-hidden">
+                        {orgLogo ? (
+                          <img src={orgLogo} alt="Logo" className="w-full h-full object-contain" />
+                        ) : (
+                          <Building size={20} className="text-blue-600" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-bold text-blue-700 text-sm">{orgName}</p>
+                        <p className="text-xs text-zinc-500">123 Education Street, Lagos</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-zinc-100 text-center">
+                      <p className="text-xs font-bold text-zinc-900">TERMINAL REPORT</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
           <div className="p-4 md:p-6 border-b border-zinc-100 bg-zinc-50/50 flex items-center gap-3">
             <div className="p-2 bg-white rounded-lg border border-zinc-200 text-zinc-600">
@@ -87,6 +205,22 @@ export default function SettingsPage() {
                   onChange={(e) => setOrgName(e.target.value)}
                   className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
                   placeholder="e.g. St. Mary's High School"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">School Address</label>
+                <input 
+                  type="text" 
+                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                  placeholder="123 Education Street, Lagos, Nigeria"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">School Phone</label>
+                <input 
+                  type="tel" 
+                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                  placeholder="+234 801 234 5678"
                 />
               </div>
               <div>

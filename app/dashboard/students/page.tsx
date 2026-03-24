@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Plus, 
   Search, 
@@ -11,7 +11,9 @@ import {
   Users,
   Link2,
   UserPlus,
-  XCircle as XCircleIcon
+  XCircle as XCircleIcon,
+  Upload,
+  Camera
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,13 +28,13 @@ const studentSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
-const mockClassrooms = [
-  { id: '1', name: 'Primary 1' },
-  { id: '2', name: 'Primary 2' },
-  { id: '3', name: 'Primary 3' },
-  { id: '4', name: 'JSS 1' },
-  { id: '5', name: 'SSS 2' },
+const NIGERIAN_CLASSES = [
+  'Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6',
+  'JSS 1', 'JSS 2', 'JSS 3',
+  'SS 1', 'SS 2', 'SS 3'
 ];
+
+const mockClassrooms = NIGERIAN_CLASSES.map((name, i) => ({ id: String(i + 1), name }));
 
 const mockParents = [
   { id: 'p1', name: 'Mrs. Adebayo', email: 'adebayo@email.com' },
@@ -48,12 +50,14 @@ const mockStudents: Array<{
   class: string;
   parent_id: string | null;
   is_active: boolean;
+  imageUrl?: string;
+  admissionNo?: string;
 }> = [
-  { id: 's1', name: 'Adebayo Oluwaseun', email: 'adebayo.j@student.com', rfid_uid: '1A2B3C4D', class: 'Primary 1', parent_id: 'p1', is_active: true },
-  { id: 's2', name: 'Chukwu Adaobi', email: 'adaobi.c@student.com', rfid_uid: '5E6F7G8H', class: 'Primary 1', parent_id: 'p1', is_active: true },
-  { id: 's3', name: 'Okonkwo Chibueze', email: 'chibueze.o@student.com', rfid_uid: '9I0J1K2L', class: 'Primary 2', parent_id: 'p2', is_active: true },
-  { id: 's4', name: 'Nnamdi Somtochi', email: 'somtochi.n@student.com', rfid_uid: '3M4N5O6P', class: 'JSS 1', parent_id: 'p3', is_active: true },
-  { id: 's5', name: 'Eze Ifeoma', email: 'ifeoma.e@student.com', rfid_uid: '7Q8R9S0T', class: 'SSS 2', parent_id: 'p3', is_active: false },
+  { id: 's1', name: 'Adebayo Oluwaseun', email: 'adebayo.j@student.com', rfid_uid: '1A2B3C4D', class: 'Primary 1', parent_id: 'p1', is_active: true, admissionNo: 'GA/2023/001' },
+  { id: 's2', name: 'Chukwu Adaobi', email: 'adaobi.c@student.com', rfid_uid: '5E6F7G8H', class: 'Primary 1', parent_id: 'p1', is_active: true, admissionNo: 'GA/2023/002' },
+  { id: 's3', name: 'Okonkwo Chibueze', email: 'chibueze.o@student.com', rfid_uid: '9I0J1K2L', class: 'Primary 2', parent_id: 'p2', is_active: true, admissionNo: 'GA/2022/015' },
+  { id: 's4', name: 'Nnamdi Somtochi', email: 'somtochi.n@student.com', rfid_uid: '3M4N5O6P', class: 'JSS 1', parent_id: 'p3', is_active: true, admissionNo: 'GA/2021/008' },
+  { id: 's5', name: 'Eze Ifeoma', email: 'ifeoma.e@student.com', rfid_uid: '7Q8R9S0T', class: 'SS 2', parent_id: 'p3', is_active: false, admissionNo: 'GA/2020/023' },
 ];
 
 let studentCounter = 10;
@@ -198,12 +202,16 @@ export default function StudentsPage() {
                 <tr key={student.id} className="hover:bg-zinc-50/50 transition-colors group">
                   <td className="px-3 md:px-6 py-3 md:py-4">
                     <div className="flex items-center gap-2 md:gap-3">
-                      <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 font-bold border border-zinc-200">
-                        {student.name.charAt(0)}
-                      </div>
+                      {student.imageUrl ? (
+                        <img src={student.imageUrl} alt={student.name} className="w-8 md:w-10 h-8 md:h-10 rounded-full object-cover border-2 border-zinc-200" />
+                      ) : (
+                        <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs md:text-sm font-bold border-2 border-blue-200">
+                          {student.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-zinc-900 truncate">{student.name}</p>
-                        <p className="text-[10px] md:text-xs text-zinc-500 hidden sm:block">{student.email}</p>
+                        <p className="text-[10px] md:text-xs text-zinc-500 hidden sm:block">{student.admissionNo || student.email}</p>
                       </div>
                     </div>
                   </td>
@@ -294,6 +302,20 @@ export default function StudentsPage() {
               </button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+              {/* Profile Picture Upload */}
+              <div className="flex justify-center mb-4">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full bg-zinc-100 border-2 border-dashed border-zinc-300 flex items-center justify-center overflow-hidden">
+                    <Camera size={32} className="text-zinc-400" />
+                  </div>
+                  <button
+                    type="button"
+                    className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
+                  >
+                    <Upload size={14} />
+                  </button>
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Full Name</label>
                 <input 

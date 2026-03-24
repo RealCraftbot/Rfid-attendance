@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { 
-  DollarSign, 
+  Naira,
   Receipt, 
   CreditCard, 
   TrendingUp,
@@ -13,7 +13,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  Download
+  Download,
+  Upload,
+  Printer
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -37,21 +39,54 @@ interface Invoice {
   status: PaymentStatus;
   dueDate: string;
   items: string[];
+  admissionNo: string;
+  term: number;
+  academicYear: string;
 }
 
+const NIGERIAN_FEE_TYPES = [
+  'Tuition Fee',
+  'Development Levy',
+  'Laboratory Fee',
+  'Sports Fee',
+  'Library Fee',
+  'ICT Fee',
+  'Security Fee',
+  'Medical Fee',
+  'Examination Fee',
+  'Uniform Fee',
+  'Books Fee',
+  'Transport Fee',
+  'Feeding Fee',
+  'Handbook Fee',
+  'CASTER Fee',
+  'WAEC Registration',
+  'NECO Registration',
+  'JAMB Registration',
+];
+
+const NIGERIAN_CLASSES = [
+  'Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6',
+  'JSS 1', 'JSS 2', 'JSS 3',
+  'SS 1', 'SS 2', 'SS 3'
+];
+
 const mockFees: Fee[] = [
-  { id: '1', name: 'Term 1 Tuition', amount: 50000, dueDate: '2024-01-15', status: 'PAID', paidAmount: 50000 },
-  { id: '2', name: 'Term 2 Tuition', amount: 50000, dueDate: '2024-04-15', status: 'PARTIAL', paidAmount: 25000 },
-  { id: '3', name: 'Term 3 Tuition', amount: 50000, dueDate: '2024-07-15', status: 'PENDING', paidAmount: 0 },
-  { id: '4', name: 'Laboratory Fee', amount: 10000, dueDate: '2024-01-15', status: 'PAID', paidAmount: 10000 },
-  { id: '5', name: 'Sports Fee', amount: 5000, dueDate: '2024-01-15', status: 'OVERDUE', paidAmount: 0 },
+  { id: '1', name: 'First Term Tuition', amount: 85000, dueDate: '2025-09-15', status: 'PAID', paidAmount: 85000 },
+  { id: '2', name: 'Second Term Tuition', amount: 85000, dueDate: '2026-01-15', status: 'PARTIAL', paidAmount: 40000 },
+  { id: '3', name: 'Third Term Tuition', amount: 85000, dueDate: '2026-04-15', status: 'PENDING', paidAmount: 0 },
+  { id: '4', name: 'Development Levy', amount: 15000, dueDate: '2025-09-15', status: 'PAID', paidAmount: 15000 },
+  { id: '5', name: 'Laboratory Fee', amount: 10000, dueDate: '2025-09-15', status: 'OVERDUE', paidAmount: 0 },
+  { id: '6', name: 'ICT Fee', amount: 20000, dueDate: '2025-09-15', status: 'PAID', paidAmount: 20000 },
+  { id: '7', name: 'Sports Fee', amount: 5000, dueDate: '2025-09-15', status: 'PAID', paidAmount: 5000 },
+  { id: '8', name: 'WAEC Registration', amount: 35000, dueDate: '2026-02-28', status: 'PENDING', paidAmount: 0 },
 ];
 
 const mockInvoices: Invoice[] = [
-  { id: '1', student: 'John Doe', class: 'Grade 5', amount: 65000, paidAmount: 65000, status: 'PAID', dueDate: '2024-01-15', items: ['Tuition', 'Laboratory', 'Sports'] },
-  { id: '2', student: 'Jane Smith', class: 'Grade 3', amount: 65000, paidAmount: 30000, status: 'PARTIAL', dueDate: '2024-04-15', items: ['Tuition'] },
-  { id: '3', student: 'Michael Johnson', class: 'Grade 4', amount: 65000, paidAmount: 0, status: 'PENDING', dueDate: '2024-07-15', items: ['Tuition', 'Laboratory'] },
-  { id: '4', student: 'Emily Davis', class: 'Grade 6', amount: 65000, paidAmount: 0, status: 'OVERDUE', dueDate: '2024-01-15', items: ['Tuition', 'Sports'] },
+  { id: '1', student: 'Chukwuemeka Okafor', class: 'JSS 3A', admissionNo: 'GA/2020/001', amount: 135000, paidAmount: 135000, status: 'PAID', dueDate: '2025-09-15', term: 1, academicYear: '2025/2026', items: ['Tuition', 'Development Levy', 'Laboratory', 'ICT', 'Sports'] },
+  { id: '2', student: 'Adaeze Nwosu', class: 'JSS 3A', admissionNo: 'GA/2020/002', amount: 135000, paidAmount: 90000, status: 'PARTIAL', dueDate: '2026-01-15', term: 2, academicYear: '2025/2026', items: ['Tuition'] },
+  { id: '3', student: 'Oluwaseun Adebayo', class: 'SS 2 Science', admissionNo: 'GA/2019/015', amount: 185000, paidAmount: 0, status: 'PENDING', dueDate: '2025-09-15', term: 1, academicYear: '2025/2026', items: ['Tuition', 'WAEC Registration', 'Laboratory'] },
+  { id: '4', student: 'Fatima Ibrahim', class: 'SS 3', admissionNo: 'GA/2018/008', amount: 220000, paidAmount: 0, status: 'OVERDUE', dueDate: '2025-09-15', term: 1, academicYear: '2025/2026', items: ['Tuition', 'WAEC Registration', 'NECO Registration'] },
 ];
 
 const getStatusStyle = (status: PaymentStatus) => {
@@ -101,7 +136,7 @@ export default function FeesPage() {
         <div className="bg-white p-4 sm:p-6 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-green-100 rounded-lg">
-              <DollarSign size={20} className="text-green-600" />
+              <Naira size={20} className="text-green-600" />
             </div>
             <span className="text-xs sm:text-sm text-zinc-500">Total Collected</span>
           </div>
@@ -241,7 +276,7 @@ export default function FeesPage() {
                     <td className="px-4 sm:px-6 py-4">
                       <div>
                         <p className="font-medium text-zinc-900">{invoice.student}</p>
-                        <p className="text-xs text-zinc-500">{invoice.class}</p>
+                        <p className="text-xs text-zinc-500">{invoice.class} • {invoice.admissionNo}</p>
                       </div>
                     </td>
                     <td className="px-4 sm:px-6 py-4">
@@ -286,7 +321,12 @@ export default function FeesPage() {
             <form className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Fee Name</label>
-                <input type="text" placeholder="e.g. Term 1 Tuition" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" />
+                <select className="w-full px-4 py-3 border border-zinc-200 rounded-xl">
+                  <option>Select Fee Type</option>
+                  {NIGERIAN_FEE_TYPES.map(fee => (
+                    <option key={fee}>{fee}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Amount (₦)</label>

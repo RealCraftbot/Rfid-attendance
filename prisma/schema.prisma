@@ -61,6 +61,7 @@ model Organization {
   email     String   @unique
   phone     String?
   address   String?
+  logoUrl   String?
   status    SubscriptionStatus @default(TRIAL)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -85,6 +86,7 @@ model User {
   name      String
   role      Role     @default(TEACHER)
   orgId     String?
+  imageUrl  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -114,6 +116,7 @@ model Student {
   busRouteId      String?
   busStatus       BusStatus?
   admissionNumber String?
+  imageUrl        String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
