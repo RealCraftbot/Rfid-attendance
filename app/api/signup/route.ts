@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createUser, findUserByEmail } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 const signupSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -24,31 +25,56 @@ export async function POST(request: Request) {
 
     const { email, password, orgName } = parsed.data;
 
-    const existing = findUserByEmail(email);
-    if (existing) {
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+    
+    if (existingUser) {
       return NextResponse.json(
         { error: 'Email already registered' },
         { status: 409 }
       );
     }
 
+    // Create slug from org name
     const slug = orgName.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
 
-    const orgId = `org_${Date.now()}`;
+    // Check if organization slug already exists
+    const existingOrg = await prisma.organization.findUnique({
+      where: { slug },
+    });
 
-    const user = createUser({
-      email,
-      password,
-      name: 'Admin User',
-      role: 'ADMIN',
-      orgId,
-      organization: {
-        id: orgId,
+    if (existingOrg) {
+      return NextResponse.json(
+        { error: 'Organization name already taken' },
+        { status: 409 }
+      );
+    }
+
+    // Create organization first
+    const organization = await prisma.organization.create({
+      data: {
         name: orgName,
         slug,
+        email,
         status: 'ACTIVE',
+      },
+    });
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create admin user
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name: 'Admin User',
+        role: 'ADMIN',
+        orgId: organization.id,
       },
     });
 

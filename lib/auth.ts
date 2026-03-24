@@ -1,22 +1,9 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import { prisma } from './prisma';
+import bcrypt from 'bcryptjs';
 
 type Role = 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'PARENT' | 'BURSAR';
-
-interface StoredUser {
-  id: string;
-  email: string;
-  password: string;
-  name: string;
-  role: Role;
-  orgId: string | null;
-  organization?: {
-    id: string;
-    name: string;
-    slug: string;
-    status: string;
-  };
-}
 
 declare module 'next-auth' {
   interface Session {
@@ -50,17 +37,37 @@ declare module 'next-auth/jwt' {
   }
 }
 
-const users = new Map<string, StoredUser>();
+export async function createUser(data: {
+  email: string;
+  password: string;
+  name: string;
+  role: Role;
+  orgId: string | null;
+}) {
+  const hashedPassword = await bcrypt.hash(data.password, 10);
+  
+  const user = await prisma.user.create({
+    data: {
+      email: data.email,
+      password: hashedPassword,
+      name: data.name,
+      role: data.role,
+      orgId: data.orgId,
+    },
+  });
 
-export function createUser(data: Omit<StoredUser, 'id'>) {
-  const id = `user_${Date.now()}`;
-  const user = { id, ...data };
-  users.set(data.email, user);
   return user;
 }
 
-export function findUserByEmail(email: string) {
-  return users.get(email) || null;
+export async function findUserByEmail(email: string) {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: {
+      org: true,
+    },
+  });
+
+  return user;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -73,27 +80,44 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.log('Missing credentials');
           return null;
         }
 
-        const user = findUserByEmail(credentials.email);
+        try {
+          const user = await findUserByEmail(credentials.email);
 
-        if (!user) {
+          if (!user) {
+            console.log('User not found:', credentials.email);
+            return null;
+          }
+
+          const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+
+          if (!isPasswordValid) {
+            console.log('Invalid password for user:', credentials.email);
+            return null;
+          }
+
+          console.log('Login successful for:', credentials.email);
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role as Role,
+            orgId: user.orgId,
+            organization: user.org ? {
+              id: user.org.id,
+              name: user.org.name,
+              slug: user.org.slug,
+              status: user.org.status,
+            } : undefined,
+          };
+        } catch (error) {
+          console.error('Auth error:', error);
           return null;
         }
-
-        if (user.password !== credentials.password) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          orgId: user.orgId,
-          organization: user.organization,
-        };
       },
     }),
   ],
@@ -122,6 +146,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/login',
+    error: '/login',
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
