@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -30,7 +30,9 @@ import {
   Trash2,
   Edit3,
   ArrowUpDown,
-  History
+  History,
+  Printer,
+  ArrowLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -80,6 +82,13 @@ interface Invoice {
   academicYear: string;
   term: number;
   feeName: string;
+  items?: InvoiceItem[];
+  createdAt?: string;
+}
+
+interface InvoiceItem {
+  description: string;
+  amount: number;
 }
 
 interface BankAccount {
@@ -211,12 +220,18 @@ const mockFeeStructures: FeeStructure[] = [
 ];
 
 const mockInvoices: Invoice[] = [
-  { id: 'inv1', studentName: 'Chukwuemeka Okafor', studentClass: 'Primary 5', admissionNumber: 'GA/2020/001', amount: 135000, paidAmount: 85000, status: 'PARTIAL', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees' },
-  { id: 'inv2', studentName: 'Adaeze Nwosu', studentClass: 'Primary 5', admissionNumber: 'GA/2020/002', amount: 135000, paidAmount: 135000, status: 'PAID', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees' },
-  { id: 'inv3', studentName: 'Oluwaseun Adebayo', studentClass: 'JSS 2', admissionNumber: 'GA/2021/015', amount: 155000, paidAmount: 155000, status: 'PAID', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees' },
-  { id: 'inv4', studentName: 'Fatima Ibrahim', studentClass: 'SS 3', admissionNumber: 'GA/2019/008', amount: 220000, paidAmount: 160000, status: 'PARTIAL', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees' },
-  { id: 'inv5', studentName: 'Emmanuel Chidi', studentClass: 'Primary 3', admissionNumber: 'GA/2022/045', amount: 125000, paidAmount: 0, status: 'OVERDUE', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees' },
-  { id: 'inv6', studentName: 'Blessing Okonkwo', studentClass: 'JSS 1', admissionNumber: 'GA/2023/012', amount: 145000, paidAmount: 0, status: 'PENDING', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees' },
+  { id: 'inv1', studentName: 'Chukwuemeka Okafor', studentClass: 'Primary 5', admissionNumber: 'GA/2020/001', amount: 135000, paidAmount: 85000, status: 'PARTIAL', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01', items: [
+    { description: 'Tuition Fee', amount: 50000 },
+    { description: 'Development Levy', amount: 15000 },
+    { description: 'ICT Fee', amount: 20000 },
+    { description: 'Sports Fee', amount: 5000 },
+    { description: 'Books & Materials', amount: 45000 },
+  ]},
+  { id: 'inv2', studentName: 'Adaeze Nwosu', studentClass: 'Primary 5', admissionNumber: 'GA/2020/002', amount: 135000, paidAmount: 135000, status: 'PAID', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01' },
+  { id: 'inv3', studentName: 'Oluwaseun Adebayo', studentClass: 'JSS 2', admissionNumber: 'GA/2021/015', amount: 155000, paidAmount: 155000, status: 'PAID', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01' },
+  { id: 'inv4', studentName: 'Fatima Ibrahim', studentClass: 'SS 3', admissionNumber: 'GA/2019/008', amount: 220000, paidAmount: 160000, status: 'PARTIAL', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01' },
+  { id: 'inv5', studentName: 'Emmanuel Chidi', studentClass: 'Primary 3', admissionNumber: 'GA/2022/045', amount: 125000, paidAmount: 0, status: 'OVERDUE', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01' },
+  { id: 'inv6', studentName: 'Blessing Okonkwo', studentClass: 'JSS 1', admissionNumber: 'GA/2023/012', amount: 145000, paidAmount: 0, status: 'PENDING', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01' },
 ];
 
 const mockBankAccounts: BankAccount[] = [
@@ -234,6 +249,18 @@ const mockStats: AdminStats = {
   totalStudents: 245,
   paidStudents: 198,
 };
+
+// Available students for invoice creation
+const availableStudents = [
+  { id: 's1', name: 'Chukwuemeka Okafor', class: 'Primary 5', admissionNo: 'GA/2020/001' },
+  { id: 's2', name: 'Adaeze Nwosu', class: 'Primary 5', admissionNo: 'GA/2020/002' },
+  { id: 's3', name: 'Oluwaseun Adebayo', class: 'JSS 2', admissionNo: 'GA/2021/015' },
+  { id: 's4', name: 'Fatima Ibrahim', class: 'SS 3', admissionNo: 'GA/2019/008' },
+  { id: 's5', name: 'Emmanuel Chidi', class: 'Primary 3', admissionNo: 'GA/2022/045' },
+  { id: 's6', name: 'Blessing Okonkwo', class: 'JSS 1', admissionNo: 'GA/2023/012' },
+  { id: 's7', name: 'John Smith', class: 'Primary 1', admissionNo: 'GA/2024/001' },
+  { id: 's8', name: 'Mary Johnson', class: 'Primary 2', admissionNo: 'GA/2023/089' },
+];
 
 const NIGERIAN_FEE_TYPES = [
   'Tuition Fee',
@@ -275,6 +302,12 @@ export default function AdminFeesClient() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'invoices' | 'fee-structures' | 'bank-accounts'>('overview');
   
+  // Data states
+  const [transactions, setTransactions] = useState<PaymentTransaction[]>(mockTransactions);
+  const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices);
+  const [feeStructures, setFeeStructures] = useState<FeeStructure[]>(mockFeeStructures);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(mockBankAccounts);
+  
   // Transaction filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -286,16 +319,57 @@ export default function AdminFeesClient() {
   
   // Modals
   const [selectedTransaction, setSelectedTransaction] = useState<PaymentTransaction | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedFeeStructure, setSelectedFeeStructure] = useState<FeeStructure | null>(null);
+  const [selectedBankAccount, setSelectedBankAccount] = useState<BankAccount | null>(null);
+  
   const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showPreviewInvoiceModal, setShowPreviewInvoiceModal] = useState(false);
   const [showAddFeeModal, setShowAddFeeModal] = useState(false);
+  const [showEditFeeModal, setShowEditFeeModal] = useState(false);
   const [showAddBankModal, setShowAddBankModal] = useState(false);
+  const [showEditBankModal, setShowEditBankModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{type: 'fee' | 'bank' | 'invoice', id: string} | null>(null);
+  
+  // Review states
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  
+  // Form states for create invoice
+  const [newInvoice, setNewInvoice] = useState({
+    studentId: '',
+    feeStructureId: '',
+    items: [{ description: '', amount: 0 }],
+    dueDate: '',
+    academicYear: '2025/2026',
+    term: 1,
+  });
+  
+  // Form states for fee structure
+  const [feeForm, setFeeForm] = useState({
+    name: '',
+    description: '',
+    amount: 0,
+    dueDate: '',
+    academicYear: '2025/2026',
+    term: 1,
+    isActive: true,
+  });
+  
+  // Form states for bank account
+  const [bankForm, setBankForm] = useState({
+    bankCode: '',
+    accountNumber: '',
+    accountName: '',
+    accountType: 'current',
+    isDefault: false,
+  });
 
   // Filter transactions
-  const filteredTransactions = mockTransactions.filter((transaction) => {
+  const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch = 
       transaction.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       transaction.paidByName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -307,7 +381,7 @@ export default function AdminFeesClient() {
   });
 
   // Filter invoices
-  const filteredInvoices = mockInvoices.filter((invoice) => {
+  const filteredInvoices = invoices.filter((invoice) => {
     const matchesSearch = 
       invoice.studentName.toLowerCase().includes(invoiceSearch.toLowerCase()) ||
       invoice.admissionNumber.toLowerCase().includes(invoiceSearch.toLowerCase());
@@ -347,21 +421,232 @@ export default function AdminFeesClient() {
     }).format(amount);
   };
 
+  // Export functions
+  const exportToCSV = (data: any[], filename: string) => {
+    const headers = Object.keys(data[0] || {}).join(',');
+    const rows = data.map(row => Object.values(row).join(','));
+    const csvContent = [headers, ...rows].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleExportTransactions = () => {
+    exportToCSV(filteredTransactions, 'transactions');
+  };
+
+  const handleExportInvoices = () => {
+    exportToCSV(filteredInvoices, 'invoices');
+  };
+
+  const handleExportReport = () => {
+    const reportData = {
+      totalRevenue: mockStats.totalRevenue,
+      totalExpected: mockStats.totalExpected,
+      collectionRate: mockStats.collectionRate,
+      pendingPayments: mockStats.pendingPayments,
+      overduePayments: mockStats.overduePayments,
+      generatedAt: new Date().toISOString(),
+    };
+    exportToCSV([reportData], 'financial-report');
+  };
+
+  // Review handler
   const handleReview = async () => {
     if (!selectedTransaction || !reviewAction) return;
     
-    console.log('Reviewing payment:', {
-      transactionId: selectedTransaction.id,
-      action: reviewAction,
-      notes: reviewNotes,
-      rejectionReason: reviewAction === 'reject' ? rejectionReason : undefined,
-    });
+    // Update transaction status
+    setTransactions(prev => prev.map(t => {
+      if (t.id === selectedTransaction.id) {
+        return {
+          ...t,
+          transactionStatus: reviewAction === 'approve' ? 'VERIFIED' : 'REJECTED',
+          reviewedByName: 'Current User',
+          reviewedAt: new Date().toISOString(),
+          reviewNotes: reviewNotes || undefined,
+          rejectionReason: reviewAction === 'reject' ? rejectionReason : undefined,
+        };
+      }
+      return t;
+    }));
     
     setShowReviewModal(false);
     setSelectedTransaction(null);
     setReviewAction(null);
     setReviewNotes('');
     setRejectionReason('');
+  };
+
+  // Invoice handlers
+  const handleCreateInvoice = (e: React.FormEvent) => {
+    e.preventDefault();
+    const student = availableStudents.find(s => s.id === newInvoice.studentId);
+    const feeStructure = feeStructures.find(f => f.id === newInvoice.feeStructureId);
+    
+    if (!student || !feeStructure) return;
+    
+    const totalAmount = newInvoice.items.reduce((sum, item) => sum + item.amount, 0);
+    
+    const invoice: Invoice = {
+      id: `inv${Date.now()}`,
+      studentName: student.name,
+      studentClass: student.class,
+      admissionNumber: student.admissionNo,
+      amount: totalAmount,
+      paidAmount: 0,
+      status: 'PENDING',
+      dueDate: newInvoice.dueDate,
+      academicYear: newInvoice.academicYear,
+      term: newInvoice.term,
+      feeName: feeStructure.name,
+      items: newInvoice.items,
+      createdAt: new Date().toISOString(),
+    };
+    
+    setInvoices(prev => [invoice, ...prev]);
+    setShowInvoiceModal(false);
+    setNewInvoice({
+      studentId: '',
+      feeStructureId: '',
+      items: [{ description: '', amount: 0 }],
+      dueDate: '',
+      academicYear: '2025/2026',
+      term: 1,
+    });
+  };
+
+  const handlePreviewInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowPreviewInvoiceModal(true);
+  };
+
+  const handlePrintInvoice = () => {
+    window.print();
+  };
+
+  // Fee structure handlers
+  const handleAddFeeStructure = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newFee: FeeStructure = {
+      id: `fs${Date.now()}`,
+      ...feeForm,
+      createdAt: new Date().toISOString(),
+    };
+    setFeeStructures(prev => [...prev, newFee]);
+    setShowAddFeeModal(false);
+    setFeeForm({
+      name: '',
+      description: '',
+      amount: 0,
+      dueDate: '',
+      academicYear: '2025/2026',
+      term: 1,
+      isActive: true,
+    });
+  };
+
+  const handleEditFeeStructure = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFeeStructure) return;
+    
+    setFeeStructures(prev => prev.map(f => 
+      f.id === selectedFeeStructure.id ? { ...f, ...feeForm } : f
+    ));
+    setShowEditFeeModal(false);
+    setSelectedFeeStructure(null);
+  };
+
+  const handleDeleteFeeStructure = () => {
+    if (!showDeleteConfirm) return;
+    setFeeStructures(prev => prev.filter(f => f.id !== showDeleteConfirm.id));
+    setShowDeleteConfirm(null);
+  };
+
+  const openEditFeeModal = (fee: FeeStructure) => {
+    setSelectedFeeStructure(fee);
+    setFeeForm({
+      name: fee.name,
+      description: fee.description || '',
+      amount: fee.amount,
+      dueDate: fee.dueDate,
+      academicYear: fee.academicYear,
+      term: fee.term,
+      isActive: fee.isActive,
+    });
+    setShowEditFeeModal(true);
+  };
+
+  // Bank account handlers
+  const handleAddBankAccount = (e: React.FormEvent) => {
+    e.preventDefault();
+    const bank = NIGERIAN_BANKS.find(b => b.code === bankForm.bankCode);
+    
+    const newAccount: BankAccount = {
+      id: `ba${Date.now()}`,
+      ...bankForm,
+      bankName: bank?.name || '',
+      isActive: true,
+    };
+    
+    // If setting as default, unset others
+    if (newAccount.isDefault) {
+      setBankAccounts(prev => prev.map(b => ({ ...b, isDefault: false })));
+    }
+    
+    setBankAccounts(prev => [...prev, newAccount]);
+    setShowAddBankModal(false);
+    setBankForm({
+      bankCode: '',
+      accountNumber: '',
+      accountName: '',
+      accountType: 'current',
+      isDefault: false,
+    });
+  };
+
+  const handleEditBankAccount = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBankAccount) return;
+    
+    const bank = NIGERIAN_BANKS.find(b => b.code === bankForm.bankCode);
+    
+    // If setting as default, unset others
+    if (bankForm.isDefault && !selectedBankAccount.isDefault) {
+      setBankAccounts(prev => prev.map(b => ({ ...b, isDefault: false })));
+    }
+    
+    setBankAccounts(prev => prev.map(b => 
+      b.id === selectedBankAccount.id 
+        ? { ...b, ...bankForm, bankName: bank?.name || b.bankName } 
+        : b
+    ));
+    setShowEditBankModal(false);
+    setSelectedBankAccount(null);
+  };
+
+  const handleDeleteBankAccount = () => {
+    if (!showDeleteConfirm) return;
+    setBankAccounts(prev => prev.filter(b => b.id !== showDeleteConfirm.id));
+    setShowDeleteConfirm(null);
+  };
+
+  const openEditBankModal = (account: BankAccount) => {
+    setSelectedBankAccount(account);
+    setBankForm({
+      bankCode: account.bankCode || '',
+      accountNumber: account.accountNumber,
+      accountName: account.accountName,
+      accountType: account.accountType,
+      isDefault: account.isDefault,
+    });
+    setShowEditBankModal(true);
   };
 
   const renderOverview = () => (
@@ -437,7 +722,7 @@ export default function AdminFeesClient() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
-                {mockTransactions.slice(0, 5).map((transaction) => (
+                {transactions.slice(0, 5).map((transaction) => (
                   <tr key={transaction.id} className="hover:bg-zinc-50">
                     <td className="py-3 px-4">
                       <p className="font-medium text-sm text-zinc-900">{transaction.studentName}</p>
@@ -538,7 +823,10 @@ export default function AdminFeesClient() {
             <option value="month">This Month</option>
             <option value="term">This Term</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 text-sm font-medium">
+          <button 
+            onClick={handleExportTransactions}
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 text-sm font-medium"
+          >
             <Download size={16} />
             Export
           </button>
@@ -683,7 +971,10 @@ export default function AdminFeesClient() {
             <option value="PENDING">Pending</option>
             <option value="OVERDUE">Overdue</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+          <button 
+            onClick={() => setShowInvoiceModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+          >
             <Plus size={16} />
             Create Invoice
           </button>
@@ -730,7 +1021,11 @@ export default function AdminFeesClient() {
                     {format(new Date(invoice.dueDate), 'MMM d, yyyy')}
                   </td>
                   <td className="py-3 px-4">
-                    <button className="p-1.5 bg-zinc-100 text-zinc-600 rounded-lg hover:bg-zinc-200">
+                    <button 
+                      onClick={() => handlePreviewInvoice(invoice)}
+                      className="p-1.5 bg-zinc-100 text-zinc-600 rounded-lg hover:bg-zinc-200"
+                      title="Preview Invoice"
+                    >
                       <Eye size={14} />
                     </button>
                   </td>
@@ -771,7 +1066,7 @@ export default function AdminFeesClient() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {mockFeeStructures.map((fee) => (
+              {feeStructures.map((fee) => (
                 <tr key={fee.id} className="hover:bg-zinc-50">
                   <td className="py-3 px-4">
                     <p className="font-medium text-sm text-zinc-900">{fee.name}</p>
@@ -798,10 +1093,18 @@ export default function AdminFeesClient() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center justify-center gap-1">
-                      <button className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200">
+                      <button 
+                        onClick={() => openEditFeeModal(fee)}
+                        className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
+                        title="Edit"
+                      >
                         <Edit3 size={14} />
                       </button>
-                      <button className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200">
+                      <button 
+                        onClick={() => setShowDeleteConfirm({ type: 'fee', id: fee.id })}
+                        className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                        title="Delete"
+                      >
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -829,7 +1132,7 @@ export default function AdminFeesClient() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {mockBankAccounts.map((account) => (
+        {bankAccounts.map((account) => (
           <div key={account.id} className={`bg-white p-4 rounded-xl border shadow-sm ${account.isDefault ? 'border-blue-300 ring-1 ring-blue-200' : 'border-zinc-200'}`}>
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-2">
@@ -842,10 +1145,18 @@ export default function AdminFeesClient() {
                 </div>
               </div>
               <div className="flex gap-1">
-                <button className="p-1.5 bg-zinc-100 text-zinc-600 rounded-lg hover:bg-zinc-200">
+                <button 
+                  onClick={() => openEditBankModal(account)}
+                  className="p-1.5 bg-zinc-100 text-zinc-600 rounded-lg hover:bg-zinc-200"
+                  title="Edit"
+                >
                   <Edit3 size={14} />
                 </button>
-                <button className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200">
+                <button 
+                  onClick={() => setShowDeleteConfirm({ type: 'bank', id: account.id })}
+                  className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                  title="Delete"
+                >
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -879,7 +1190,10 @@ export default function AdminFeesClient() {
           <p className="text-zinc-500 mt-1 text-xs sm:text-sm">Manage school fees, payments, and financial records</p>
         </div>
         <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 text-sm font-medium">
+          <button 
+            onClick={handleExportReport}
+            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 text-sm font-medium"
+          >
             <Download size={18} />
             <span>Export Report</span>
           </button>
@@ -1154,72 +1468,447 @@ export default function AdminFeesClient() {
         </div>
       )}
 
-      {/* Add Fee Modal */}
-      {showAddFeeModal && (
+      {/* Create Invoice Modal */}
+      {showInvoiceModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-zinc-200 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-zinc-900">Add Fee Structure</h3>
-              <button onClick={() => setShowAddFeeModal(false)} className="text-zinc-400 hover:text-zinc-600">
+              <h3 className="text-xl font-bold text-zinc-900">Create Invoice</h3>
+              <button onClick={() => setShowInvoiceModal(false)} className="text-zinc-400 hover:text-zinc-600">
                 <X size={24} />
               </button>
             </div>
-            <form className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Fee Name</label>
-                <select className="w-full px-4 py-3 border border-zinc-200 rounded-xl">
-                  <option>Select Fee Type</option>
-                  {NIGERIAN_FEE_TYPES.map(fee => (
-                    <option key={fee}>{fee}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Amount (₦)</label>
-                <input type="number" placeholder="50000" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" />
-              </div>
+            <form onSubmit={handleCreateInvoice} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Due Date</label>
-                  <input type="date" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" />
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Student</label>
+                  <select 
+                    value={newInvoice.studentId}
+                    onChange={(e) => setNewInvoice({...newInvoice, studentId: e.target.value})}
+                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                    required
+                  >
+                    <option value="">Select Student</option>
+                    {availableStudents.map(student => (
+                      <option key={student.id} value={student.id}>{student.name} - {student.class}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Term</label>
-                  <select className="w-full px-4 py-3 border border-zinc-200 rounded-xl">
-                    <option value="1">Term 1</option>
-                    <option value="2">Term 2</option>
-                    <option value="3">Term 3</option>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Fee Structure</label>
+                  <select 
+                    value={newInvoice.feeStructureId}
+                    onChange={(e) => {
+                      const fee = feeStructures.find(f => f.id === e.target.value);
+                      setNewInvoice({
+                        ...newInvoice, 
+                        feeStructureId: e.target.value,
+                        items: fee ? [{ description: fee.name, amount: fee.amount }] : [{ description: '', amount: 0 }]
+                      });
+                    }}
+                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                  >
+                    <option value="">Select Fee</option>
+                    {feeStructures.map(fee => (
+                      <option key={fee.id} value={fee.id}>{fee.name} - {formatAmount(fee.amount)}</option>
+                    ))}
                   </select>
                 </div>
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Academic Year</label>
-                <input type="text" placeholder="2025/2026" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" />
+                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Invoice Items</label>
+                <div className="space-y-2">
+                  {newInvoice.items.map((item, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Description"
+                        value={item.description}
+                        onChange={(e) => {
+                          const newItems = [...newInvoice.items];
+                          newItems[index].description = e.target.value;
+                          setNewInvoice({...newInvoice, items: newItems});
+                        }}
+                        className="flex-1 px-4 py-3 border border-zinc-200 rounded-xl"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Amount"
+                        value={item.amount || ''}
+                        onChange={(e) => {
+                          const newItems = [...newInvoice.items];
+                          newItems[index].amount = parseFloat(e.target.value) || 0;
+                          setNewInvoice({...newInvoice, items: newItems});
+                        }}
+                        className="w-32 px-4 py-3 border border-zinc-200 rounded-xl"
+                      />
+                      {newInvoice.items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = newInvoice.items.filter((_, i) => i !== index);
+                            setNewInvoice({...newInvoice, items: newItems});
+                          }}
+                          className="p-3 text-red-600 hover:bg-red-50 rounded-xl"
+                        >
+                          <X size={20} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setNewInvoice({...newInvoice, items: [...newInvoice.items, { description: '', amount: 0 }]})}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    + Add Item
+                  </button>
+                </div>
               </div>
-              <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setShowAddFeeModal(false)} className="flex-1 py-3 bg-zinc-100 text-zinc-600 font-bold rounded-xl">Cancel</button>
-                <button type="submit" className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl">Create Fee</button>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Due Date</label>
+                  <input 
+                    type="date" 
+                    value={newInvoice.dueDate}
+                    onChange={(e) => setNewInvoice({...newInvoice, dueDate: e.target.value})}
+                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Term</label>
+                  <select 
+                    value={newInvoice.term}
+                    onChange={(e) => setNewInvoice({...newInvoice, term: parseInt(e.target.value)})}
+                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                  >
+                    <option value={1}>Term 1</option>
+                    <option value={2}>Term 2</option>
+                    <option value={3}>Term 3</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Academic Year</label>
+                  <input 
+                    type="text" 
+                    value={newInvoice.academicYear}
+                    onChange={(e) => setNewInvoice({...newInvoice, academicYear: e.target.value})}
+                    placeholder="2025/2026"
+                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-zinc-200">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="font-bold text-zinc-900">Total Amount:</span>
+                  <span className="text-xl font-bold text-blue-600">
+                    {formatAmount(newInvoice.items.reduce((sum, item) => sum + item.amount, 0))}
+                  </span>
+                </div>
+                <div className="flex gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowInvoiceModal(false)} 
+                    className="flex-1 py-3 bg-zinc-100 text-zinc-600 font-bold rounded-xl hover:bg-zinc-200"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700"
+                  >
+                    Create Invoice
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Add Bank Modal */}
-      {showAddBankModal && (
+      {/* Preview Invoice Modal */}
+      {showPreviewInvoiceModal && selectedInvoice && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto print:shadow-none">
+            <div className="p-6 border-b border-zinc-200 flex justify-between items-center print:hidden">
+              <h3 className="text-xl font-bold text-zinc-900">Invoice Preview</h3>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handlePrintInvoice}
+                  className="flex items-center gap-2 px-4 py-2 bg-zinc-100 text-zinc-700 rounded-lg hover:bg-zinc-200"
+                >
+                  <Printer size={18} />
+                  Print
+                </button>
+                <button 
+                  onClick={() => setShowPreviewInvoiceModal(false)}
+                  className="text-zinc-400 hover:text-zinc-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8 print:p-0">
+              {/* Invoice Header */}
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <h1 className="text-3xl font-bold text-zinc-900">INVOICE</h1>
+                  <p className="text-zinc-500 mt-1">#{selectedInvoice.id.toUpperCase()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-lg text-zinc-900">Greenfield Academy</p>
+                  <p className="text-sm text-zinc-500">123 School Road, Lagos</p>
+                  <p className="text-sm text-zinc-500">info@greenfield.edu.ng</p>
+                </div>
+              </div>
+
+              {/* Invoice Details */}
+              <div className="grid grid-cols-2 gap-8 mb-8">
+                <div>
+                  <p className="text-xs font-bold text-zinc-400 uppercase mb-1">Bill To</p>
+                  <p className="font-bold text-zinc-900">{selectedInvoice.studentName}</p>
+                  <p className="text-sm text-zinc-500">{selectedInvoice.studentClass}</p>
+                  <p className="text-sm text-zinc-500">Admission No: {selectedInvoice.admissionNumber}</p>
+                </div>
+                <div className="text-right">
+                  <div className="mb-2">
+                    <p className="text-xs font-bold text-zinc-400 uppercase">Invoice Date</p>
+                    <p className="text-sm text-zinc-900">{selectedInvoice.createdAt ? format(new Date(selectedInvoice.createdAt), 'MMM d, yyyy') : '-'}</p>
+                  </div>
+                  <div className="mb-2">
+                    <p className="text-xs font-bold text-zinc-400 uppercase">Due Date</p>
+                    <p className="text-sm text-zinc-900">{format(new Date(selectedInvoice.dueDate), 'MMM d, yyyy')}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-zinc-400 uppercase">Status</p>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${getStatusColor(selectedInvoice.status)}`}>
+                      {selectedInvoice.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoice Items */}
+              <table className="w-full mb-8">
+                <thead className="bg-zinc-50">
+                  <tr>
+                    <th className="text-left py-3 px-4 text-xs font-bold text-zinc-500 uppercase">Description</th>
+                    <th className="text-right py-3 px-4 text-xs font-bold text-zinc-500 uppercase">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-200">
+                  {selectedInvoice.items ? (
+                    selectedInvoice.items.map((item, index) => (
+                      <tr key={index}>
+                        <td className="py-3 px-4 text-sm text-zinc-900">{item.description}</td>
+                        <td className="py-3 px-4 text-sm text-zinc-900 text-right">{formatAmount(item.amount)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td className="py-3 px-4 text-sm text-zinc-900">{selectedInvoice.feeName}</td>
+                      <td className="py-3 px-4 text-sm text-zinc-900 text-right">{formatAmount(selectedInvoice.amount)}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {/* Invoice Total */}
+              <div className="border-t border-zinc-200 pt-4">
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm text-zinc-600">Total Amount</span>
+                  <span className="font-bold text-zinc-900">{formatAmount(selectedInvoice.amount)}</span>
+                </div>
+                <div className="flex justify-between mb-2">
+                  <span className="text-sm text-zinc-600">Amount Paid</span>
+                  <span className="font-medium text-green-600">{formatAmount(selectedInvoice.paidAmount)}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-zinc-200">
+                  <span className="font-bold text-zinc-900">Balance Due</span>
+                  <span className="font-bold text-xl text-red-600">{formatAmount(selectedInvoice.amount - selectedInvoice.paidAmount)}</span>
+                </div>
+              </div>
+
+              {/* Payment Instructions */}
+              <div className="mt-8 pt-4 border-t border-zinc-200">
+                <p className="text-xs font-bold text-zinc-400 uppercase mb-2">Payment Instructions</p>
+                <p className="text-sm text-zinc-600">Please make payment to any of the following accounts:</p>
+                {bankAccounts.filter(b => b.isActive).map(account => (
+                  <div key={account.id} className="mt-2 text-sm">
+                    <p className="font-medium text-zinc-900">{account.bankName}</p>
+                    <p className="text-zinc-600">Account Name: {account.accountName}</p>
+                    <p className="text-zinc-600">Account Number: {account.accountNumber}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div className="mt-8 text-center text-xs text-zinc-400">
+                <p>Thank you for your business!</p>
+                <p className="mt-1">For inquiries, please contact the bursar's office.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Fee Modal */}
+      {(showAddFeeModal || showEditFeeModal) && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
             <div className="p-6 border-b border-zinc-200 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-zinc-900">Add Bank Account</h3>
-              <button onClick={() => setShowAddBankModal(false)} className="text-zinc-400 hover:text-zinc-600">
+              <h3 className="text-xl font-bold text-zinc-900">
+                {showEditFeeModal ? 'Edit Fee Structure' : 'Add Fee Structure'}
+              </h3>
+              <button 
+                onClick={() => {
+                  setShowAddFeeModal(false);
+                  setShowEditFeeModal(false);
+                  setSelectedFeeStructure(null);
+                }} 
+                className="text-zinc-400 hover:text-zinc-600"
+              >
                 <X size={24} />
               </button>
             </div>
-            <form className="p-6 space-y-4">
+            <form onSubmit={showEditFeeModal ? handleEditFeeStructure : handleAddFeeStructure} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Fee Name</label>
+                <select 
+                  value={feeForm.name}
+                  onChange={(e) => setFeeForm({...feeForm, name: e.target.value})}
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                  required
+                >
+                  <option value="">Select Fee Type</option>
+                  {NIGERIAN_FEE_TYPES.map(fee => (
+                    <option key={fee} value={fee}>{fee}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Description</label>
+                <input 
+                  type="text"
+                  value={feeForm.description}
+                  onChange={(e) => setFeeForm({...feeForm, description: e.target.value})}
+                  placeholder="Optional description"
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Amount (₦)</label>
+                <input 
+                  type="number" 
+                  value={feeForm.amount || ''}
+                  onChange={(e) => setFeeForm({...feeForm, amount: parseFloat(e.target.value) || 0})}
+                  placeholder="50000" 
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Due Date</label>
+                  <input 
+                    type="date" 
+                    value={feeForm.dueDate}
+                    onChange={(e) => setFeeForm({...feeForm, dueDate: e.target.value})}
+                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Term</label>
+                  <select 
+                    value={feeForm.term}
+                    onChange={(e) => setFeeForm({...feeForm, term: parseInt(e.target.value)})}
+                    className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                  >
+                    <option value={1}>Term 1</option>
+                    <option value={2}>Term 2</option>
+                    <option value={3}>Term 3</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Academic Year</label>
+                <input 
+                  type="text" 
+                  value={feeForm.academicYear}
+                  onChange={(e) => setFeeForm({...feeForm, academicYear: e.target.value})}
+                  placeholder="2025/2026" 
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="isActive"
+                  checked={feeForm.isActive}
+                  onChange={(e) => setFeeForm({...feeForm, isActive: e.target.checked})}
+                  className="rounded border-zinc-300"
+                />
+                <label htmlFor="isActive" className="text-sm text-zinc-600">Active</label>
+              </div>
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setShowAddFeeModal(false);
+                    setShowEditFeeModal(false);
+                    setSelectedFeeStructure(null);
+                  }} 
+                  className="flex-1 py-3 bg-zinc-100 text-zinc-600 font-bold rounded-xl hover:bg-zinc-200"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700"
+                >
+                  {showEditFeeModal ? 'Save Changes' : 'Create Fee'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Bank Modal */}
+      {(showAddBankModal || showEditBankModal) && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-zinc-200 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-zinc-900">
+                {showEditBankModal ? 'Edit Bank Account' : 'Add Bank Account'}
+              </h3>
+              <button 
+                onClick={() => {
+                  setShowAddBankModal(false);
+                  setShowEditBankModal(false);
+                  setSelectedBankAccount(null);
+                }} 
+                className="text-zinc-400 hover:text-zinc-600"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={showEditBankModal ? handleEditBankAccount : handleAddBankAccount} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Bank Name</label>
-                <select className="w-full px-4 py-3 border border-zinc-200 rounded-xl">
-                  <option>Select Bank</option>
+                <select 
+                  value={bankForm.bankCode}
+                  onChange={(e) => setBankForm({...bankForm, bankCode: e.target.value})}
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                  required
+                >
+                  <option value="">Select Bank</option>
                   {NIGERIAN_BANKS.map(bank => (
                     <option key={bank.code} value={bank.code}>{bank.name}</option>
                   ))}
@@ -1227,28 +1916,100 @@ export default function AdminFeesClient() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Account Number</label>
-                <input type="text" placeholder="1234567890" maxLength={10} className="w-full px-4 py-3 border border-zinc-200 rounded-xl" />
+                <input 
+                  type="text" 
+                  value={bankForm.accountNumber}
+                  onChange={(e) => setBankForm({...bankForm, accountNumber: e.target.value})}
+                  placeholder="1234567890" 
+                  maxLength={10} 
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                  required
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Account Name</label>
-                <input type="text" placeholder="School Name" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" />
+                <input 
+                  type="text" 
+                  value={bankForm.accountName}
+                  onChange={(e) => setBankForm({...bankForm, accountName: e.target.value})}
+                  placeholder="School Name" 
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                  required
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Account Type</label>
-                <select className="w-full px-4 py-3 border border-zinc-200 rounded-xl">
+                <select 
+                  value={bankForm.accountType}
+                  onChange={(e) => setBankForm({...bankForm, accountType: e.target.value})}
+                  className="w-full px-4 py-3 border border-zinc-200 rounded-xl"
+                >
                   <option value="current">Current</option>
                   <option value="savings">Savings</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="isDefault" className="rounded border-zinc-300" />
-                <label htmlFor="isDefault" className="text-sm text-zinc-600">Set as default account</label>
+                <input 
+                  type="checkbox" 
+                  id="isDefaultBank"
+                  checked={bankForm.isDefault}
+                  onChange={(e) => setBankForm({...bankForm, isDefault: e.target.checked})}
+                  className="rounded border-zinc-300"
+                />
+                <label htmlFor="isDefaultBank" className="text-sm text-zinc-600">Set as default account</label>
               </div>
               <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setShowAddBankModal(false)} className="flex-1 py-3 bg-zinc-100 text-zinc-600 font-bold rounded-xl">Cancel</button>
-                <button type="submit" className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl">Add Account</button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setShowAddBankModal(false);
+                    setShowEditBankModal(false);
+                    setSelectedBankAccount(null);
+                  }} 
+                  className="flex-1 py-3 bg-zinc-100 text-zinc-600 font-bold rounded-xl hover:bg-zinc-200"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700"
+                >
+                  {showEditBankModal ? 'Save Changes' : 'Add Account'}
+                </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={32} className="text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-zinc-900 mb-2">Confirm Delete</h3>
+              <p className="text-zinc-600">
+                Are you sure you want to delete this {showDeleteConfirm.type === 'fee' ? 'fee structure' : 'bank account'}?
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowDeleteConfirm(null)}
+                className="flex-1 py-3 bg-zinc-100 text-zinc-600 font-bold rounded-xl hover:bg-zinc-200"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={showDeleteConfirm.type === 'fee' ? handleDeleteFeeStructure : handleDeleteBankAccount}
+                className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
