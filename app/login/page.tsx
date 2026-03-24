@@ -20,18 +20,28 @@ export default function LoginPage() {
     setError('');
 
     try {
+      console.log('Attempting login with:', { email });
+      
       const result = await signIn('credentials', {
         email,
         password,
         redirect: false,
       });
 
+      console.log('Login result:', result);
+
       if (result?.error) {
-        setError('Invalid email or password');
+        console.error('Login error:', result.error);
+        setError('Invalid email or password. Please try again.');
+      } else if (result?.ok) {
+        console.log('Login successful, redirecting...');
+        // Force a full page reload to ensure session is properly loaded
+        window.location.href = '/dashboard';
       } else {
-        router.push('/dashboard');
+        setError('Login failed. Please try again.');
       }
-    } catch {
+    } catch (err) {
+      console.error('Login exception:', err);
       setError('An error occurred. Please try again.');
     } finally {
       setLoading(false);
