@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 
 // Role type matching the database
- type Role = 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'PARENT' | 'BURSAR';
+type Role = 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'PARENT' | 'BURSAR';
 
 interface SidebarItemProps {
   icon: React.ElementType;
@@ -118,10 +118,18 @@ const getNavItems = (role: string) => {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const sessionData = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Handle loading state safely
+  const status = sessionData?.status || 'loading';
+  const session = sessionData?.data;
+  
   // Get user role and data from session
   const userRole = session?.user?.role || '';
   const userData = session?.user;
@@ -131,29 +139,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navItems = getNavItems(userRole);
 
   useEffect(() => {
-    // Handle loading state
-    if (status === 'loading') {
-      setIsLoading(true);
-    } else {
-      setIsLoading(false);
-    }
-
+    // Only run on client side
+    if (!isClient) return;
+    
     // Redirect if not authenticated
     if (status === 'unauthenticated') {
       router.push('/login');
     }
-
-    // Redirect to correct dashboard based on role
-    if (status === 'authenticated' && pathname === '/dashboard') {
-      // User is already on dashboard, no need to redirect
-      // But we should verify they have access to the current page
-      const hasAccess = navItems.some(item => pathname.startsWith(item.href) || item.href === '/dashboard');
-      if (!hasAccess && navItems.length > 0) {
-        // Redirect to first allowed page
-        router.push(navItems[0].href);
-      }
-    }
-  }, [status, pathname, router, navItems]);
+  }, [status, router, isClient]);
 
   const handleLogout = async () => {
     await signOut({ redirect: false });
@@ -168,8 +161,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return pathname.startsWith(href);
   };
 
-  // Show loading state
-  if (isLoading || status === 'loading') {
+  // Show loading state during SSR or while loading
+  if (!isClient || status === 'loading') {
     return (
       <div className="min-h-screen bg-zinc-100 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -181,7 +174,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   // Show access denied if no valid role
-  if (!userRole || navItems.length === 0) {
+  if (status === 'authenticated' && (!userRole || navItems.length === 0)) {
     return (
       <div className="min-h-screen bg-zinc-100 flex items-center justify-center">
         <div className="text-center">
