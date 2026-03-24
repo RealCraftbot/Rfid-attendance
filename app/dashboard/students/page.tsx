@@ -134,25 +134,25 @@ export default function StudentsPage() {
   });
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Students</h1>
-          <p className="text-zinc-500 mt-1">Manage student records and RFID assignments</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tight">Students</h1>
+          <p className="text-zinc-500 mt-1 text-sm md:text-base">Manage student records and RFID assignments</p>
         </div>
         {role === 'admin' && (
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-zinc-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-95"
+            className="flex items-center gap-2 bg-zinc-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-95 text-sm"
           >
-            <Plus size={20} />
+            <Plus size={18} />
             Add Student
           </button>
         )}
       </div>
 
-      <div className="bg-white p-4 rounded-2xl border border-zinc-200 flex flex-wrap gap-4 items-center justify-between shadow-sm">
-        <div className="flex items-center gap-4 flex-1 min-w-[300px]">
+      <div className="bg-white p-3 md:p-4 rounded-2xl border border-zinc-200 flex flex-col sm:flex-row gap-3 md:gap-4 items-stretch sm:items-center justify-between shadow-sm">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-4 flex-1">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
             <input 
@@ -166,7 +166,7 @@ export default function StudentsPage() {
           <select 
             value={selectedClass}
             onChange={(e) => setSelectedClass(e.target.value)}
-            className="px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 outline-none focus:ring-2 ring-zinc-100"
+            className="px-3 md:px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 outline-none focus:ring-2 ring-zinc-100"
           >
             <option value="all">All Classes</option>
             {classrooms.map(c => (
@@ -174,105 +174,107 @@ export default function StudentsPage() {
             ))}
           </select>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 hover:bg-zinc-50">
+        <button className="flex items-center justify-center gap-2 px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 hover:bg-zinc-50">
           <Download size={18} />
-          Export CSV
+          Export
         </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-zinc-50/50 border-b border-zinc-200">
-              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Student</th>
-              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Class</th>
-              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">RFID UID</th>
-              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Parent</th>
-              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Status</th>
-              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-100">
-            {filteredStudents.map((student) => (
-              <tr key={student.id} className="hover:bg-zinc-50/50 transition-colors group">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 font-bold border border-zinc-200">
-                      {student.name.charAt(0)}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-zinc-50/50 border-b border-zinc-200">
+                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest">Student</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest">Class</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest hidden sm:table-cell">RFID UID</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest hidden md:table-cell">Parent</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest">Status</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest text-right hidden sm:table-cell">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {filteredStudents.map((student) => (
+                <tr key={student.id} className="hover:bg-zinc-50/50 transition-colors group">
+                  <td className="px-3 md:px-6 py-3 md:py-4">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 font-bold border border-zinc-200">
+                        {student.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-zinc-900 truncate">{student.name}</p>
+                        <p className="text-[10px] md:text-xs text-zinc-500 hidden sm:block">{student.email}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-zinc-900">{student.name}</p>
-                      <p className="text-xs text-zinc-500">{student.email}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-zinc-100 text-zinc-600 border border-zinc-200">
-                    {student.class}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <code className="text-xs font-mono bg-zinc-50 px-2 py-1 rounded border border-zinc-200 text-zinc-600">
-                    {student.rfid_uid}
-                  </code>
-                </td>
-                <td className="px-6 py-4">
-                  {student.parent_id ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-zinc-600">
-                        {parents.find(p => p.id === student.parent_id)?.name || 'Linked'}
-                      </span>
+                  </td>
+                  <td className="px-3 md:px-6 py-3 md:py-4">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold bg-zinc-100 text-zinc-600 border border-zinc-200">
+                      {student.class}
+                    </span>
+                  </td>
+                  <td className="px-3 md:px-6 py-3 md:py-4 hidden sm:table-cell">
+                    <code className="text-[10px] md:text-xs font-mono bg-zinc-50 px-1.5 md:px-2 py-0.5 md:py-1 rounded border border-zinc-200 text-zinc-600">
+                      {student.rfid_uid}
+                    </code>
+                  </td>
+                  <td className="px-3 md:px-6 py-3 md:py-4 hidden md:table-cell">
+                    {student.parent_id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-zinc-600">
+                          {parents.find(p => p.id === student.parent_id)?.name || 'Linked'}
+                        </span>
+                        <button
+                          onClick={() => openLinkModal(student)}
+                          className="text-xs text-brand-blue hover:underline"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
                       <button
                         onClick={() => openLinkModal(student)}
-                        className="text-xs text-brand-blue hover:underline"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-colors"
                       >
-                        Change
+                        <Link2 size={12} />
+                        Link
+                      </button>
+                    )}
+                  </td>
+                  <td className="px-3 md:px-6 py-3 md:py-4">
+                    <button 
+                      onClick={() => toggleStatus(student.id)}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider border ${
+                        student.is_active 
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                          : 'bg-red-50 text-red-600 border-red-100'
+                      }`}
+                    >
+                      {student.is_active ? <CheckCircle2 size={10} className="md:w-3 md:h-3" /> : <XCircle size={10} className="md:w-3 md:h-3" />}
+                      {student.is_active ? 'Active' : 'Inactive'}
+                    </button>
+                  </td>
+                  <td className="px-3 md:px-6 py-3 md:py-4 text-right hidden sm:table-cell">
+                    <div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="p-1.5 md:p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors">
+                        <Edit2 size={14} className="md:w-4 md:h-4" />
+                      </button>
+                      <button 
+                        onClick={() => deleteStudent(student.id)}
+                        className="p-1.5 md:p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Users size={14} className="md:w-4 md:h-4" />
                       </button>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => openLinkModal(student)}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-colors"
-                    >
-                      <Link2 size={12} />
-                      Link Parent
-                    </button>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <button 
-                    onClick={() => toggleStatus(student.id)}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                      student.is_active 
-                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                        : 'bg-red-50 text-red-600 border-red-100'
-                    }`}
-                  >
-                    {student.is_active ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                    {student.is_active ? 'Active' : 'Inactive'}
-                  </button>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors">
-                      <Edit2 size={16} />
-                    </button>
-                    <button 
-                      onClick={() => deleteStudent(student.id)}
-                      className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Users size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {filteredStudents.length === 0 && (
-          <div className="py-20 flex flex-col items-center justify-center text-zinc-400 space-y-4">
+          <div className="py-16 md:py-20 flex flex-col items-center justify-center text-zinc-400 space-y-4">
             <div className="p-4 bg-zinc-50 rounded-full">
-              <Users size={48} strokeWidth={1} />
+              <Users size={40} className="md:w-12 md:h-12" strokeWidth={1} />
             </div>
             <div className="text-center">
               <p className="font-bold text-zinc-900">No students found</p>

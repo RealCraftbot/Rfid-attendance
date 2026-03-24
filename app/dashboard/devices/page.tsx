@@ -106,65 +106,65 @@ export default function DevicesPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Devices</h1>
-          <p className="text-zinc-500 mt-1">Manage authorized RFID scanners and authentication keys</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tight">Devices</h1>
+          <p className="text-zinc-500 mt-1 text-sm md:text-base">Manage authorized RFID scanners and authentication keys</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 bg-zinc-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-95"
+          className="flex items-center gap-2 bg-zinc-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-95 text-sm"
         >
-          <Plus size={20} />
+          <Plus size={18} />
           Register Device
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {devices.map((device) => (
           <div key={device.id} className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden group hover:shadow-md transition-all duration-300">
-            <div className="p-6 border-b border-zinc-100">
-              <div className="flex justify-between items-start mb-4">
-                <div className={`p-3 rounded-xl border ${
+            <div className="p-4 md:p-6 border-b border-zinc-100">
+              <div className="flex justify-between items-start mb-3 md:mb-4">
+                <div className={`p-2 md:p-3 rounded-xl border ${
                   device.is_active ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-zinc-50 border-zinc-200 text-zinc-400'
                 }`}>
-                  <Cpu size={24} />
+                  <Cpu size={20} className="md:w-6 md:h-6" />
                 </div>
                 <div className="flex gap-2">
                   <button 
                     onClick={() => toggleStatus(device.id)}
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`p-1.5 md:p-2 rounded-lg transition-colors ${
                       device.is_active ? 'text-emerald-600 hover:bg-emerald-50' : 'text-zinc-400 hover:bg-zinc-100'
                     }`}
                   >
-                    {device.is_active ? <ShieldCheck size={20} /> : <ShieldAlert size={20} />}
+                    {device.is_active ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
                   </button>
                   <button 
                     onClick={() => deleteDevice(device.id)}
-                    className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-1.5 md:p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   >
-                    <Trash2 size={20} />
+                    <Trash2 size={18} />
                   </button>
                 </div>
               </div>
-              <h3 className="text-lg font-bold text-zinc-900">{device.name}</h3>
-              <p className="text-xs text-zinc-500 font-mono mt-1 uppercase tracking-wider">{device.device_id}</p>
+              <h3 className="text-base md:text-lg font-bold text-zinc-900">{device.name}</h3>
+              <p className="text-[10px] md:text-xs text-zinc-500 font-mono mt-1 uppercase tracking-wider">{device.device_id}</p>
             </div>
             
-            <div className="p-6 bg-zinc-50/50 space-y-4">
+            <div className="p-4 md:p-6 bg-zinc-50/50 space-y-3 md:space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Secret Key</label>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Secret Key</label>
                 <div className="flex items-center gap-2 bg-white border border-zinc-200 rounded-lg px-3 py-2">
-                  <Key size={14} className="text-zinc-400" />
-                  <code className="flex-1 text-xs font-mono text-zinc-600 truncate">
+                  <Key size={12} className="text-zinc-400" />
+                  <code className="flex-1 text-[10px] md:text-xs font-mono text-zinc-600 truncate">
                     ••••••••••••••••
                   </code>
                   <button 
                     onClick={() => copyToClipboard(device.secret_key, device.id + 'key')}
                     className="text-zinc-400 hover:text-zinc-900 transition-colors"
                   >
-                    {copiedId === device.id + 'key' ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                    {copiedId === device.id + 'key' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
                   </button>
                 </div>
               </div>
@@ -172,7 +172,7 @@ export default function DevicesPage() {
               <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                 <span>Status</span>
                 <span className={device.is_active ? 'text-emerald-600' : 'text-red-500'}>
-                  {device.is_active ? 'Active & Authorized' : 'Disabled'}
+                  {device.is_active ? 'Active' : 'Disabled'}
                 </span>
               </div>
 
@@ -190,8 +190,8 @@ export default function DevicesPage() {
         ))}
 
         {devices.length === 0 && (
-          <div className="col-span-full py-20 bg-white rounded-2xl border border-dashed border-zinc-300 flex flex-col items-center justify-center text-zinc-400 space-y-4">
-            <Cpu size={48} strokeWidth={1} />
+          <div className="col-span-full py-16 md:py-20 bg-white rounded-2xl border border-dashed border-zinc-300 flex flex-col items-center justify-center text-zinc-400 space-y-4">
+            <Cpu size={40} className="md:w-12 md:h-12" strokeWidth={1} />
             <div className="text-center">
               <p className="font-bold text-zinc-900">No devices registered</p>
               <p className="text-sm">Register your first ESP32 device to start scanning.</p>

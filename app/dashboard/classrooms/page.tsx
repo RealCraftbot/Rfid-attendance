@@ -85,25 +85,25 @@ export default function ClassroomsPage() {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex justify-between items-center">
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-in fade-in duration-700">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Classrooms</h1>
-          <p className="text-zinc-500 mt-1">Manage school classes, view student details, and monitor attendance.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tight">Classrooms</h1>
+          <p className="text-zinc-500 mt-1 text-sm md:text-base">Manage school classes, view student details, and monitor attendance.</p>
         </div>
         {role === 'admin' && (
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-brand-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-blue/90 transition-all shadow-lg shadow-brand-blue/20 active:scale-95"
+            className="flex items-center gap-2 bg-brand-blue text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold hover:bg-brand-blue/90 transition-all shadow-lg shadow-brand-blue/20 active:scale-95 text-sm"
           >
-            <Plus size={20} />
+            <Plus size={18} />
             New Classroom
           </button>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
-        <div className="relative flex-1 min-w-[300px]">
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
+        <div className="relative w-full lg:w-auto lg:min-w-[300px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
           <input 
             type="text" 
@@ -113,26 +113,26 @@ export default function ClassroomsPage() {
             className="w-full pl-10 pr-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
           />
         </div>
-        <div className="flex items-center gap-6 px-4">
+        <div className="flex items-center gap-4 md:gap-6 px-2 md:px-4">
           <div className="text-center">
             <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Total Classes</p>
-            <p className="text-xl font-bold text-zinc-900">{classrooms.length}</p>
+            <p className="text-lg md:text-xl font-bold text-zinc-900">{classrooms.length}</p>
           </div>
-          <div className="w-[1px] h-8 bg-zinc-100" />
+          <div className="w-[1px] h-8 bg-zinc-100 hidden sm:block" />
           <div className="text-center">
             <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Total Students</p>
-            <p className="text-xl font-bold text-zinc-900">{classrooms.reduce((acc, c) => acc + (c.student_count || 0), 0)}</p>
+            <p className="text-lg md:text-xl font-bold text-zinc-900">{classrooms.reduce((acc, c) => acc + (c.student_count || 0), 0)}</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {filteredClasses.map((classroom) => (
           <div key={classroom.id} className="bg-white rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all group overflow-hidden">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div className="p-3 bg-brand-blue/10 rounded-xl text-brand-blue">
-                  <BookOpen size={24} />
+            <div className="p-4 md:p-6">
+              <div className="flex justify-between items-start mb-3 md:mb-4">
+                <div className="p-2 md:p-3 bg-brand-blue/10 rounded-xl text-brand-blue">
+                  <BookOpen size={20} className="md:w-6 md:h-6" />
                 </div>
                 {role === 'admin' && (
                   <button onClick={() => handleDelete(classroom.id)} className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
@@ -141,21 +141,21 @@ export default function ClassroomsPage() {
                 )}
               </div>
               
-              <h3 className="text-xl font-bold text-zinc-900 mb-1">{classroom.name}</h3>
+              <h3 className="text-lg md:text-xl font-bold text-zinc-900 mb-1">{classroom.name}</h3>
               {classroom.section && <p className="text-xs text-brand-purple font-bold mb-2">Section: {classroom.section}</p>}
-              <p className="text-sm text-zinc-500 line-clamp-2 mb-6">{classroom.description || 'No description provided.'}</p>
+              <p className="text-sm text-zinc-500 line-clamp-2 mb-4 md:mb-6">{classroom.description || 'No description provided.'}</p>
               
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
+              <div className="space-y-2 md:space-y-3">
+                <div className="flex items-center justify-between text-xs md:text-sm">
                   <div className="flex items-center gap-2 text-zinc-600">
-                    <User size={16} className="text-zinc-400" />
+                    <User size={14} className="text-zinc-400" />
                     <span>Teacher</span>
                   </div>
                   <span className="font-bold text-zinc-900">{classroom.teacher_name}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-xs md:text-sm">
                   <div className="flex items-center gap-2 text-zinc-600">
-                    <Users size={16} className="text-zinc-400" />
+                    <Users size={14} className="text-zinc-400" />
                     <span>Students</span>
                   </div>
                   <span className="font-bold text-zinc-900">{classroom.student_count || 0}</span>
@@ -165,7 +165,7 @@ export default function ClassroomsPage() {
             
             <button 
               onClick={() => setSelectedClass(classroom)}
-              className="w-full py-4 bg-zinc-50 border-t border-zinc-100 text-brand-blue text-sm font-bold flex items-center justify-center gap-2 hover:bg-brand-blue hover:text-white transition-all"
+              className="w-full py-3 md:py-4 bg-zinc-50 border-t border-zinc-100 text-brand-blue text-xs md:text-sm font-bold flex items-center justify-center gap-2 hover:bg-brand-blue hover:text-white transition-all"
             >
               View Class Details
               <ChevronRight size={16} />
@@ -187,107 +187,109 @@ export default function ClassroomsPage() {
       {selectedClass && (
         <div className="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-zinc-100 flex justify-between items-start sticky top-0 bg-white z-10">
+            <div className="p-4 md:p-6 border-b border-zinc-100 flex justify-between items-start sticky top-0 bg-white z-10">
               <div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3">
                   <div className="p-2 bg-brand-blue/10 rounded-xl text-brand-blue">
-                    <BookOpen size={24} />
+                    <BookOpen size={20} className="md:w-6 md:h-6" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-zinc-900">{selectedClass.name}</h2>
-                    {selectedClass.section && <p className="text-sm text-brand-purple font-bold">Section: {selectedClass.section}</p>}
+                    <h2 className="text-lg md:text-2xl font-bold text-zinc-900">{selectedClass.name}</h2>
+                    {selectedClass.section && <p className="text-xs md:text-sm text-brand-purple font-bold">Section: {selectedClass.section}</p>}
                   </div>
                 </div>
               </div>
               <button onClick={() => setSelectedClass(null)} className="p-2 hover:bg-zinc-100 rounded-lg">
-                <X size={24} className="text-zinc-400" />
+                <X size={20} className="md:w-6 md:h-6 text-zinc-400" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+            <div className="p-4 md:p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+                <div className="bg-zinc-50 p-3 md:p-4 rounded-xl border border-zinc-200">
                   <div className="flex items-center gap-2 text-zinc-500 mb-1">
-                    <Users size={16} />
-                    <span className="text-xs font-bold uppercase">Total Students</span>
+                    <Users size={14} className="md:w-4 md:h-4" />
+                    <span className="text-[10px] md:text-xs font-bold uppercase">Total Students</span>
                   </div>
-                  <p className="text-2xl font-bold text-zinc-900">{classStudents.length}</p>
+                  <p className="text-xl md:text-2xl font-bold text-zinc-900">{classStudents.length}</p>
                 </div>
-                <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                <div className="bg-emerald-50 p-3 md:p-4 rounded-xl border border-emerald-100">
                   <div className="flex items-center gap-2 text-emerald-600 mb-1">
-                    <CheckCircle2 size={16} />
-                    <span className="text-xs font-bold uppercase">Present This Week</span>
+                    <CheckCircle2 size={14} className="md:w-4 md:h-4" />
+                    <span className="text-[10px] md:text-xs font-bold uppercase">Present</span>
                   </div>
-                  <p className="text-2xl font-bold text-emerald-600">{stats.present}</p>
+                  <p className="text-xl md:text-2xl font-bold text-emerald-600">{stats.present}</p>
                 </div>
-                <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+                <div className="bg-red-50 p-3 md:p-4 rounded-xl border border-red-100">
                   <div className="flex items-center gap-2 text-red-600 mb-1">
-                    <XCircle size={16} />
-                    <span className="text-xs font-bold uppercase">Absent</span>
+                    <XCircle size={14} className="md:w-4 md:h-4" />
+                    <span className="text-[10px] md:text-xs font-bold uppercase">Absent</span>
                   </div>
-                  <p className="text-2xl font-bold text-red-600">{Math.max(0, classStudents.length * 5 - stats.present)}</p>
+                  <p className="text-xl md:text-2xl font-bold text-red-600">{Math.max(0, classStudents.length * 5 - stats.present)}</p>
                 </div>
-                <div className="bg-brand-blue/10 p-4 rounded-xl border border-brand-blue/20">
+                <div className="bg-brand-blue/10 p-3 md:p-4 rounded-xl border border-brand-blue/20">
                   <div className="flex items-center gap-2 text-brand-blue mb-1">
-                    <TrendingUp size={16} />
-                    <span className="text-xs font-bold uppercase">Attendance Rate</span>
+                    <TrendingUp size={14} className="md:w-4 md:h-4" />
+                    <span className="text-[10px] md:text-xs font-bold uppercase">Rate</span>
                   </div>
-                  <p className="text-2xl font-bold text-brand-blue">{stats.rate}%</p>
+                  <p className="text-xl md:text-2xl font-bold text-brand-blue">{stats.rate}%</p>
                 </div>
               </div>
 
-              <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 mb-6">
-                <h3 className="font-bold text-zinc-900 mb-3 flex items-center gap-2">
-                  <User size={18} /> Class Teacher
+              <div className="bg-zinc-50 p-3 md:p-4 rounded-xl border border-zinc-200 mb-4 md:mb-6">
+                <h3 className="font-bold text-zinc-900 mb-2 md:mb-3 flex items-center gap-2 text-sm md:text-base">
+                  <User size={16} className="md:w-[18px] md:h-[18px]" /> Class Teacher
                 </h3>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold text-lg">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="w-10 md:w-12 h-10 md:h-12 rounded-full bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold text-base md:text-lg">
                     {selectedClass.teacher_name?.charAt(0) || 'T'}
                   </div>
                   <div>
-                    <p className="font-bold text-zinc-900">{selectedClass.teacher_name || 'Not Assigned'}</p>
-                    <p className="text-sm text-zinc-500">Class Teacher</p>
+                    <p className="font-bold text-zinc-900 text-sm md:text-base">{selectedClass.teacher_name || 'Not Assigned'}</p>
+                    <p className="text-xs md:text-sm text-zinc-500">Class Teacher</p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 className="font-bold text-zinc-900 mb-4 flex items-center gap-2">
-                  <FileText size={18} /> Student Roster ({classStudents.length})
+                <h3 className="font-bold text-zinc-900 mb-3 md:mb-4 flex items-center gap-2 text-sm md:text-base">
+                  <FileText size={16} className="md:w-[18px] md:h-[18px]" /> Student Roster ({classStudents.length})
                 </h3>
                 {classStudents.length > 0 ? (
                   <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
-                    <table className="w-full text-left">
-                      <thead className="bg-zinc-50 border-b border-zinc-200">
-                        <tr>
-                          <th className="px-4 py-3 text-xs font-bold text-zinc-400 uppercase">Admission No.</th>
-                          <th className="px-4 py-3 text-xs font-bold text-zinc-400 uppercase">Student Name</th>
-                          <th className="px-4 py-3 text-xs font-bold text-zinc-400 uppercase">RFID</th>
-                          <th className="px-4 py-3 text-xs font-bold text-zinc-400 uppercase">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-100">
-                        {classStudents.map((student) => (
-                          <tr key={student.id} className="hover:bg-zinc-50">
-                            <td className="px-4 py-3 text-sm font-mono text-zinc-600">{student.studentIdNumber || '-'}</td>
-                            <td className="px-4 py-3 text-sm font-bold text-zinc-900">{student.name}</td>
-                            <td className="px-4 py-3 text-sm font-mono text-zinc-500">{student.rfid_uid}</td>
-                            <td className="px-4 py-3">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
-                                student.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
-                              }`}>
-                                {student.is_active ? 'Active' : 'Inactive'}
-                              </span>
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead className="bg-zinc-50 border-b border-zinc-200">
+                          <tr>
+                            <th className="px-3 md:px-4 py-2 md:py-3 text-[10px] md:text-xs font-bold text-zinc-400 uppercase">Admission No.</th>
+                            <th className="px-3 md:px-4 py-2 md:py-3 text-[10px] md:text-xs font-bold text-zinc-400 uppercase">Student Name</th>
+                            <th className="px-3 md:px-4 py-2 md:py-3 text-[10px] md:text-xs font-bold text-zinc-400 uppercase hidden sm:table-cell">RFID</th>
+                            <th className="px-3 md:px-4 py-2 md:py-3 text-[10px] md:text-xs font-bold text-zinc-400 uppercase">Status</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100">
+                          {classStudents.map((student) => (
+                            <tr key={student.id} className="hover:bg-zinc-50">
+                              <td className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-mono text-zinc-600">{student.studentIdNumber || '-'}</td>
+                              <td className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-bold text-zinc-900">{student.name}</td>
+                              <td className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-mono text-zinc-500 hidden sm:table-cell">{student.rfid_uid}</td>
+                              <td className="px-3 md:px-4 py-2 md:py-3">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold ${
+                                  student.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                                }`}>
+                                  {student.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-zinc-400">
-                    <Users size={48} className="mx-auto mb-2 opacity-50" />
-                    <p>No students in this class</p>
+                  <div className="text-center py-8 md:py-12 text-zinc-400">
+                    <Users size={36} className="mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No students in this class</p>
                   </div>
                 )}
               </div>
@@ -299,9 +301,9 @@ export default function ClassroomsPage() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-zinc-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-8">
-              <h2 className="text-2xl font-bold text-zinc-900 mb-2">New Classroom</h2>
-              <p className="text-zinc-500 text-sm mb-8">Create a new class and assign a teacher.</p>
+            <div className="p-6 md:p-8">
+              <h2 className="text-xl md:text-2xl font-bold text-zinc-900 mb-2">New Classroom</h2>
+              <p className="text-zinc-500 text-sm mb-6 md:mb-8">Create a new class and assign a teacher.</p>
               
               <form onSubmit={handleCreateClass} className="space-y-6">
                 <div>

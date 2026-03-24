@@ -35,21 +35,21 @@ export default function SuperAdminUsers() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900">User Management</h1>
-          <p className="text-zinc-500 mt-1">Manage platform administrators and users</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-zinc-900">User Management</h1>
+          <p className="text-zinc-500 mt-1 text-sm md:text-base">Manage platform administrators and users</p>
         </div>
-        <button className="flex items-center gap-2 bg-zinc-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-zinc-800">
-          <UserPlus size={20} />
+        <button className="flex items-center gap-2 bg-zinc-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold hover:bg-zinc-800 text-sm">
+          <UserPlus size={18} />
           Add User
         </button>
       </div>
 
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm">
-        <div className="p-4 border-b border-zinc-200">
-          <div className="relative max-w-md">
+        <div className="p-3 md:p-4 border-b border-zinc-200">
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
             <input
               type="text"
@@ -65,36 +65,36 @@ export default function SuperAdminUsers() {
           <table className="w-full">
             <thead className="bg-zinc-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">User</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Organization</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Status</th>
+                <th className="px-3 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-zinc-500 uppercase">User</th>
+                <th className="px-3 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-zinc-500 uppercase hidden sm:table-cell">Role</th>
+                <th className="px-3 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-zinc-500 uppercase hidden md:table-cell">Organization</th>
+                <th className="px-3 md:px-6 py-3 text-left text-[10px] md:text-xs font-medium text-zinc-500 uppercase">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200">
               {filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-zinc-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center">
-                        <Users size={20} className="text-zinc-600" />
+                  <td className="px-3 md:px-6 py-3 md:py-4">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-zinc-100 flex items-center justify-center">
+                        <Users size={16} className="md:w-5 md:h-5 text-zinc-600" />
                       </div>
-                      <div>
-                        <p className="font-medium text-zinc-900">{user.name}</p>
-                        <p className="text-sm text-zinc-500">{user.email}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-zinc-900 text-sm md:text-base truncate">{user.name}</p>
+                        <p className="text-[10px] md:text-sm text-zinc-500 hidden sm:block truncate">{user.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 md:px-6 py-3 md:py-4 hidden sm:table-cell">
                     <RoleBadge role={user.role} />
                   </td>
-                  <td className="px-6 py-4 text-sm text-zinc-600">{user.org}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${
+                  <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-zinc-600 hidden md:table-cell">{user.org}</td>
+                  <td className="px-3 md:px-6 py-3 md:py-4">
+                    <span className={`inline-flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 text-[10px] md:text-xs font-medium rounded-full ${
                       user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                     }`}>
-                      {user.status === 'active' ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
-                      {user.status}
+                      {user.status === 'active' ? <ShieldCheck size={10} className="md:w-3 md:h-3" /> : <ShieldAlert size={10} className="md:w-3 md:h-3" />}
+                      <span className="hidden sm:inline">{user.status}</span>
                     </span>
                   </td>
                 </tr>

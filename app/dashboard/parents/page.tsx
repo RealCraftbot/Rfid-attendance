@@ -185,27 +185,27 @@ export default function ParentRegistrationPage() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Parent & Student Registration</h1>
-          <p className="text-zinc-500 mt-1">Manage parent accounts and link students with KYC records</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tight">Parent & Student Registration</h1>
+          <p className="text-zinc-500 mt-1 text-sm md:text-base">Manage parent accounts and link students with KYC records</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-brand-blue text-white rounded-xl font-bold hover:bg-brand-blue/90 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-blue text-white rounded-xl font-bold hover:bg-brand-blue/90 transition-colors text-sm"
         >
           <UserPlus size={18} />
           Add Parent
         </button>
       </div>
 
-      <div className="bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
-        <div className="relative max-w-md">
+      <div className="bg-white p-3 md:p-4 rounded-2xl border border-zinc-200 shadow-sm">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
           <input 
             type="text"
-            placeholder="Search parents by name, email or phone..."
+            placeholder="Search parents..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
@@ -213,7 +213,7 @@ export default function ParentRegistrationPage() {
         </div>
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-3 md:gap-4">
         {filteredParents.length > 0 ? filteredParents.map((parent) => (
           <div 
             key={parent.id} 
@@ -222,28 +222,28 @@ export default function ParentRegistrationPage() {
             }`}
           >
             <div 
-              className="p-4 flex items-center justify-between cursor-pointer"
+              className="p-3 md:p-4 flex items-center justify-between cursor-pointer"
               onClick={() => setSelectedParent(selectedParent?.id === parent.id ? null : parent)}
             >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold">
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-10 md:w-12 h-10 md:h-12 rounded-full bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold">
                   {parent.name?.charAt(0) || 'P'}
                 </div>
-                <div>
-                  <h3 className="font-bold text-zinc-900">{parent.name}</h3>
-                  <div className="flex items-center gap-3 text-xs text-zinc-500">
-                    <span className="flex items-center gap-1"><Mail size={12} /> {parent.email}</span>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-zinc-900 text-sm md:text-base truncate">{parent.name}</h3>
+                  <div className="flex flex-wrap items-center gap-2 md:gap-3 text-xs text-zinc-500">
+                    <span className="flex items-center gap-1"><Mail size={12} /> <span className="hidden sm:inline">{parent.email}</span></span>
                     <span className="flex items-center gap-1"><Phone size={12} /> {parent.phone}</span>
                   </div>
                 </div>
               </div>
-              <ChevronRight className={`text-zinc-400 transition-transform ${selectedParent?.id === parent.id ? 'rotate-90' : ''}`} />
+              <ChevronRight className={`text-zinc-400 transition-transform shrink-0 ${selectedParent?.id === parent.id ? 'rotate-90' : ''}`} />
             </div>
 
             {selectedParent?.id === parent.id && (
-              <div className="border-t border-zinc-100 p-4 bg-zinc-50/50">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Linked Students</h4>
+              <div className="border-t border-zinc-100 p-3 md:p-4 bg-zinc-50/50">
+                <div className="flex justify-between items-center mb-3 md:mb-4">
+                  <h4 className="text-xs md:text-sm font-bold text-zinc-500 uppercase tracking-wider">Linked Students</h4>
                   <button 
                     onClick={() => studentForm.reset()}
                     className="flex items-center gap-1 text-xs font-bold text-brand-blue hover:underline"
@@ -252,9 +252,9 @@ export default function ParentRegistrationPage() {
                   </button>
                 </div>
 
-                <div className="mb-4 p-4 bg-white rounded-xl border border-zinc-200">
-                  <h5 className="font-bold text-sm mb-3">Register New Student</h5>
-                  <form onSubmit={studentForm.handleSubmit(onStudentSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="mb-3 md:mb-4 p-3 md:p-4 bg-white rounded-xl border border-zinc-200">
+                  <h5 className="font-bold text-sm mb-2 md:mb-3">Register New Student</h5>
+                  <form onSubmit={studentForm.handleSubmit(onStudentSubmit)} className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
                     <input 
                       {...studentForm.register('name')}
                       placeholder="Student Name *"
@@ -299,9 +299,9 @@ export default function ParentRegistrationPage() {
                     <input 
                       {...studentForm.register('allergies')}
                       placeholder="Allergies/Medical Conditions"
-                      className="md:col-span-2 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm"
+                      className="sm:col-span-2 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm"
                     />
-                    <button type="submit" className="md:col-span-2 py-2 bg-brand-blue text-white rounded-lg font-bold text-sm">
+                    <button type="submit" className="sm:col-span-2 py-2 bg-brand-blue text-white rounded-lg font-bold text-sm">
                       Add Student
                     </button>
                   </form>
@@ -310,34 +310,34 @@ export default function ParentRegistrationPage() {
                 {students.length > 0 ? (
                   <div className="space-y-2">
                     {students.map((student) => (
-                      <div key={student.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-zinc-200">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 font-bold">
+                      <div key={student.id} className="flex items-center justify-between p-2 md:p-3 bg-white rounded-xl border border-zinc-200">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 font-bold text-sm">
                             {student.name?.charAt(0)}
                           </div>
-                          <div>
-                            <p className="font-bold text-sm text-zinc-900">{student.name}</p>
-                            <div className="flex items-center gap-2 text-xs text-zinc-500">
-                              <code className="bg-zinc-100 px-1.5 py-0.5 rounded">{student.rfid_uid}</code>
-                              <span>{student.class || 'No class'}</span>
+                          <div className="min-w-0">
+                            <p className="font-bold text-xs md:text-sm text-zinc-900 truncate">{student.name}</p>
+                            <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs text-zinc-500">
+                              <code className="bg-zinc-100 px-1 py-0.5 rounded">{student.rfid_uid}</code>
+                              <span className="hidden sm:inline">{student.class || 'No class'}</span>
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button 
                             onClick={() => openCalendar(student)}
-                            className="p-2 text-brand-blue hover:bg-brand-blue/5 rounded-lg"
+                            className="p-1.5 md:p-2 text-brand-blue hover:bg-brand-blue/5 rounded-lg"
                             title="View Attendance Calendar"
                           >
-                            <Calendar size={18} />
+                            <Calendar size={16} className="md:w-[18px] md:h-[18px]" />
                           </button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-zinc-400">
-                    <Users size={32} className="mx-auto mb-2 opacity-50" />
+                  <div className="text-center py-6 md:py-8 text-zinc-400">
+                    <Users size={28} className="mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No students linked yet</p>
                   </div>
                 )}
@@ -345,8 +345,8 @@ export default function ParentRegistrationPage() {
             )}
           </div>
         )) : (
-          <div className="bg-white rounded-2xl border border-dashed border-zinc-200 p-12 text-center">
-            <UserPlus size={48} className="mx-auto text-zinc-300 mb-4" />
+          <div className="bg-white rounded-2xl border border-dashed border-zinc-200 p-8 md:p-12 text-center">
+            <UserPlus size={40} className="mx-auto text-zinc-300 mb-4" />
             <p className="text-zinc-500">No parents found. Add a parent to get started.</p>
           </div>
         )}

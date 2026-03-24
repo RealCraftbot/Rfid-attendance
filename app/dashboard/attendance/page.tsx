@@ -22,20 +22,20 @@ export default function AttendancePage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-zinc-900">Attendance History</h1>
-          <p className="text-zinc-500 mt-1">Review and export all scan records</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-zinc-900">Attendance History</h1>
+          <p className="text-zinc-500 mt-1 text-sm md:text-base">Review and export all scan records</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800">
+        <button className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 text-sm">
           <Download size={18} />
           Export
         </button>
       </div>
 
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm">
-        <div className="p-4 border-b border-zinc-200">
+        <div className="p-3 md:p-4 border-b border-zinc-200">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
             <input
@@ -52,16 +52,16 @@ export default function AttendancePage() {
           <table className="w-full">
             <thead className="bg-zinc-50 border-b border-zinc-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Student</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Device</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Time</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Student</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Type</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider hidden sm:table-cell">Device</th>
+                <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Time</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200">
               {filteredRecords.map((record) => (
                 <tr key={record.id} className="hover:bg-zinc-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-zinc-100 rounded-full flex items-center justify-center">
                         <span className="text-xs font-medium text-zinc-600">{record.studentName.charAt(0)}</span>
@@ -69,16 +69,16 @@ export default function AttendancePage() {
                       <span className="text-sm font-medium text-zinc-900">{record.studentName}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${
                       record.checkType === 'check_in' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
                     }`}>
                       {record.checkType === 'check_in' ? 'Check In' : 'Check Out'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-600">{record.deviceId}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-600">
-                    {format(new Date(record.scanTime), 'MMM d, yyyy HH:mm')}
+                  <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-sm text-zinc-600 hidden sm:table-cell">{record.deviceId}</td>
+                  <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-sm text-zinc-600">
+                    {format(new Date(record.scanTime), 'MMM d, HH:mm')}
                   </td>
                 </tr>
               ))}
