@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { createUser, findUserByEmail } from '@/lib/auth';
 
 const signupSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -24,32 +24,44 @@ export async function POST(request: Request) {
 
     const { email, password, orgName } = parsed.data;
 
+    const existing = findUserByEmail(email);
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Email already registered' },
+        { status: 409 }
+      );
+    }
+
     const slug = orgName.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const orgId = `org_${Date.now()}`;
 
-    const mockOrg = {
-      id: `org_${Date.now()}`,
-      name: orgName,
-      slug,
+    const user = createUser({
       email,
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString(),
-    };
+      password,
+      name: 'Admin User',
+      role: 'ADMIN',
+      orgId,
+      organization: {
+        id: orgId,
+        name: orgName,
+        slug,
+        status: 'ACTIVE',
+      },
+    });
 
     return NextResponse.json({
       success: true,
       message: 'Organization and admin account created successfully',
       data: {
-        organization: mockOrg,
         user: {
-          id: `user_${Date.now()}`,
-          email,
-          name: 'Admin User',
-          role: 'ADMIN',
-          orgId: mockOrg.id,
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          orgId: user.orgId,
         },
       },
     });

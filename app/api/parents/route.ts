@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { createUser, findUserByEmail } from '@/lib/auth';
 
 const parentSignupSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -25,18 +25,31 @@ export async function POST(request: Request) {
 
     const { email, password, name, phone } = parsed.data;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const existing = findUserByEmail(email);
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Email already registered' },
+        { status: 409 }
+      );
+    }
+
+    const user = createUser({
+      email,
+      password,
+      name,
+      role: 'PARENT',
+      orgId: null,
+    });
 
     return NextResponse.json({
       success: true,
       message: 'Parent account created successfully',
       data: {
         user: {
-          id: `parent_${Date.now()}`,
-          email,
-          name,
-          phone,
-          role: 'PARENT',
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
         },
       },
     });
