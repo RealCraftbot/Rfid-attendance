@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import Logo from '@/components/Logo';
-import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Users, 
@@ -57,6 +58,7 @@ const SidebarItem = ({ icon: Icon, label, href, active, onClick }: SidebarItemPr
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navItems = [
@@ -74,6 +76,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { icon: Baby, label: 'My Children', href: '/dashboard/parent', show: role === 'parent' },
     { icon: MessageSquare, label: 'Notifications', href: '/dashboard/notifications', show: role === 'parent' },
   ].filter(item => item.show);
+
+  const handleLogout = async () => {
+    await signOut({ redirect: false });
+    router.push('/login');
+  };
+
+  // Check if a nav item is active (supports nested routes)
+  const isActive = (href: string) => {
+    if (href === '/dashboard') {
+      return pathname === '/dashboard';
+    }
+    return pathname.startsWith(href);
+  };
 
   return (
     <div className="min-h-screen bg-zinc-100">
@@ -124,7 +139,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 icon={item.icon} 
                 label={item.label} 
                 href={item.href}
-                active={pathname === item.href}
+                active={isActive(item.href)}
                 onClick={() => setSidebarOpen(false)}
               />
             ))}
@@ -135,16 +150,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               icon={Settings} 
               label="Settings" 
               href="/dashboard/settings"
-              active={pathname === '/dashboard/settings'}
+              active={isActive('/dashboard/settings')}
               onClick={() => setSidebarOpen(false)}
             />
-            <Link 
-              href="/login"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
             >
               <LogOut size={20} />
               <span className="font-medium text-sm">Logout</span>
-            </Link>
+            </button>
           </div>
         </div>
       </aside>

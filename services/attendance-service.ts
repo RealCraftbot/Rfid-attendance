@@ -265,6 +265,162 @@ export class AttendanceService {
       home,
     };
   }
+
+  /**
+   * Get grouped attendance records for a specific date
+   * Groups multiple scans per student into single daily records
+   * Earliest scan = check_in, Latest scan = check_out
+   */
+  async getGroupedAttendance(
+    orgId: string,
+    date: Date,
+    searchQuery?: string,
+    statusFilter?: 'all' | 'present' | 'absent' | 'late'
+  ) {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Get all attendance records for the date with orgId filter
+    const records = await prisma.attendanceRecord.findMany({
+      where: {
+        orgId,
+        scanTime: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+        ...(searchQuery && {
+          student: {
+            name: {
+              contains: searchQuery,
+              mode: 'insensitive',
+            },
+          },
+        }),
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            classroom: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        scanTime: 'asc',
+      },
+    });
+
+    // Get all active students for the org (to identify absences)
+    const allStudents = await prisma.student.findMany({
+      where: {
+        orgId,
+        isActive: true,
+        ...(searchQuery && {
+          name: {
+            contains: searchQuery,
+            mode: 'insensitive',
+          },
+        }),
+      },
+      select: {
+        id: true,
+        name: true,
+        classroom: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Group records by student
+    const groupedByStudent = new Map<string, typeof records>();
+    records.forEach((record: typeof records[0]) => {
+      const studentId = record.studentId;
+      if (!groupedByStudent.has(studentId)) {
+        groupedByStudent.set(studentId, []);
+      }
+      groupedByStudent.get(studentId)?.push(record);
+    });
+
+    // Build grouped attendance data
+    const groupedAttendance = allStudents.map((student: typeof allStudents[0]) => {
+      const studentRecords = groupedByStudent.get(student.id) || [];
+      const checkInRecord = studentRecords.find((r: typeof records[0]) => r.checkType === 'check_in');
+      const checkOutRecord = [...studentRecords].reverse().find((r: typeof records[0]) => r.checkType === 'check_out');
+
+      let durationOnSite: number | null = null;
+      if (checkInRecord?.scanTime && checkOutRecord?.scanTime) {
+        durationOnSite = Math.round(
+          (new Date(checkOutRecord.scanTime).getTime() - new Date(checkInRecord.scanTime).getTime()) / (1000 * 60)
+        );
+      }
+
+      // Determine status
+      let status: 'present' | 'absent' | 'late' | 'on-site' | 'checked-out';
+      if (studentRecords.length === 0) {
+        status = 'absent';
+      } else if (checkInRecord && !checkOutRecord) {
+        status = 'on-site';
+      } else if (checkInRecord && checkOutRecord) {
+        status = 'checked-out';
+      } else {
+        status = 'present';
+      }
+
+      // Check for late arrival (after 8:00 AM)
+      const isLate = checkInRecord && new Date(checkInRecord.scanTime).getHours() >= 8 && new Date(checkInRecord.scanTime).getMinutes() > 0;
+      if (isLate && status !== 'absent') {
+        status = 'late';
+      }
+
+      return {
+        studentId: student.id,
+        studentName: student.name,
+        className: student.classroom?.name || 'N/A',
+        status,
+        checkInTime: checkInRecord?.scanTime || null,
+        checkOutTime: checkOutRecord?.scanTime || null,
+        deviceId: checkInRecord?.deviceId || checkOutRecord?.deviceId || null,
+        durationOnSite,
+        totalScans: studentRecords.length,
+      };
+    });
+
+    // Apply status filter
+    let filteredAttendance = groupedAttendance;
+    if (statusFilter && statusFilter !== 'all') {
+      filteredAttendance = groupedAttendance.filter((a: typeof groupedAttendance[0]) => {
+        if (statusFilter === 'present') return a.status === 'present' || a.status === 'on-site' || a.status === 'checked-out';
+        if (statusFilter === 'absent') return a.status === 'absent';
+        if (statusFilter === 'late') return a.status === 'late';
+        return true;
+      });
+    }
+
+    // Calculate summary stats
+    const stats = {
+      total: allStudents.length,
+      present: filteredAttendance.filter((a: typeof groupedAttendance[0]) => a.status !== 'absent').length,
+      absent: filteredAttendance.filter((a: typeof groupedAttendance[0]) => a.status === 'absent').length,
+      late: filteredAttendance.filter((a: typeof groupedAttendance[0]) => a.status === 'late').length,
+      onSite: filteredAttendance.filter((a: typeof groupedAttendance[0]) => a.status === 'on-site').length,
+      checkedOut: filteredAttendance.filter((a: typeof groupedAttendance[0]) => a.status === 'checked-out').length,
+    };
+
+    return {
+      attendance: filteredAttendance,
+      stats,
+      date,
+    };
+  }
 }
 
 export const attendanceService = new AttendanceService();

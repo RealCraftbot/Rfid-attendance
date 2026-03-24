@@ -15,7 +15,7 @@
 ```bash
 # Development
 npm run dev                    # Start dev server (http://localhost:3000)
-npm run build                  # Build for production (runs prisma generate first)
+npm run build                  # Production build (runs prisma generate first)
 npm run start                  # Start production server
 
 # Database
@@ -27,27 +27,12 @@ npm run db:seed               # Seed database with test data
 # Linting & Cache
 npm run lint                   # Run ESLint
 npm run clean                  # Clear Next.js cache (.next folder)
+
+# Testing (when added)
+npm test                       # Run all tests
+npm test -- --testNamePattern="should validate RFID scan"  # Single test
+npm test -- --watch            # Watch mode
 ```
-
----
-
-## Architecture Standards
-
-### Database (Prisma)
-- Use PostgreSQL with Prisma ORM
-- Prisma client singleton pattern in `@/lib/prisma.ts`
-- Multi-tenancy: All tables (except User, Organization) have `orgId` foreign key
-- All queries MUST be scoped to `orgId` for data isolation
-
-### Service Layer Pattern
-- Business logic resides in `@/services/` (e.g., `attendance-service.ts`)
-- API routes are entry points that call service methods
-- Never put business logic directly in API route handlers
-
-### Type Safety
-- Use Zod v4 for all request body validation
-- Use `.strict()` or `.strip()` on schemas to prevent parameter injection
-- Use `z.infer` to export TypeScript types from schemas
 
 ---
 
@@ -66,32 +51,107 @@ Types/Enums: PascalCase (e.g., CheckType, Role)
 - Use absolute path alias `@/` for all imports
 - Group imports: external → internal → relative
 ```typescript
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { attendanceService } from '@/services/attendance-service';
-import { success, error, serverError } from '@/lib/api-response';
 import { scanAttendanceSchema } from '@/lib/validation';
 ```
 
+### TypeScript
+- Enable `strict: true` in tsconfig (already configured)
+- Use explicit return types on public functions
+- Use `type` for simple shapes, `interface` for extensible objects
+- Export types from validation schemas: `export type ScanInput = z.infer<typeof scanAttendanceSchema>`
+
+### Formatting
+- Use single quotes for strings
+- No trailing semicolons (Next.js default)
+- 2-space indentation
+- Max line length: 100 characters
+
+### Error Handling
+- Use Zod `.strict()` or `.strip()` on schemas to prevent injection
+- Try/catch at API route level, throw in services
+- Never log sensitive data (passwords, tokens, RFID UIDs)
+```typescript
+try {
+  const result = await attendanceService.scan(rfidUid, deviceId, orgId);
+  return success(result);
+} catch (error) {
+  console.error('Scan failed:', error.message); // Safe to log
+  return serverError('Failed to process scan');
+}
+```
+
+---
+
+## Architecture Standards
+
+### Database (Prisma)
+- Use singleton pattern: `import { prisma } from '@/lib/prisma'`
+- Multi-tenancy: All tables (except User, Organization) have `orgId` foreign key
+- Always scope queries to `orgId` for data isolation
+```typescript
+const students = await prisma.student.findMany({
+  where: { orgId, isActive: true }
+});
+```
+
+### Service Layer
+- Business logic in `@/services/` files
+- API routes are entry points only
+- Never put business logic in route handlers
+
 ### API Routes
 - Add `export const dynamic = 'force-dynamic';` to all API routes
+- Use Zod `safeParse` for validation
 - Use response helpers from `@/lib/api-response.ts`
-- Use Zod schemas with `safeParse` for validation
 
 ### API Response Format
 ```typescript
-// Success
+// Success (200/201)
 { success: true, data: {...} }
 
-// Error
+// Error (400/401/403/429/500)
 { success: false, error: { code: string, message: string, details: any } }
 ```
 
 ### HTTP Status Codes
 - 200/201: Success
-- 400: Zod Validation errors
-- 401/403: Auth/Permission failures
+- 400: Zod validation errors
+- 401/403: Auth/permission failures
 - 429: Rate limiting (device cooldown)
-- 500: Server/Database errors
+- 500: Server/database errors
+
+---
+
+## Security Best Practices
+
+- Use bcrypt for passwords (10 salt rounds)
+- Rate limit device endpoints (429 on duplicate scans)
+- HMAC signatures for RFID device authentication
+- Always scope queries to `orgId`
+- Use transactions for multi-table operations
+
+---
+
+## Key Patterns
+
+### RFID Scan Flow
+1. Device POST to `/api/scanAttendance` with `X-Device-Token` header
+2. Validate device token against Device table
+3. Check idempotency (5s window) to prevent duplicates
+4. Use `prisma.$transaction` for atomic operations:
+   - Create AttendanceRecord
+   - Update Student.currentStatus and lastSeen
+   - Update Device.lastSeen and batteryLevel
+
+### Creating New Features
+1. Add model to `prisma/schema.prisma`
+2. Run `npm run db:push`
+3. Create service methods in `@/services/`
+4. Create API route handlers
+5. Add frontend components with proper loading states
 
 ---
 
@@ -99,47 +159,25 @@ import { scanAttendanceSchema } from '@/lib/validation';
 
 ```
 app/
-├── api/
+├── api/                      # API routes
 │   ├── auth/[...nextauth]/   # NextAuth handler
 │   ├── attendance/           # Attendance CRUD
-│   ├── scanAttendance/        # RFID device scan endpoint
-│   └── ...
-├── dashboard/               # Dashboard pages (Server Components)
-├── login/                   # Auth pages
-└── super-admin/             # Admin pages
+│   └── scanAttendance/       # RFID scan endpoint
+├── dashboard/                # Dashboard pages
+├── login/                    # Auth pages
+└── (other routes)
 
 lib/
-├── prisma.ts               # Prisma singleton client
-├── auth.ts                 # NextAuth config
-├── auth-context.tsx        # Auth context provider
-├── api-response.ts         # Response helpers
-├── validation.ts           # Zod schemas
-└── utils.ts                # Utilities (cn for Tailwind)
+├── prisma.ts                 # Prisma singleton
+├── auth.ts                   # NextAuth config
+├── validation.ts             # Zod schemas
+└── api-response.ts           # Response helpers
 
 services/
-└── attendance-service.ts   # Core scan logic with idempotency
+└── attendance-service.ts     # Business logic
 
 prisma/
-└── schema.prisma           # Database schema
-```
-
----
-
-## Database Schema (Prisma)
-
-### Core Models
-- **Organization** - Multi-tenant container
-- **User** - Admins, Teachers (role-based)
-- **Student** - Students with RFID UID
-- **Device** - RFID scanners (ESP32)
-- **AttendanceRecord** - Check-in/out logs
-- **Classroom** - School classrooms
-
-### Key Enums
-```prisma
-enum Role { SUPER_ADMIN, ADMIN, TEACHER, PARENT }
-enum CheckType { check_in, check_out }
-enum SubscriptionStatus { TRIAL, ACTIVE, INACTIVE, SUSPENDED }
+└── schema.prisma             # Database schema
 ```
 
 ---
@@ -152,39 +190,9 @@ NEXTAUTH_URL=https://...
 NEXTAUTH_SECRET=...
 ```
 
----
-
-## Key Patterns
-
-### RFID Scan Flow
-1. Device sends POST to `/api/scanAttendance` with `X-Device-Token` header
-2. Validate device token against Device table
-3. Check idempotency (5s window) to prevent duplicate scans
-4. Use `prisma.$transaction` for atomic operations:
-   - Create AttendanceRecord
-   - Update Student.currentStatus and lastSeen
-   - Update Device.lastSeen and batteryLevel
-
-### Creating a New API Route
-1. Create `app/api/[resource]/route.ts`
-2. Add validation schema to `@/lib/validation.ts`
-3. Add response helpers from `@/lib/api-response.ts`
-4. Implement handler with try/catch and proper error handling
-
-### Adding a New Model
-1. Add to `prisma/schema.prisma`
-2. Run `npm run db:push` or `npm run db:migrate`
-3. Create service methods in `@/services/`
-4. Create API route handlers
-5. Add frontend components
-
----
-
-## Security Best Practices
-
-- Never log sensitive data (passwords, tokens)
-- Use bcrypt for password hashing (10 salt rounds)
-- Rate limit device endpoints (429 on duplicate scans)
-- HMAC signatures for RFID device authentication
-- Zod `.strict()` to prevent parameter injection
-- Always scope queries to `orgId` for multi-tenancy
+## Key Enums
+```prisma
+enum Role { SUPER_ADMIN, ADMIN, TEACHER, PARENT }
+enum CheckType { check_in, check_out }
+enum BusStatus { WAITING, ON_BUS_TO_SCHOOL, AT_SCHOOL, ON_BUS_TO_HOME, HOME }
+```
