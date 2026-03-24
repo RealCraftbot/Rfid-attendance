@@ -72,6 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { icon: Bus, label: 'Bus Tracking', href: '/dashboard/bus', show: role === 'admin' },
     { icon: History, label: 'Attendance', href: '/dashboard/attendance', show: role === 'admin' || role === 'teacher' },
     { icon: UserCheck, label: 'Teacher Attendance', href: '/dashboard/teacher-attendance', show: role === 'admin' },
+    { icon: Wallet, label: 'Fees & Payments', href: '/dashboard/admin/fees', show: role === 'admin' },
     { icon: Wallet, label: 'Fees & Payments', href: '/dashboard/bursar', show: role === 'bursar' },
     { icon: Wallet, label: 'Pay School Fees', href: '/dashboard/fees', show: role === 'parent' },
     { icon: FileText, label: 'View Reports', href: '/dashboard/view-reports', show: role === 'parent' },
