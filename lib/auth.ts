@@ -1,7 +1,7 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
-type Role = 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'PARENT';
+type Role = 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'PARENT' | 'BURSAR';
 
 interface StoredUser {
   id: string;

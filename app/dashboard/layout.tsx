@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { signOut } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import Logo from '@/components/Logo';
 import { 
   LayoutDashboard, 
@@ -27,12 +27,12 @@ import {
   Wallet,
   GraduationCap,
   FileText,
-  UserCheck
+  UserCheck,
+  Loader2
 } from 'lucide-react';
 
-const role: string = 'admin';
-const userData = { name: 'Admin User' };
-const organization = { name: 'Greenfield Academy' };
+// Role type matching the database
+ type Role = 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'PARENT' | 'BURSAR';
 
 interface SidebarItemProps {
   icon: React.ElementType;
@@ -57,29 +57,103 @@ const SidebarItem = ({ icon: Icon, label, href, active, onClick }: SidebarItemPr
   </Link>
 );
 
+// Navigation items configuration with role-based access
+const getNavItems = (role: string) => {
+  // Admin navigation
+  const adminItems = [
+    { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
+    { icon: BookOpen, label: 'Classrooms', href: '/dashboard/classrooms' },
+    { icon: Users, label: 'Students', href: '/dashboard/students' },
+    { icon: UserPlus, label: 'Parents', href: '/dashboard/parents' },
+    { icon: UserCog, label: 'Staff', href: '/dashboard/staff' },
+    { icon: Cpu, label: 'Devices', href: '/dashboard/devices' },
+    { icon: Bus, label: 'Bus Tracking', href: '/dashboard/bus' },
+    { icon: History, label: 'Attendance', href: '/dashboard/attendance' },
+    { icon: UserCheck, label: 'Teacher Attendance', href: '/dashboard/teacher-attendance' },
+    { icon: Wallet, label: 'Fees & Payments', href: '/dashboard/admin/fees' },
+    { icon: GraduationCap, label: 'Grades', href: '/dashboard/grades' },
+  ];
+
+  // Teacher navigation
+  const teacherItems = [
+    { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
+    { icon: BookOpen, label: 'My Classes', href: '/dashboard/classrooms' },
+    { icon: Users, label: 'Students', href: '/dashboard/students' },
+    { icon: History, label: 'Attendance', href: '/dashboard/attendance' },
+    { icon: GraduationCap, label: 'Grades', href: '/dashboard/grades' },
+  ];
+
+  // Bursar navigation
+  const bursarItems = [
+    { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
+    { icon: Users, label: 'Students', href: '/dashboard/students' },
+    { icon: Wallet, label: 'Fees & Payments', href: '/dashboard/bursar' },
+  ];
+
+  // Parent navigation
+  const parentItems = [
+    { icon: Baby, label: 'My Children', href: '/dashboard/parent' },
+    { icon: History, label: 'Attendance', href: '/dashboard/attendance' },
+    { icon: Wallet, label: 'Pay School Fees', href: '/dashboard/fees' },
+    { icon: FileText, label: 'View Reports', href: '/dashboard/view-reports' },
+    { icon: GraduationCap, label: 'Grades', href: '/dashboard/grades' },
+    { icon: MessageSquare, label: 'Notifications', href: '/dashboard/notifications' },
+  ];
+
+  switch (role) {
+    case 'ADMIN':
+    case 'SUPER_ADMIN':
+      return adminItems;
+    case 'TEACHER':
+      return teacherItems;
+    case 'BURSAR':
+      return bursarItems;
+    case 'PARENT':
+      return parentItems;
+    default:
+      return [];
+  }
+};
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const navItems = [
-    { icon: LayoutDashboard, label: 'Overview', href: '/dashboard', show: role === 'admin' || role === 'teacher' || role === 'bursar' },
-    { icon: BookOpen, label: 'Classrooms', href: '/dashboard/classrooms', show: role === 'admin' || role === 'teacher' },
-    { icon: Users, label: 'Students', href: '/dashboard/students', show: role === 'admin' || role === 'teacher' || role === 'bursar' },
-    { icon: UserPlus, label: 'Parents', href: '/dashboard/parents', show: role === 'admin' || role === 'teacher' },
-    { icon: UserCog, label: 'Staff', href: '/dashboard/staff', show: role === 'admin' },
-    { icon: Cpu, label: 'Devices', href: '/dashboard/devices', show: role === 'admin' },
-    { icon: Bus, label: 'Bus Tracking', href: '/dashboard/bus', show: role === 'admin' },
-    { icon: History, label: 'Attendance', href: '/dashboard/attendance', show: role === 'admin' || role === 'teacher' },
-    { icon: UserCheck, label: 'Teacher Attendance', href: '/dashboard/teacher-attendance', show: role === 'admin' },
-    { icon: Wallet, label: 'Fees & Payments', href: '/dashboard/admin/fees', show: role === 'admin' },
-    { icon: Wallet, label: 'Fees & Payments', href: '/dashboard/bursar', show: role === 'bursar' },
-    { icon: Wallet, label: 'Pay School Fees', href: '/dashboard/fees', show: role === 'parent' },
-    { icon: FileText, label: 'View Reports', href: '/dashboard/view-reports', show: role === 'parent' },
-    { icon: GraduationCap, label: 'Grades', href: '/dashboard/grades', show: role === 'admin' || role === 'teacher' || role === 'parent' },
-    { icon: Baby, label: 'My Children', href: '/dashboard/parent', show: role === 'parent' },
-    { icon: MessageSquare, label: 'Notifications', href: '/dashboard/notifications', show: role === 'parent' },
-  ].filter(item => item.show);
+  // Get user role and data from session
+  const userRole = session?.user?.role || '';
+  const userData = session?.user;
+  const organization = userData?.organization;
+
+  // Navigation items based on role
+  const navItems = getNavItems(userRole);
+
+  useEffect(() => {
+    // Handle loading state
+    if (status === 'loading') {
+      setIsLoading(true);
+    } else {
+      setIsLoading(false);
+    }
+
+    // Redirect if not authenticated
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+
+    // Redirect to correct dashboard based on role
+    if (status === 'authenticated' && pathname === '/dashboard') {
+      // User is already on dashboard, no need to redirect
+      // But we should verify they have access to the current page
+      const hasAccess = navItems.some(item => pathname.startsWith(item.href) || item.href === '/dashboard');
+      if (!hasAccess && navItems.length > 0) {
+        // Redirect to first allowed page
+        router.push(navItems[0].href);
+      }
+    }
+  }, [status, pathname, router, navItems]);
 
   const handleLogout = async () => {
     await signOut({ redirect: false });
@@ -93,6 +167,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     return pathname.startsWith(href);
   };
+
+  // Show loading state
+  if (isLoading || status === 'loading') {
+    return (
+      <div className="min-h-screen bg-zinc-100 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 size={48} className="animate-spin text-blue-600" />
+          <p className="text-zinc-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if no valid role
+  if (!userRole || navItems.length === 0) {
+    return (
+      <div className="min-h-screen bg-zinc-100 flex items-center justify-center">
+        <div className="text-center">
+          <ShieldCheck size={64} className="mx-auto mb-4 text-red-500" />
+          <h1 className="text-2xl font-bold text-zinc-900 mb-2">Access Denied</h1>
+          <p className="text-zinc-600 mb-4">You do not have permission to access this area.</p>
+          <button 
+            onClick={handleLogout}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Return to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-100">
@@ -134,6 +239,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <X size={24} />
             </button>
+          </div>
+
+          {/* User Info */}
+          <div className="p-4 border-b border-zinc-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center">
+                {userData?.name?.charAt(0) || 'U'}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">{userData?.name}</p>
+                <p className="text-xs text-zinc-400 capitalize">{userRole?.toLowerCase().replace('_', ' ')}</p>
+              </div>
+            </div>
+            {organization && (
+              <p className="text-xs text-zinc-500 mt-2 truncate">{organization.name}</p>
+            )}
           </div>
 
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
@@ -193,7 +314,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="text-right">
                 <p className="text-sm font-semibold text-zinc-900">{userData?.name}</p>
                 <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
-                  {organization?.name}
+                  {userRole?.replace('_', ' ')}
                 </p>
               </div>
               <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center">
