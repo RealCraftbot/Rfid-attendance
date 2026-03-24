@@ -33,12 +33,12 @@ export default function LoginPage() {
       if (result?.error) {
         console.error('Login error:', result.error);
         setError('Invalid email or password. Please try again.');
-      } else if (result?.ok) {
-        console.log('Login successful, redirecting...');
-        // Force a full page reload to ensure session is properly loaded
-        window.location.href = '/dashboard';
       } else {
-        setError('Login failed. Please try again.');
+        console.log('Login successful, redirecting...');
+        // Small delay to ensure session is set
+        setTimeout(() => {
+          window.location.replace('/dashboard');
+        }, 100);
       }
     } catch (err) {
       console.error('Login exception:', err);
