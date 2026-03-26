@@ -158,6 +158,15 @@ export default function SettingsPage() {
         setMessage({ type: 'success', text: 'Organization settings updated successfully!' });
         if (data.organization) {
           setOrg(data.organization);
+          // Update session with new organization name so sidebar reflects change
+          await updateSession({ 
+            organization: {
+              id: data.organization.id,
+              name: data.organization.name,
+              slug: data.organization.slug || org?.id || '',
+              status: 'ACTIVE'
+            }
+          });
         }
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to update organization' });

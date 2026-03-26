@@ -126,14 +126,26 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60,
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // Initial sign in
       if (user) {
         const u = user as any;
         token.id = u.id || token.sub;
         token.role = u.role;
         token.orgId = u.orgId;
         token.organization = u.organization;
+        token.name = u.name;
+        token.email = u.email;
       }
+      
+      // Handle session update (e.g., from settings page)
+      if (trigger === 'update' && session) {
+        // Update token with new session data
+        if (session.name) token.name = session.name;
+        if (session.email) token.email = session.email;
+        if (session.organization) token.organization = session.organization;
+      }
+      
       return token;
     },
     async session({ session, token }) {
@@ -141,6 +153,8 @@ export const authOptions: NextAuthOptions = {
       session.user.role = token.role;
       session.user.orgId = token.orgId;
       session.user.organization = token.organization;
+      session.user.name = token.name || session.user.name;
+      session.user.email = token.email || session.user.email;
       return session;
     },
   },
