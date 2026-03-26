@@ -264,6 +264,53 @@ export default function StudentsPage() {
                   </td>
                   <td className="px-3 md:px-6 py-3 md:py-4 text-right hidden sm:table-cell">
                     <div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <label className="p-1.5 md:p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title="Upload Photo">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            // Show preview immediately
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setStudents(prev => prev.map(s => 
+                                s.id === student.id ? { ...s, imageUrl: reader.result as string } : s
+                              ));
+                            };
+                            reader.readAsDataURL(file);
+                            
+                            // Upload to server
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('type', 'student');
+                            formData.append('studentId', student.id);
+                            
+                            try {
+                              const response = await fetch('/api/upload', {
+                                method: 'POST',
+                                body: formData,
+                              });
+                              
+                              const data = await response.json();
+                              if (data.success) {
+                                // Update with actual URL from server
+                                setStudents(prev => prev.map(s => 
+                                  s.id === student.id ? { ...s, imageUrl: data.url } : s
+                                ));
+                              } else {
+                                alert('Failed to upload image');
+                              }
+                            } catch (error) {
+                              console.error('Upload error:', error);
+                              alert('Failed to upload image');
+                            }
+                          }}
+                        />
+                        <Camera size={14} className="md:w-4 md:h-4" />
+                      </label>
                       <button className="p-1.5 md:p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors">
                         <Edit2 size={14} className="md:w-4 md:h-4" />
                       </button>

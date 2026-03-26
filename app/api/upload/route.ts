@@ -107,6 +107,22 @@ export async function POST(req: NextRequest) {
         }
         break;
 
+      case 'student':
+        folder = `rfid-attendance/students/${session.user.orgId || 'general'}`;
+        result = await uploadToCloudinary(base64, { folder });
+        
+        if (result.success) {
+          const studentId = formData.get('studentId') as string;
+          if (studentId) {
+            await prisma.student.update({
+              where: { id: studentId },
+              data: { imageUrl: result.url },
+            });
+          }
+          updateData = { imageUrl: result.url };
+        }
+        break;
+
       case 'document':
       case 'payment-proof':
         folder = `rfid-attendance/documents/${session.user.orgId || 'general'}`;
