@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
         email: true,
         role: true,
         orgId: true,
+        imageUrl: true,
         org: {
           select: {
             id: true,
@@ -64,6 +65,7 @@ export async function GET(req: NextRequest) {
         email: user.email,
         role: user.role,
         phone: '', // Add to schema later
+        imageUrl: user.imageUrl,
       },
       organization: user.org,
     });

@@ -260,8 +260,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* User Info */}
           <div className="p-4 border-b border-zinc-800">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center">
-                {userData?.name?.charAt(0) || 'U'}
+              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center overflow-hidden">
+                {userData?.imageUrl ? (
+                  <img 
+                    src={userData.imageUrl} 
+                    alt={userData?.name || 'User'} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{userData?.name?.charAt(0) || 'U'}</span>
+                )}
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">{userData?.name}</p>
@@ -326,17 +334,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             
             <div className="h-8 w-[1px] bg-zinc-200" />
 
-            <div className="flex items-center gap-3">
+            <Link href="/dashboard/settings" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <div className="text-right">
                 <p className="text-sm font-semibold text-zinc-900">{userData?.name}</p>
                 <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
                   {userRole?.replace('_', ' ')}
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center">
-                {userData?.name?.charAt(0) || 'U'}
+              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center overflow-hidden">
+                {userData?.imageUrl ? (
+                  <img 
+                    src={userData.imageUrl} 
+                    alt={userData?.name || 'User'} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{userData?.name?.charAt(0) || 'U'}</span>
+                )}
               </div>
-            </div>
+            </Link>
           </div>
         </header>
 

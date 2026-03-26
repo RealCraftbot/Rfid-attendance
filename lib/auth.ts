@@ -13,6 +13,7 @@ declare module 'next-auth' {
       name: string;
       role: Role;
       orgId: string | null;
+      imageUrl?: string | null;
       organization?: {
         id: string;
         name: string;
@@ -28,6 +29,7 @@ declare module 'next-auth/jwt' {
     id: string;
     role: Role;
     orgId: string | null;
+    imageUrl?: string | null;
     organization?: {
       id: string;
       name: string;
@@ -107,6 +109,7 @@ export const authOptions: NextAuthOptions = {
             name: user.name,
             role: user.role as Role,
             orgId: user.orgId,
+            imageUrl: user.imageUrl,
             organization: user.org ? {
               id: user.org.id,
               name: user.org.name,
@@ -133,6 +136,7 @@ export const authOptions: NextAuthOptions = {
         token.id = u.id || token.sub;
         token.role = u.role;
         token.orgId = u.orgId;
+        token.imageUrl = u.imageUrl;
         token.organization = u.organization;
         token.name = u.name;
         token.email = u.email;
@@ -143,6 +147,7 @@ export const authOptions: NextAuthOptions = {
         // Update token with new session data
         if (session.name) token.name = session.name;
         if (session.email) token.email = session.email;
+        if (session.imageUrl !== undefined) token.imageUrl = session.imageUrl;
         if (session.organization) token.organization = session.organization;
       }
       
@@ -152,6 +157,7 @@ export const authOptions: NextAuthOptions = {
       session.user.id = token.id;
       session.user.role = token.role;
       session.user.orgId = token.orgId;
+      session.user.imageUrl = token.imageUrl;
       session.user.organization = token.organization;
       session.user.name = token.name || session.user.name;
       session.user.email = token.email || session.user.email;

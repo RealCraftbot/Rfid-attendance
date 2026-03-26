@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import ImageUpload from '@/components/ImageUpload';
 import { 
   Settings, 
   Building, 
@@ -323,6 +324,32 @@ export default function SettingsPage() {
             <h3 className="font-bold text-zinc-900 text-sm md:text-base">Personal Profile</h3>
           </div>
           <form onSubmit={handleUpdateProfile} className="p-4 md:p-8 space-y-4 md:space-y-6">
+            {/* Profile Picture Upload */}
+            <div className="flex flex-col sm:flex-row gap-6 items-start">
+              <ImageUpload
+                currentImage={session?.user?.imageUrl}
+                onUpload={async (url) => {
+                  // Update session with new image
+                  await updateSession({ imageUrl: url });
+                  setMessage({ type: 'success', text: 'Profile picture updated!' });
+                }}
+                onRemove={async () => {
+                  // Remove image
+                  await updateSession({ imageUrl: null });
+                  setMessage({ type: 'success', text: 'Profile picture removed!' });
+                }}
+                type="profile"
+                size="lg"
+                shape="circle"
+              />
+              <div className="flex-1 w-full">
+                <p className="text-sm font-medium text-zinc-700 mb-2">Profile Picture</p>
+                <p className="text-xs text-zinc-500 mb-4">
+                  Upload a clear photo of yourself. This will be visible to other users in the system.
+                </p>
+              </div>
+            </div>
+            
             <div className="max-w-md space-y-3 md:space-y-4">
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Full Name</label>
