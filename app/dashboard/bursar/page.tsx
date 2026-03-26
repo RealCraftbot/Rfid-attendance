@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import BursarDashboardClient from './BursarDashboardClient';
 
-export const dynamic = 'force-dynamic';
 
 export default function BursarDashboardPage() {
   return (

@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import AttendanceClassesClient from './AttendanceClassesClient';
 
-export const dynamic = 'force-dynamic';
 
 export default function AttendanceClassesPage() {
   return (

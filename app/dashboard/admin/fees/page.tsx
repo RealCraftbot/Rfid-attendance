@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import AdminFeesClient from './AdminFeesClient';
 
-export const dynamic = 'force-dynamic';
 
 export default function AdminFeesPage() {
   return (

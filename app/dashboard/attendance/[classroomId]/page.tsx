@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import ClassroomAttendanceClient from './ClassroomAttendanceClient';
 
-export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{
