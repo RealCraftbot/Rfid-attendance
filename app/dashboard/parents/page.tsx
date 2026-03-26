@@ -56,8 +56,6 @@ const mockStudents = [
   { id: 's5', name: 'Eze Ifeoma', rfid_uid: '7Q8R9S0T', class: 'SSS 2', parent_id: 'p3' },
 ];
 
-const role = 'admin';
-
 export default function ParentRegistrationPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [parents, setParents] = useState(mockParents);
@@ -176,14 +174,6 @@ export default function ParentRegistrationPage() {
     p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.phone?.includes(searchTerm)
   );
-
-  if (role !== 'admin' && role !== 'teacher') {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <p className="text-zinc-500">You do not have permission to view this page.</p>
-      </div>
-    );
-  }
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-in fade-in duration-500">

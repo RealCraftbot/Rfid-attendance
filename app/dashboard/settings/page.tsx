@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { 
   Settings, 
@@ -16,11 +16,8 @@ import {
   User,
   Lock,
   Bell,
-  CreditCard,
   Loader2
 } from 'lucide-react';
-
-const organization = { name: 'Greenfield Academy', id: 'org_123', admin_email: 'admin@greenfield.edu', logoUrl: null };
 
 // Role-based settings sections
 type Role = 'ADMIN' | 'SUPER_ADMIN' | 'TEACHER' | 'PARENT' | 'BURSAR';
@@ -34,19 +31,34 @@ interface UserProfile {
   confirmPassword: string;
 }
 
+interface Organization {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  logoUrl: string | null;
+  email: string;
+}
+
 export default function SettingsPage() {
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
   const role = (session?.user?.role as Role) || 'PARENT';
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
   
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
   // Organization settings (Admin only)
-  const [orgName, setOrgName] = useState(organization.name);
-  const [orgLogo, setOrgLogo] = useState<string | null>(organization.logoUrl);
+  const [org, setOrg] = useState<Organization | null>(null);
+  const [orgName, setOrgName] = useState('');
+  const [orgAddress, setOrgAddress] = useState('');
+  const [orgPhone, setOrgPhone] = useState('');
+  const [orgLogo, setOrgLogo] = useState<string | null>(null);
   
   // Personal profile settings (All roles)
   const [profile, setProfile] = useState<UserProfile>({
-    name: session?.user?.name || '',
-    email: session?.user?.email || '',
+    name: '',
+    email: '',
     phone: '',
     currentPassword: '',
     newPassword: '',
@@ -61,10 +73,44 @@ export default function SettingsPage() {
     attendanceAlerts: true,
   });
   
-  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load settings on mount
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/settings');
+      const data = await response.json();
+      
+      if (data.success) {
+        setProfile(prev => ({
+          ...prev,
+          name: data.user.name || '',
+          email: data.user.email || '',
+          phone: data.user.phone || '',
+        }));
+        
+        if (data.organization) {
+          setOrg(data.organization);
+          setOrgName(data.organization.name || '');
+          setOrgAddress(data.organization.address || '');
+          setOrgPhone(data.organization.phone || '');
+          setOrgLogo(data.organization.logoUrl || null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch settings:', error);
+      setMessage({ type: 'error', text: 'Failed to load settings' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -76,7 +122,7 @@ export default function SettingsPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setOrgLogo(reader.result as string);
-        setMessage({ type: 'success', text: 'School logo uploaded successfully!' });
+        setMessage({ type: 'success', text: 'Logo selected. Click Save Changes to upload.' });
       };
       reader.readAsDataURL(file);
     }
@@ -89,43 +135,104 @@ export default function SettingsPage() {
     }
   };
 
-  const handleUpdateOrg = (e: React.FormEvent) => {
+  const handleUpdateOrg = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
     setMessage({ type: '', text: '' });
     
-    setTimeout(() => {
-      setMessage({ type: 'success', text: 'Organization settings updated successfully!' });
-      setLoading(false);
-    }, 1000);
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: orgName,
+          address: orgAddress,
+          phone: orgPhone,
+          logoUrl: orgLogo,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Organization settings updated successfully!' });
+        if (data.organization) {
+          setOrg(data.organization);
+        }
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to update organization' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to update organization' });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleUpdateProfile = (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
     setMessage({ type: '', text: '' });
     
-    setTimeout(() => {
-      setMessage({ type: 'success', text: 'Profile updated successfully!' });
-      setLoading(false);
-    }, 1000);
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: profile.name,
+          phone: profile.phone,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Profile updated successfully!' });
+        // Update session with new name
+        await updateSession({ name: profile.name });
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to update profile' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to update profile' });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleUpdatePassword = (e: React.FormEvent) => {
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (profile.newPassword !== profile.confirmPassword) {
       setMessage({ type: 'error', text: 'New passwords do not match' });
       return;
     }
     
-    setLoading(true);
+    setSaving(true);
     setMessage({ type: '', text: '' });
     
-    setTimeout(() => {
-      setMessage({ type: 'success', text: 'Password changed successfully!' });
-      setProfile(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
-      setLoading(false);
-    }, 1000);
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: profile.currentPassword,
+          newPassword: profile.newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Password changed successfully!' });
+        setProfile(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to change password' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to change password' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const copyToClipboard = async (text: string) => {
@@ -164,6 +271,17 @@ export default function SettingsPage() {
         return 'Manage your account settings';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center gap-3 text-zinc-500">
+          <Loader2 size={24} className="animate-spin" />
+          <span>Loading settings...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-4xl space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -230,11 +348,11 @@ export default function SettingsPage() {
             </div>
             <button 
               type="submit"
-              disabled={loading}
+              disabled={saving}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95 disabled:opacity-50 text-sm"
             >
-              <Save size={18} />
-              {loading ? 'Saving...' : 'Save Profile'}
+              {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {saving ? 'Saving...' : 'Save Profile'}
             </button>
           </form>
         </section>
@@ -266,7 +384,7 @@ export default function SettingsPage() {
                   value={profile.newPassword}
                   onChange={(e) => setProfile(prev => ({ ...prev, newPassword: e.target.value }))}
                   className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
-                  placeholder="Enter new password"
+                  placeholder="Enter new password (min 8 characters)"
                 />
               </div>
               <div>
@@ -282,11 +400,11 @@ export default function SettingsPage() {
             </div>
             <button 
               type="submit"
-              disabled={loading || !profile.currentPassword || !profile.newPassword || !profile.confirmPassword}
+              disabled={saving || !profile.currentPassword || !profile.newPassword || !profile.confirmPassword}
               className="flex items-center gap-2 bg-zinc-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-95 disabled:opacity-50 text-sm"
             >
-              <Key size={18} />
-              {loading ? 'Updating...' : 'Update Password'}
+              {saving ? <Loader2 size={18} className="animate-spin" /> : <Key size={18} />}
+              {saving ? 'Updating...' : 'Update Password'}
             </button>
           </form>
         </section>
@@ -368,7 +486,7 @@ export default function SettingsPage() {
         </section>
 
         {/* ORGANIZATION SETTINGS - Admin Only */}
-        {isAdmin && (
+        {isAdmin && org && (
           <>
             <div className="pt-4 border-t border-zinc-200">
               <h2 className="text-lg font-bold text-zinc-900 mb-4">Organization Settings</h2>
@@ -444,8 +562,8 @@ export default function SettingsPage() {
                             )}
                           </div>
                           <div>
-                            <p className="font-bold text-blue-700 text-sm">{orgName}</p>
-                            <p className="text-xs text-zinc-500">123 Education Street, Lagos</p>
+                            <p className="font-bold text-blue-700 text-sm">{orgName || 'School Name'}</p>
+                            <p className="text-xs text-zinc-500">{orgAddress || 'School Address'}</p>
                           </div>
                         </div>
                         <div className="mt-3 pt-3 border-t border-zinc-100 text-center">
@@ -482,6 +600,8 @@ export default function SettingsPage() {
                     <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">School Address</label>
                     <input 
                       type="text" 
+                      value={orgAddress}
+                      onChange={(e) => setOrgAddress(e.target.value)}
                       className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
                       placeholder="123 Education Street, Lagos, Nigeria"
                     />
@@ -490,6 +610,8 @@ export default function SettingsPage() {
                     <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">School Phone</label>
                     <input 
                       type="tel" 
+                      value={orgPhone}
+                      onChange={(e) => setOrgPhone(e.target.value)}
                       className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
                       placeholder="+234 801 234 5678"
                     />
@@ -499,7 +621,7 @@ export default function SettingsPage() {
                     <input 
                       type="email" 
                       disabled
-                      value={organization.admin_email}
+                      value={org?.email || ''}
                       className="w-full px-4 py-2.5 bg-zinc-100 border border-zinc-200 rounded-xl text-zinc-400 text-sm cursor-not-allowed"
                     />
                     <p className="text-[10px] text-zinc-400 mt-1 font-medium italic">Email cannot be changed from the dashboard.</p>
@@ -507,11 +629,11 @@ export default function SettingsPage() {
                 </div>
                 <button 
                   type="submit"
-                  disabled={loading}
+                  disabled={saving}
                   className="flex items-center gap-2 bg-zinc-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-95 disabled:opacity-50 text-sm"
                 >
-                  <Save size={18} />
-                  {loading ? 'Saving...' : 'Save Changes'}
+                  {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </form>
             </section>
@@ -531,10 +653,10 @@ export default function SettingsPage() {
                     <p className="text-xs text-zinc-500 mb-2 md:mb-3">Unique identifier for your organization used by RFID devices.</p>
                     <div className="flex gap-2">
                       <code className="flex-1 px-3 md:px-4 py-2 md:py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-xs md:text-sm font-mono text-zinc-600 flex items-center overflow-hidden">
-                        {organization.id}
+                        {org?.id || ''}
                       </code>
                       <button 
-                        onClick={() => copyToClipboard(organization.id)}
+                        onClick={() => org?.id && copyToClipboard(org.id)}
                         className="p-2 md:p-2.5 border border-zinc-200 rounded-xl hover:bg-zinc-50 text-zinc-500 transition-colors"
                       >
                         {copied ? <CheckCircle2 size={16} className="md:w-[18px] md:h-[18px] text-emerald-500" /> : <Copy size={16} className="md:w-[18px] md:h-[18px]" />}
