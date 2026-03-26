@@ -32,7 +32,19 @@ export async function POST(request: Request) {
     
     if (existingUser) {
       return NextResponse.json(
-        { error: 'Email already registered' },
+        { error: 'Email already registered as a user' },
+        { status: 409 }
+      );
+    }
+
+    // Check if organization with this email already exists
+    const existingOrgByEmail = await prisma.organization.findUnique({
+      where: { email },
+    });
+
+    if (existingOrgByEmail) {
+      return NextResponse.json(
+        { error: 'An organization with this email already exists' },
         { status: 409 }
       );
     }
@@ -93,8 +105,25 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('[Signup Error]', error);
+    
+    // Handle specific Prisma errors
+    if (error instanceof Error && error.message.includes('Unique constraint')) {
+      if (error.message.includes('email')) {
+        return NextResponse.json(
+          { error: 'Email already exists in our system' },
+          { status: 409 }
+        );
+      }
+      if (error.message.includes('slug')) {
+        return NextResponse.json(
+          { error: 'Organization name already taken' },
+          { status: 409 }
+        );
+      }
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to create account' },
+      { error: 'Failed to create account. Please try again.' },
       { status: 500 }
     );
   }
