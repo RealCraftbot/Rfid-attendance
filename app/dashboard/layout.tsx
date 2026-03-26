@@ -93,7 +93,6 @@ const getNavItems = (role: string) => {
     { icon: History, label: 'Attendance', href: '/dashboard/attendance' },
     { icon: Wallet, label: 'Pay School Fees', href: '/dashboard/fees' },
     { icon: FileText, label: 'View Reports', href: '/dashboard/view-reports' },
-    { icon: GraduationCap, label: 'Grades', href: '/dashboard/grades' },
     { icon: MessageSquare, label: 'Notifications', href: '/dashboard/notifications' },
   ];
 
