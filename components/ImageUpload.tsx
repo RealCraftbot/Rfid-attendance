@@ -5,8 +5,8 @@ import { Upload, X, Loader2, User, Camera } from 'lucide-react';
 
 interface ImageUploadProps {
   currentImage?: string | null;
-  onUpload: (url: string) => void;
-  onRemove?: () => void;
+  onUpload: (url: string) => void | Promise<void>;
+  onRemove?: () => void | Promise<void>;
   type: 'profile' | 'logo' | 'document';
   size?: 'sm' | 'md' | 'lg';
   shape?: 'circle' | 'square';
@@ -28,20 +28,30 @@ export default function ImageUpload({
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(currentImage || null);
+  const [error, setError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File selected');
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+
+    console.log('File details:', file.name, file.size, file.type);
+    setError('');
 
     // Validate file
     if (file.size > 5 * 1024 * 1024) {
+      setError('File size must be less than 5MB');
       alert('File size must be less than 5MB');
       return;
     }
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
+      setError('Only JPG, PNG, and WebP images are allowed');
       alert('Only JPG, PNG, and WebP images are allowed');
       return;
     }
@@ -49,33 +59,47 @@ export default function ImageUpload({
     // Show preview immediately
     const reader = new FileReader();
     reader.onloadend = () => {
+      console.log('File read complete, showing preview');
       setPreview(reader.result as string);
+    };
+    reader.onerror = (err) => {
+      console.error('FileReader error:', err);
+      setError('Failed to read file');
     };
     reader.readAsDataURL(file);
 
     // Upload
+    console.log('Starting upload...');
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('type', type);
 
+      console.log('Sending request to /api/upload');
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
 
+      console.log('Response received:', response.status);
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (data.success) {
-        onUpload(data.url);
+        console.log('Upload successful, calling onUpload with URL:', data.url);
+        await onUpload(data.url);
+        console.log('onUpload completed');
       } else {
+        console.error('Upload failed:', data.error);
+        setError(data.error || 'Failed to upload image');
         alert(data.error || 'Failed to upload image');
         setPreview(currentImage || null);
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload image');
+      setError('Failed to upload image. Check console for details.');
+      alert('Failed to upload image. Check console for details.');
       setPreview(currentImage || null);
     } finally {
       setUploading(false);
@@ -87,7 +111,12 @@ export default function ImageUpload({
     
     if (confirm('Are you sure you want to remove this image?')) {
       setPreview(null);
-      onRemove();
+      try {
+        await onRemove();
+      } catch (error) {
+        console.error('Remove error:', error);
+        setPreview(currentImage || null);
+      }
     }
   };
 
@@ -137,17 +166,24 @@ export default function ImageUpload({
         )}
       </div>
 
+      {error && (
+        <p className="text-xs text-red-500 text-center max-w-[200px]">{error}</p>
+      )}
+
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/jpg"
         onChange={handleFileSelect}
         className="hidden"
       />
 
       {!preview && (
         <button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => {
+            console.log('Upload button clicked');
+            fileInputRef.current?.click();
+          }}
           disabled={uploading}
           className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
         >

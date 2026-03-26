@@ -329,14 +329,27 @@ export default function SettingsPage() {
               <ImageUpload
                 currentImage={session?.user?.imageUrl}
                 onUpload={async (url) => {
-                  // Update session with new image
-                  await updateSession({ imageUrl: url });
-                  setMessage({ type: 'success', text: 'Profile picture updated!' });
+                  console.log('Settings: ImageUpload onUpload called with URL:', url);
+                  try {
+                    // Update session with new image
+                    await updateSession({ imageUrl: url });
+                    console.log('Settings: Session updated successfully');
+                    setMessage({ type: 'success', text: 'Profile picture updated!' });
+                  } catch (error) {
+                    console.error('Settings: Failed to update session:', error);
+                    setMessage({ type: 'error', text: 'Failed to update profile picture' });
+                  }
                 }}
                 onRemove={async () => {
-                  // Remove image
-                  await updateSession({ imageUrl: null });
-                  setMessage({ type: 'success', text: 'Profile picture removed!' });
+                  console.log('Settings: Removing profile picture');
+                  try {
+                    // Remove image
+                    await updateSession({ imageUrl: null });
+                    setMessage({ type: 'success', text: 'Profile picture removed!' });
+                  } catch (error) {
+                    console.error('Settings: Failed to remove image:', error);
+                    setMessage({ type: 'error', text: 'Failed to remove profile picture' });
+                  }
                 }}
                 type="profile"
                 size="lg"
