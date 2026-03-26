@@ -27,7 +27,7 @@ const routePermissions: Record<string, string[]> = {
   
   // Shared routes
   '/dashboard/students': ['ADMIN', 'SUPER_ADMIN', 'TEACHER', 'BURSAR'],
-  '/dashboard/parents': ['ADMIN', 'SUPER_ADMIN', 'TEACHER'],
+  '/dashboard/parents': ['ADMIN', 'SUPER_ADMIN', 'TEACHER', 'BURSAR'],
   '/dashboard/grades': ['ADMIN', 'SUPER_ADMIN', 'TEACHER'],
   '/dashboard/settings': ['ADMIN', 'SUPER_ADMIN', 'TEACHER', 'BURSAR', 'PARENT'],
 };
