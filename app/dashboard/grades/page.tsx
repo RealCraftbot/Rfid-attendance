@@ -19,8 +19,11 @@ import {
   Camera,
   Eye,
   History,
-  Wallet
+  Wallet,
+  ShieldAlert
 } from 'lucide-react';
+import { RoleGuard } from '@/components/RoleGuard';
+import { useRBAC } from '@/hooks/use-rbac';
 
 // Types
 interface SubjectGrade {
@@ -180,7 +183,7 @@ const calculateGrade = (firstCA: number, secondCA: number, exam: number) => {
   return { total, grade: gradeInfo?.grade || 'F', remark: gradeInfo?.remark || 'Fail' };
 };
 
-export default function GradesPage() {
+function GradesContent() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
@@ -848,5 +851,26 @@ export default function GradesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Wrap with RoleGuard to restrict access to admin/teacher only
+export default function GradesPage() {
+  return (
+    <RoleGuard 
+      allowedRoles={['SUPER_ADMIN', 'ADMIN', 'TEACHER']}
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-zinc-100">
+          <div className="text-center p-8 bg-white rounded-2xl shadow-lg max-w-md">
+            <ShieldAlert size={64} className="mx-auto mb-4 text-red-500" />
+            <h1 className="text-2xl font-bold text-zinc-900 mb-2">Access Denied</h1>
+            <p className="text-zinc-600 mb-4">You do not have permission to access the grades management system.</p>
+            <p className="text-sm text-zinc-500">Parents can view report cards from the &quot;View Reports&quot; page.</p>
+          </div>
+        </div>
+      }
+    >
+      <GradesContent />
+    </RoleGuard>
   );
 }

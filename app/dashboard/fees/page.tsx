@@ -1,360 +1,624 @@
 'use client';
 
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Receipt, 
-  CreditCard, 
-  TrendingUp,
-  Plus,
-  X,
-  Search,
-  Filter,
+  Wallet,
+  CreditCard,
+  Building2,
+  Upload,
   CheckCircle2,
   AlertCircle,
   Clock,
-  Download,
-  Upload,
-  Printer,
-  Wallet
+  History,
+  Baby,
+  FileText,
+  X,
+  ChevronRight,
+  Banknote,
+  Receipt,
+  Smartphone
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useSession } from 'next-auth/react';
+import { useRBAC } from '@/hooks/use-rbac';
 
-type PaymentStatus = 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE';
+interface Child {
+  id: string;
+  name: string;
+  class: string;
+  admissionNo: string;
+  outstandingFees: number;
+  paidAmount: number;
+}
 
-interface Fee {
+interface FeeItem {
   id: string;
   name: string;
   amount: number;
   dueDate: string;
-  status: PaymentStatus;
+  status: 'PAID' | 'PARTIAL' | 'PENDING' | 'OVERDUE';
   paidAmount: number;
 }
 
-interface Invoice {
+interface BankAccount {
   id: string;
-  student: string;
-  class: string;
-  amount: number;
-  paidAmount: number;
-  status: PaymentStatus;
-  dueDate: string;
-  items: string[];
-  admissionNo: string;
-  term: number;
-  academicYear: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  isDefault: boolean;
 }
 
-const NIGERIAN_FEE_TYPES = [
-  'Tuition Fee',
-  'Development Levy',
-  'Laboratory Fee',
-  'Sports Fee',
-  'Library Fee',
-  'ICT Fee',
-  'Security Fee',
-  'Medical Fee',
-  'Examination Fee',
-  'Uniform Fee',
-  'Books Fee',
-  'Transport Fee',
-  'Feeding Fee',
-  'Handbook Fee',
-  'CASTER Fee',
-  'WAEC Registration',
-  'NECO Registration',
-  'JAMB Registration',
+interface PaymentSubmission {
+  amount: number;
+  transactionRef: string;
+  paymentMethod: 'BANK_TRANSFER' | 'POS' | 'CASH' | 'ONLINE';
+  notes: string;
+  proofOfPayment?: File;
+}
+
+// Mock data - replace with API calls
+const mockChildren: Child[] = [
+  { 
+    id: '1', 
+    name: 'Chukwuemeka Okafor', 
+    class: 'Primary 5', 
+    admissionNo: 'GA/2023/001',
+    outstandingFees: 45000,
+    paidAmount: 90000
+  },
 ];
 
-const NIGERIAN_CLASSES = [
-  'Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6',
-  'JSS 1', 'JSS 2', 'JSS 3',
-  'SS 1', 'SS 2', 'SS 3'
+const mockFees: FeeItem[] = [
+  { id: '1', name: 'Second Term Tuition', amount: 85000, dueDate: '2026-01-15', status: 'PARTIAL', paidAmount: 40000 },
+  { id: '2', name: 'Laboratory Fee', amount: 10000, dueDate: '2025-09-15', status: 'OVERDUE', paidAmount: 0 },
 ];
 
-const mockFees: Fee[] = [
-  { id: '1', name: 'First Term Tuition', amount: 85000, dueDate: '2025-09-15', status: 'PAID', paidAmount: 85000 },
-  { id: '2', name: 'Second Term Tuition', amount: 85000, dueDate: '2026-01-15', status: 'PARTIAL', paidAmount: 40000 },
-  { id: '3', name: 'Third Term Tuition', amount: 85000, dueDate: '2026-04-15', status: 'PENDING', paidAmount: 0 },
-  { id: '4', name: 'Development Levy', amount: 15000, dueDate: '2025-09-15', status: 'PAID', paidAmount: 15000 },
-  { id: '5', name: 'Laboratory Fee', amount: 10000, dueDate: '2025-09-15', status: 'OVERDUE', paidAmount: 0 },
-  { id: '6', name: 'ICT Fee', amount: 20000, dueDate: '2025-09-15', status: 'PAID', paidAmount: 20000 },
-  { id: '7', name: 'Sports Fee', amount: 5000, dueDate: '2025-09-15', status: 'PAID', paidAmount: 5000 },
-  { id: '8', name: 'WAEC Registration', amount: 35000, dueDate: '2026-02-28', status: 'PENDING', paidAmount: 0 },
+const mockBankAccounts: BankAccount[] = [
+  { id: '1', bankName: 'First Bank of Nigeria', accountNumber: '1234567890', accountName: 'Greenfield Academy', isDefault: true },
+  { id: '2', bankName: 'Guaranty Trust Bank', accountNumber: '0987654321', accountName: 'Greenfield Academy', isDefault: false },
 ];
 
-const mockInvoices: Invoice[] = [
-  { id: '1', student: 'Chukwuemeka Okafor', class: 'JSS 3A', admissionNo: 'GA/2020/001', amount: 135000, paidAmount: 135000, status: 'PAID', dueDate: '2025-09-15', term: 1, academicYear: '2025/2026', items: ['Tuition', 'Development Levy', 'Laboratory', 'ICT', 'Sports'] },
-  { id: '2', student: 'Adaeze Nwosu', class: 'JSS 3A', admissionNo: 'GA/2020/002', amount: 135000, paidAmount: 90000, status: 'PARTIAL', dueDate: '2026-01-15', term: 2, academicYear: '2025/2026', items: ['Tuition'] },
-  { id: '3', student: 'Oluwaseun Adebayo', class: 'SS 2 Science', admissionNo: 'GA/2019/015', amount: 185000, paidAmount: 0, status: 'PENDING', dueDate: '2025-09-15', term: 1, academicYear: '2025/2026', items: ['Tuition', 'WAEC Registration', 'Laboratory'] },
-  { id: '4', student: 'Fatima Ibrahim', class: 'SS 3', admissionNo: 'GA/2018/008', amount: 220000, paidAmount: 0, status: 'OVERDUE', dueDate: '2025-09-15', term: 1, academicYear: '2025/2026', items: ['Tuition', 'WAEC Registration', 'NECO Registration'] },
+const mockPaymentHistory = [
+  { id: '1', date: '2025-09-10', amount: 85000, method: 'BANK_TRANSFER', status: 'VERIFIED', description: 'First Term Tuition' },
+  { id: '2', date: '2025-09-10', amount: 15000, method: 'BANK_TRANSFER', status: 'VERIFIED', description: 'Development Levy' },
+  { id: '3', date: '2026-01-05', amount: 40000, method: 'POS', status: 'VERIFIED', description: 'Second Term Tuition (Partial)' },
 ];
 
-const getStatusStyle = (status: PaymentStatus) => {
-  const styles: Record<PaymentStatus, { bg: string; text: string; icon: any }> = {
-    PAID: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle2 },
-    PARTIAL: { bg: 'bg-amber-100', text: 'text-amber-700', icon: Clock },
-    PENDING: { bg: 'bg-blue-100', text: 'text-blue-700', icon: AlertCircle },
-    OVERDUE: { bg: 'bg-red-100', text: 'text-red-700', icon: AlertCircle },
-  };
-  return styles[status];
-};
-
-export default function FeesPage() {
-  const [showAddFeeModal, setShowAddFeeModal] = useState(false);
-  const [showAddInvoiceModal, setShowAddInvoiceModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-
-  const totalCollected = mockInvoices.reduce((sum, inv) => sum + inv.paidAmount, 0);
-  const totalExpected = mockInvoices.reduce((sum, inv) => sum + inv.amount, 0);
-  const pendingPayments = mockInvoices.filter(inv => inv.status === 'PENDING' || inv.status === 'OVERDUE').length;
-
-  const filteredInvoices = mockInvoices.filter(inv => {
-    const matchesSearch = inv.student.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
-    return matchesSearch && matchesStatus;
+function ParentFeesContent() {
+  const { data: session } = useSession();
+  const { role } = useRBAC();
+  const [selectedChild, setSelectedChild] = useState<Child>(mockChildren[0]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'pay' | 'history'>('overview');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedFee, setSelectedFee] = useState<FeeItem | null>(null);
+  const [paymentForm, setPaymentForm] = useState<PaymentSubmission>({
+    amount: 0,
+    transactionRef: '',
+    paymentMethod: 'BANK_TRANSFER',
+    notes: '',
   });
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const totalOutstanding = mockFees.reduce((sum, fee) => sum + (fee.amount - fee.paidAmount), 0);
+  const totalPaid = mockFees.reduce((sum, fee) => sum + fee.paidAmount, 0);
+  const totalExpected = mockFees.reduce((sum, fee) => sum + fee.amount, 0);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      setUploadedFile(file);
+    }
+  };
+
+  const handleSubmitPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    setIsSubmitting(false);
+    setSubmitSuccess(true);
+
+    // Reset after 3 seconds
+    setTimeout(() => {
+      setSubmitSuccess(false);
+      setShowPaymentModal(false);
+      setPaymentForm({
+        amount: 0,
+        transactionRef: '',
+        paymentMethod: 'BANK_TRANSFER',
+        notes: '',
+      });
+      setUploadedFile(null);
+    }, 3000);
+  };
+
+  const openPaymentModal = (fee?: FeeItem) => {
+    if (fee) {
+      setSelectedFee(fee);
+      setPaymentForm(prev => ({
+        ...prev,
+        amount: fee.amount - fee.paidAmount,
+      }));
+    } else {
+      setSelectedFee(null);
+      setPaymentForm({
+        amount: 0,
+        transactionRef: '',
+        paymentMethod: 'BANK_TRANSFER',
+        notes: '',
+      });
+    }
+    setShowPaymentModal(true);
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900">School Fees</h1>
-          <p className="text-zinc-500 mt-1 text-sm sm:text-base">Manage fee structures and track payments</p>
-        </div>
-        <button 
-          onClick={() => setShowAddInvoiceModal(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors w-full sm:w-auto justify-center"
-        >
-          <Plus size={18} />
-          Create Invoice
-        </button>
+    <div className="p-4 md:p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-zinc-900">Pay School Fees</h1>
+        <p className="text-zinc-500 mt-1">View outstanding fees and make payments for your children</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-        <div className="bg-white p-4 sm:p-6 rounded-xl border border-zinc-200 shadow-sm">
+      {/* Child Selector */}
+      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-4">
+        <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Select Child</label>
+        <div className="flex flex-wrap gap-2">
+          {mockChildren.map((child) => (
+            <button
+              key={child.id}
+              onClick={() => setSelectedChild(child)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedChild.id === child.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+              }`}
+            >
+              <Baby size={16} />
+              {child.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <AlertCircle size={20} className="text-red-600" />
+            </div>
+            <span className="text-sm text-zinc-500">Outstanding Balance</span>
+          </div>
+          <p className="text-2xl font-bold text-red-600">₦{totalOutstanding.toLocaleString()}</p>
+          <p className="text-xs text-zinc-400 mt-1">{mockFees.filter(f => f.status !== 'PAID').length} pending payments</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-green-100 rounded-lg">
-              <Wallet size={20} className="text-green-600" />
+              <CheckCircle2 size={20} className="text-green-600" />
             </div>
-            <span className="text-xs sm:text-sm text-zinc-500">Total Collected</span>
+            <span className="text-sm text-zinc-500">Total Paid</span>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-900">₦{totalCollected.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-green-600">₦{totalPaid.toLocaleString()}</p>
+          <p className="text-xs text-zinc-400 mt-1">This academic year</p>
         </div>
 
-        <div className="bg-white p-4 sm:p-6 rounded-xl border border-zinc-200 shadow-sm">
+        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-blue-100 rounded-lg">
-              <Receipt size={20} className="text-blue-600" />
+              <Wallet size={20} className="text-blue-600" />
             </div>
-            <span className="text-xs sm:text-sm text-zinc-500">Total Expected</span>
+            <span className="text-sm text-zinc-500">Total Expected</span>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-900">₦{totalExpected.toLocaleString()}</p>
-        </div>
-
-        <div className="bg-white p-4 sm:p-6 rounded-xl border border-zinc-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-amber-100 rounded-lg">
-              <Clock size={20} className="text-amber-600" />
-            </div>
-            <span className="text-xs sm:text-sm text-zinc-500">Pending</span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-900">{pendingPayments}</p>
-        </div>
-
-        <div className="bg-white p-4 sm:p-6 rounded-xl border border-zinc-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <TrendingUp size={20} className="text-purple-600" />
-            </div>
-            <span className="text-xs sm:text-sm text-zinc-500">Collection Rate</span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold text-zinc-900">{Math.round((totalCollected / totalExpected) * 100)}%</p>
+          <p className="text-2xl font-bold text-zinc-900">₦{totalExpected.toLocaleString()}</p>
+          <p className="text-xs text-zinc-400 mt-1">For all fees</p>
         </div>
       </div>
 
-      {/* Fee Structure */}
+      {/* Tabs */}
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-zinc-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h2 className="text-lg font-bold text-zinc-900">Fee Structure</h2>
-          <button 
-            onClick={() => setShowAddFeeModal(true)}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
-          >
-            <Plus size={16} />
-            Add Fee Type
-          </button>
+        <div className="border-b border-zinc-200">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'overview'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              <FileText size={18} />
+              Outstanding Fees
+            </button>
+            <button
+              onClick={() => setActiveTab('pay')}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'pay'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              <CreditCard size={18} />
+              Make Payment
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === 'history'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              <History size={18} />
+              Payment History
+            </button>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[500px]">
-            <thead className="bg-zinc-50 border-b border-zinc-200">
-              <tr>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Fee Name</th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Amount</th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Due Date</th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200">
-              {mockFees.map((fee) => {
-                const status = getStatusStyle(fee.status);
-                const StatusIcon = status.icon;
-                return (
-                  <tr key={fee.id} className="hover:bg-zinc-50">
-                    <td className="px-4 sm:px-6 py-4">
-                      <p className="font-medium text-zinc-900">{fee.name}</p>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <p className="font-medium text-zinc-900">₦{fee.amount.toLocaleString()}</p>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <p className="text-sm text-zinc-600">{format(new Date(fee.dueDate), 'MMM d, yyyy')}</p>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${status.bg} ${status.text}`}>
-                        <StatusIcon size={12} />
-                        {fee.status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      {/* Invoices */}
-      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-zinc-200">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h2 className="text-lg font-bold text-zinc-900">Recent Invoices</h2>
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                <input
-                  type="text"
-                  placeholder="Search student..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-zinc-200 rounded-lg text-sm w-full sm:w-64"
-                />
+        <div className="p-6">
+          {/* Outstanding Fees Tab */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              {/* Outstanding Fees Table */}
+              <div>
+                <h3 className="font-bold text-zinc-900 mb-4">Outstanding Fees for {selectedChild.name}</h3>
+                {mockFees.length === 0 ? (
+                  <div className="text-center py-8 text-zinc-500">
+                    <CheckCircle2 size={48} className="mx-auto mb-3 text-green-500" />
+                    <p>No outstanding fees. All payments are up to date!</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-zinc-50">
+                        <tr>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-zinc-500 uppercase">Fee Name</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-zinc-500 uppercase">Amount</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-zinc-500 uppercase">Paid</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-zinc-500 uppercase">Balance</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-zinc-500 uppercase">Due Date</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-zinc-500 uppercase">Status</th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-zinc-500 uppercase">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200">
+                        {mockFees.map((fee) => (
+                          <tr key={fee.id} className="hover:bg-zinc-50">
+                            <td className="py-4 px-4">
+                              <p className="font-medium text-zinc-900">{fee.name}</p>
+                            </td>
+                            <td className="py-4 px-4">
+                              <p className="font-medium text-zinc-900">₦{fee.amount.toLocaleString()}</p>
+                            </td>
+                            <td className="py-4 px-4">
+                              <p className="text-green-600">₦{fee.paidAmount.toLocaleString()}</p>
+                            </td>
+                            <td className="py-4 px-4">
+                              <p className="font-bold text-red-600">₦{(fee.amount - fee.paidAmount).toLocaleString()}</p>
+                            </td>
+                            <td className="py-4 px-4 text-sm text-zinc-600">
+                              {format(new Date(fee.dueDate), 'MMM d, yyyy')}
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${
+                                fee.status === 'PAID' ? 'bg-green-100 text-green-700' :
+                                fee.status === 'PARTIAL' ? 'bg-amber-100 text-amber-700' :
+                                fee.status === 'OVERDUE' ? 'bg-red-100 text-red-700' :
+                                'bg-blue-100 text-blue-700'
+                              }`}>
+                                {fee.status === 'PAID' && <CheckCircle2 size={12} />}
+                                {fee.status === 'PARTIAL' && <Clock size={12} />}
+                                {fee.status === 'OVERDUE' && <AlertCircle size={12} />}
+                                {fee.status}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 text-center">
+                              {fee.status !== 'PAID' && (
+                                <button
+                                  onClick={() => openPaymentModal(fee)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+                                >
+                                  <CreditCard size={14} />
+                                  Pay Now
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 border border-zinc-200 rounded-lg text-sm"
-              >
-                <option value="all">All Status</option>
-                <option value="PAID">Paid</option>
-                <option value="PARTIAL">Partial</option>
-                <option value="PENDING">Pending</option>
-                <option value="OVERDUE">Overdue</option>
-              </select>
+
+              {/* Pay All Button */}
+              {totalOutstanding > 0 && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => openPaymentModal()}
+                    className="flex items-center gap-2 px-6 py-3 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800"
+                  >
+                    <Wallet size={20} />
+                    Pay All Outstanding Fees (₦{totalOutstanding.toLocaleString()})
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px]">
-            <thead className="bg-zinc-50 border-b border-zinc-200">
-              <tr>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Student</th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Amount</th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Paid</th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Status</th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Due Date</th>
-                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200">
-              {filteredInvoices.map((invoice) => {
-                const status = getStatusStyle(invoice.status);
-                const StatusIcon = status.icon;
-                return (
-                  <tr key={invoice.id} className="hover:bg-zinc-50">
-                    <td className="px-4 sm:px-6 py-4">
-                      <div>
-                        <p className="font-medium text-zinc-900">{invoice.student}</p>
-                        <p className="text-xs text-zinc-500">{invoice.class} • {invoice.admissionNo}</p>
+          )}
+
+          {/* Make Payment Tab */}
+          {activeTab === 'pay' && (
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <h3 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
+                  <Building2 size={20} />
+                  School Bank Account Details
+                </h3>
+                <p className="text-sm text-blue-700 mb-4">Please transfer the payment to one of the following accounts:</p>
+                
+                <div className="space-y-3">
+                  {mockBankAccounts.map((account) => (
+                    <div key={account.id} className={`p-4 bg-white rounded-lg border ${account.isDefault ? 'border-blue-300 ring-1 ring-blue-200' : 'border-zinc-200'}`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-bold text-zinc-900">{account.bankName}</p>
+                          <p className="text-sm text-zinc-600">Account Name: {account.accountName}</p>
+                          <p className="text-lg font-bold text-zinc-900 mt-1">{account.accountNumber}</p>
+                        </div>
+                        {account.isDefault && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                            Default
+                          </span>
+                        )}
                       </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <p className="font-medium text-zinc-900">₦{invoice.amount.toLocaleString()}</p>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <p className="font-medium text-green-600">₦{invoice.paidAmount.toLocaleString()}</p>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${status.bg} ${status.text}`}>
-                        <StatusIcon size={12} />
-                        {invoice.status}
-                      </span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <p className="text-sm text-zinc-600">{format(new Date(invoice.dueDate), 'MMM d, yyyy')}</p>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <button className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium">
-                        <CreditCard size={14} />
-                        Pay
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <h4 className="font-bold text-amber-900 mb-2 flex items-center gap-2">
+                  <AlertCircle size={18} />
+                  Important Payment Instructions
+                </h4>
+                <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
+                  <li>Use your child&apos;s Admission Number as payment reference/description</li>
+                  <li>Keep your payment receipt or screenshot as proof</li>
+                  <li>Submit the payment details using the form below</li>
+                  <li>The Bursar will verify your payment within 24-48 hours</li>
+                  <li>For enquiries, contact the Bursar&apos;s office</li>
+                </ul>
+              </div>
+
+              <button
+                onClick={() => openPaymentModal()}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700"
+              >
+                <CreditCard size={20} />
+                Submit Payment Details
+              </button>
+            </div>
+          )}
+
+          {/* Payment History Tab */}
+          {activeTab === 'history' && (
+            <div>
+              <h3 className="font-bold text-zinc-900 mb-4">Payment History for {selectedChild.name}</h3>
+              {mockPaymentHistory.length === 0 ? (
+                <div className="text-center py-8 text-zinc-500">
+                  <History size={48} className="mx-auto mb-3 text-zinc-300" />
+                  <p>No payment history found</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {mockPaymentHistory.map((payment) => (
+                    <div key={payment.id} className="flex items-center justify-between p-4 bg-zinc-50 rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className={`p-2 rounded-lg ${
+                          payment.status === 'VERIFIED' ? 'bg-green-100' : 'bg-amber-100'
+                        }`}>
+                          {payment.method === 'BANK_TRANSFER' && <Building2 size={20} className={payment.status === 'VERIFIED' ? 'text-green-600' : 'text-amber-600'} />}
+                          {payment.method === 'POS' && <CreditCard size={20} className={payment.status === 'VERIFIED' ? 'text-green-600' : 'text-amber-600'} />}
+                          {payment.method === 'CASH' && <Banknote size={20} className={payment.status === 'VERIFIED' ? 'text-green-600' : 'text-amber-600'} />}
+                          {payment.method === 'ONLINE' && <Smartphone size={20} className={payment.status === 'VERIFIED' ? 'text-green-600' : 'text-amber-600'} />}
+                        </div>
+                        <div>
+                          <p className="font-medium text-zinc-900">{payment.description}</p>
+                          <p className="text-sm text-zinc-500">{format(new Date(payment.date), 'MMM d, yyyy')} • {payment.method.replace('_', ' ')}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-zinc-900">₦{payment.amount.toLocaleString()}</p>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${
+                          payment.status === 'VERIFIED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {payment.status === 'VERIFIED' && <CheckCircle2 size={10} />}
+                          {payment.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Add Fee Modal */}
-      {showAddFeeModal && (
+      {/* Payment Modal */}
+      {showPaymentModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-zinc-200 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-zinc-900">Add Fee Type</h3>
-              <button onClick={() => setShowAddFeeModal(false)} className="text-zinc-400 hover:text-zinc-600">
+              <h3 className="text-xl font-bold text-zinc-900">Submit Payment</h3>
+              <button onClick={() => setShowPaymentModal(false)} className="text-zinc-400 hover:text-zinc-600">
                 <X size={24} />
               </button>
             </div>
-            <form className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Fee Name</label>
-                <select className="w-full px-4 py-3 border border-zinc-200 rounded-xl">
-                  <option>Select Fee Type</option>
-                  {NIGERIAN_FEE_TYPES.map(fee => (
-                    <option key={fee}>{fee}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Amount (₦)</label>
-                <input type="number" placeholder="50000" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Due Date</label>
-                  <input type="date" className="w-full px-4 py-3 border border-zinc-200 rounded-xl" />
+
+            {submitSuccess ? (
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 size={32} className="text-green-600" />
                 </div>
+                <h4 className="text-xl font-bold text-zinc-900 mb-2">Payment Submitted!</h4>
+                <p className="text-zinc-600">Your payment details have been submitted successfully. The Bursar will verify and approve your payment within 24-48 hours.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitPayment} className="p-6 space-y-4">
+                {selectedFee && (
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-600">Paying for:</p>
+                    <p className="font-bold text-blue-900">{selectedFee.name}</p>
+                    <p className="text-sm text-blue-700">Outstanding: ₦{(selectedFee.amount - selectedFee.paidAmount).toLocaleString()}</p>
+                  </div>
+                )}
+
                 <div>
-                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Term</label>
-                  <select className="w-full px-4 py-3 border border-zinc-200 rounded-xl">
-                    <option>Term 1</option>
-                    <option>Term 2</option>
-                    <option>Term 3</option>
+                  <label className="block text-sm font-medium text-zinc-700 mb-1">Amount Paid (₦) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={paymentForm.amount || ''}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, amount: parseInt(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 border border-zinc-200 rounded-lg focus:ring-2 focus:ring-blue-100"
+                    placeholder="Enter amount"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 mb-1">Payment Method *</label>
+                  <select
+                    required
+                    value={paymentForm.paymentMethod}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, paymentMethod: e.target.value as any })}
+                    className="w-full px-4 py-2 border border-zinc-200 rounded-lg focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                    <option value="POS">POS Terminal</option>
+                    <option value="CASH">Cash Deposit</option>
+                    <option value="ONLINE">Online Transfer</option>
                   </select>
                 </div>
-              </div>
-              <div className="pt-4 flex gap-3">
-                <button type="button" onClick={() => setShowAddFeeModal(false)} className="flex-1 py-3 bg-zinc-100 text-zinc-600 font-bold rounded-xl">Cancel</button>
-                <button type="submit" className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl">Create Fee</button>
-              </div>
-            </form>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 mb-1">Transaction Reference / ID *</label>
+                  <input
+                    type="text"
+                    required
+                    value={paymentForm.transactionRef}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, transactionRef: e.target.value })}
+                    className="w-full px-4 py-2 border border-zinc-200 rounded-lg focus:ring-2 focus:ring-blue-100"
+                    placeholder="e.g., TRX123456789"
+                  />
+                  <p className="text-xs text-zinc-500 mt-1">Enter the transaction reference from your bank receipt</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 mb-1">Proof of Payment *</label>
+                  <div className="border-2 border-dashed border-zinc-300 rounded-lg p-4 text-center">
+                    {uploadedFile ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Receipt size={20} className="text-blue-600" />
+                          <span className="text-sm text-zinc-700">{uploadedFile.name}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUploadedFile(null)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload size={32} className="mx-auto mb-2 text-zinc-400" />
+                        <p className="text-sm text-zinc-600 mb-2">Upload receipt or screenshot</p>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          id="payment-proof"
+                        />
+                        <label
+                          htmlFor="payment-proof"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-100 text-zinc-700 rounded-lg hover:bg-zinc-200 cursor-pointer"
+                        >
+                          Choose File
+                        </label>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-1">Accepted: JPG, PNG, PDF (Max 5MB)</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 mb-1">Additional Notes</label>
+                  <textarea
+                    value={paymentForm.notes}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                    className="w-full px-4 py-2 border border-zinc-200 rounded-lg focus:ring-2 focus:ring-blue-100"
+                    rows={3}
+                    placeholder="Any additional information about the payment..."
+                  />
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPaymentModal(false)}
+                    className="flex-1 py-3 bg-zinc-100 text-zinc-700 font-bold rounded-xl hover:bg-zinc-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !uploadedFile || !paymentForm.transactionRef || paymentForm.amount <= 0}
+                    className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Submit Payment'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
     </div>
   );
 }
+
+// Export wrapped with RoleGuard
+export default function ParentFeesPage() {
+  return (
+    <RoleGuard 
+      allowedRoles={['PARENT']}
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-zinc-100">
+          <div className="text-center p-8 bg-white rounded-2xl shadow-lg max-w-md">
+            <ShieldAlert size={64} className="mx-auto mb-4 text-red-500" />
+            <h1 className="text-2xl font-bold text-zinc-900 mb-2">Access Denied</h1>
+            <p className="text-zinc-600">This page is only accessible to parents.</p>
+          </div>
+        </div>
+      }
+    >
+      <ParentFeesContent />
+    </RoleGuard>
+  );
+}
+
+import { RoleGuard } from '@/components/RoleGuard';
+import { ShieldAlert } from 'lucide-react';
