@@ -31,22 +31,29 @@ import { format } from 'date-fns';
 interface PaymentTransaction {
   id: string;
   invoiceId: string;
-  studentName: string;
-  studentClass: string;
   amount: number;
-  paymentMethod: 'BANK_TRANSFER' | 'CASH' | 'CHEQUE' | 'POS' | 'ONLINE';
-  transactionStatus: 'PENDING' | 'PROCESSING' | 'VERIFIED' | 'REJECTED' | 'COMPLETED';
-  proofOfPaymentUrl?: string;
-  paidByName: string;
-  paidByEmail: string;
-  paidByPhone: string;
+  paymentMethod: string;
+  transactionStatus: string;
+  proofOfPaymentUrl: string | null;
+  paidByName: string | null;
+  paidByEmail: string | null;
+  paidByPhone: string | null;
   transactionDate: string;
-  transactionRef?: string;
-  notes?: string;
-  reviewedByName?: string;
-  reviewedAt?: string;
-  reviewNotes?: string;
-  rejectionReason?: string;
+  transactionRef: string | null;
+  notes: string | null;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+  reviewNotes: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  invoice: {
+    id: string;
+    student: {
+      id: string;
+      name: string;
+      admissionNumber: string | null;
+    };
+  };
 }
 
 interface BursarStats {
@@ -58,107 +65,10 @@ interface BursarStats {
   outstandingBalance: number;
 }
 
-// Mock data
-const mockPayments: PaymentTransaction[] = [
-  {
-    id: 'pay1',
-    invoiceId: 'inv1',
-    studentName: 'Chukwuemeka Okafor',
-    studentClass: 'Primary 5',
-    amount: 50000,
-    paymentMethod: 'BANK_TRANSFER',
-    transactionStatus: 'PENDING',
-    paidByName: 'Mr. Okafor',
-    paidByEmail: 'okafor@email.com',
-    paidByPhone: '08012345678',
-    transactionDate: '2025-12-15T10:30:00Z',
-    transactionRef: 'TRX123456789',
-    notes: 'First term tuition fee payment',
-  },
-  {
-    id: 'pay2',
-    invoiceId: 'inv2',
-    studentName: 'Adaeze Nwosu',
-    studentClass: 'Primary 5',
-    amount: 50000,
-    paymentMethod: 'BANK_TRANSFER',
-    transactionStatus: 'VERIFIED',
-    paidByName: 'Mrs. Nwosu',
-    paidByEmail: 'nwosu@email.com',
-    paidByPhone: '08087654321',
-    transactionDate: '2025-12-14T14:20:00Z',
-    transactionRef: 'TRX987654321',
-    reviewedByName: 'Mr. Adeyemi',
-    reviewedAt: '2025-12-14T16:00:00Z',
-    reviewNotes: 'Payment confirmed from bank statement',
-  },
-  {
-    id: 'pay3',
-    invoiceId: 'inv3',
-    studentName: 'Oluwaseun Adebayo',
-    studentClass: 'JSS 2',
-    amount: 55000,
-    paymentMethod: 'CASH',
-    transactionStatus: 'COMPLETED',
-    paidByName: 'Mr. Adebayo',
-    paidByEmail: 'adebayo@email.com',
-    paidByPhone: '08023456789',
-    transactionDate: '2025-12-13T09:00:00Z',
-    reviewedByName: 'Mr. Adeyemi',
-    reviewedAt: '2025-12-13T10:00:00Z',
-  },
-  {
-    id: 'pay4',
-    invoiceId: 'inv4',
-    studentName: 'Fatima Ibrahim',
-    studentClass: 'SS 3',
-    amount: 60000,
-    paymentMethod: 'CHEQUE',
-    transactionStatus: 'REJECTED',
-    paidByName: 'Alhaji Ibrahim',
-    paidByEmail: 'ibrahim@email.com',
-    paidByPhone: '08034567890',
-    transactionDate: '2025-12-12T11:00:00Z',
-    transactionRef: 'CHQ001234',
-    reviewedByName: 'Mr. Adeyemi',
-    reviewedAt: '2025-12-12T14:00:00Z',
-    rejectionReason: 'Cheque bounced - insufficient funds',
-  },
-  {
-    id: 'pay5',
-    invoiceId: 'inv5',
-    studentName: 'Emmanuel Chidi',
-    studentClass: 'Primary 3',
-    amount: 45000,
-    paymentMethod: 'POS',
-    transactionStatus: 'PROCESSING',
-    paidByName: 'Mrs. Chidi',
-    paidByEmail: 'chidi@email.com',
-    paidByPhone: '08045678901',
-    transactionDate: '2025-12-15T08:15:00Z',
-    transactionRef: 'POS567890',
-  },
-];
-
-const mockStats: BursarStats = {
-  totalRevenue: 2500000,
-  pendingPayments: 12,
-  verifiedPayments: 145,
-  rejectedPayments: 3,
-  todayRevenue: 150000,
-  outstandingBalance: 850000,
-};
-
-// Bank account details for display
-const mockBankAccount = {
-  accountName: 'Greenfield Academy',
-  accountNumber: '1234567890',
-  bankName: 'First Bank of Nigeria',
-  bankCode: 'FBN',
-};
-
 export default function BursarDashboardClient() {
   const router = useRouter();
+  const [payments, setPayments] = useState<PaymentTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedPayment, setSelectedPayment] = useState<PaymentTransaction | null>(null);
@@ -166,14 +76,36 @@ export default function BursarDashboardClient() {
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
-  const [dateRange, setDateRange] = useState('today');
+  const [processingAction, setProcessingAction] = useState(false);
+
+  // Fetch pending payments on load
+  useEffect(() => {
+    fetchPayments();
+  }, []);
+
+  const fetchPayments = async (status = 'PENDING') => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/payments/approve?status=${status}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setPayments(data.payments);
+      }
+    } catch (error) {
+      console.error('Failed to fetch payments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter payments
-  const filteredPayments = mockPayments.filter((payment) => {
+  const filteredPayments = payments.filter((payment) => {
+    const studentName = payment.invoice?.student?.name || '';
     const matchesSearch = 
-      payment.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.paidByName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.transactionRef?.toLowerCase().includes(searchQuery.toLowerCase());
+      studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (payment.paidByName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (payment.transactionRef || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || payment.transactionStatus === statusFilter;
     
@@ -197,60 +129,46 @@ export default function BursarDashboardClient() {
     }
   };
 
-  // Export to CSV function
-  const exportToCSV = () => {
-    const headers = ['ID', 'Student', 'Class', 'Amount', 'Method', 'Status', 'Date', 'Reference', 'Paid By'].join(',');
-    const rows = filteredPayments.map(p => [
-      p.id,
-      p.studentName,
-      p.studentClass,
-      p.amount,
-      p.paymentMethod,
-      p.transactionStatus,
-      format(new Date(p.transactionDate), 'yyyy-MM-dd HH:mm'),
-      p.transactionRef || '',
-      p.paidByName
-    ].join(','));
-    
-    const csvContent = [headers, ...rows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `payments-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  };
-
   const handleReview = async () => {
     if (!selectedPayment || !reviewAction) return;
     
-    // Update payment status locally (in production, call API)
-    const updatedPayments = mockPayments.map(p => {
-      if (p.id === selectedPayment.id) {
-        return {
-          ...p,
-          transactionStatus: reviewAction === 'approve' ? 'VERIFIED' : 'REJECTED',
-          reviewedByName: 'Current User',
-          reviewedAt: new Date().toISOString(),
-          reviewNotes: reviewNotes || undefined,
+    setProcessingAction(true);
+    
+    try {
+      const response = await fetch('/api/payments/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentId: selectedPayment.id,
+          action: reviewAction,
+          notes: reviewNotes,
           rejectionReason: reviewAction === 'reject' ? rejectionReason : undefined,
-        };
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Refresh payments list
+        await fetchPayments();
+        
+        // Reset and close
+        setShowReviewModal(false);
+        setSelectedPayment(null);
+        setReviewAction(null);
+        setReviewNotes('');
+        setRejectionReason('');
+        
+        alert(`Payment ${reviewAction === 'approve' ? 'approved' : 'rejected'} successfully!`);
+      } else {
+        alert(data.error || 'Failed to process payment');
       }
-      return p;
-    });
-    
-    // Reset and close
-    setShowReviewModal(false);
-    setSelectedPayment(null);
-    setReviewAction(null);
-    setReviewNotes('');
-    setRejectionReason('');
-    
-    // Show success message (in production, update state properly)
-    alert(`Payment ${reviewAction === 'approve' ? 'approved' : 'rejected'} successfully!`);
+    } catch (error) {
+      console.error('Review error:', error);
+      alert('Failed to process payment review');
+    } finally {
+      setProcessingAction(false);
+    }
   };
 
   const formatAmount = (amount: number) => {
@@ -276,76 +194,6 @@ export default function BursarDashboardClient() {
             <Building2 size={18} />
             <span>Bank Accounts</span>
           </button>
-          <button 
-            onClick={exportToCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 text-sm font-medium"
-          >
-            <Download size={18} />
-            <span>Export Report</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
-        <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-1.5 bg-green-100 rounded-lg">
-              <Wallet size={14} className="text-green-600" />
-            </div>
-            <span className="text-[10px] sm:text-xs text-zinc-500">Total Revenue</span>
-          </div>
-          <p className="text-base sm:text-xl font-bold text-zinc-900">{formatAmount(mockStats.totalRevenue)}</p>
-        </div>
-
-        <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-1.5 bg-blue-100 rounded-lg">
-              <TrendingUp size={14} className="text-blue-600" />
-            </div>
-            <span className="text-[10px] sm:text-xs text-zinc-500">Today</span>
-          </div>
-          <p className="text-base sm:text-xl font-bold text-blue-600">{formatAmount(mockStats.todayRevenue)}</p>
-        </div>
-
-        <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-1.5 bg-amber-100 rounded-lg">
-              <Clock size={14} className="text-amber-600" />
-            </div>
-            <span className="text-[10px] sm:text-xs text-zinc-500">Pending</span>
-          </div>
-          <p className="text-base sm:text-xl font-bold text-amber-600">{mockStats.pendingPayments}</p>
-        </div>
-
-        <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-1.5 bg-purple-100 rounded-lg">
-              <CheckCircle2 size={14} className="text-purple-600" />
-            </div>
-            <span className="text-[10px] sm:text-xs text-zinc-500">Verified</span>
-          </div>
-          <p className="text-base sm:text-xl font-bold text-purple-600">{mockStats.verifiedPayments}</p>
-        </div>
-
-        <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-1.5 bg-red-100 rounded-lg">
-              <XCircle size={14} className="text-red-600" />
-            </div>
-            <span className="text-[10px] sm:text-xs text-zinc-500">Rejected</span>
-          </div>
-          <p className="text-base sm:text-xl font-bold text-red-600">{mockStats.rejectedPayments}</p>
-        </div>
-
-        <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-1.5 bg-orange-100 rounded-lg">
-              <AlertCircle size={14} className="text-orange-600" />
-            </div>
-            <span className="text-[10px] sm:text-xs text-zinc-500">Outstanding</span>
-          </div>
-          <p className="text-base sm:text-xl font-bold text-orange-600">{formatAmount(mockStats.outstandingBalance)}</p>
         </div>
       </div>
 
@@ -364,7 +212,12 @@ export default function BursarDashboardClient() {
           </div>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              if (e.target.value !== 'all') {
+                fetchPayments(e.target.value);
+              }
+            }}
             className="px-3 py-2 border border-zinc-200 rounded-lg text-xs sm:text-sm bg-white"
           >
             <option value="all">All Status</option>
@@ -374,45 +227,15 @@ export default function BursarDashboardClient() {
             <option value="COMPLETED">Completed</option>
             <option value="REJECTED">Rejected</option>
           </select>
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-3 py-2 border border-zinc-200 rounded-lg text-xs sm:text-sm bg-white"
-          >
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="term">This Term</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Bank Account Info */}
-      <div className="bg-blue-50 p-3 sm:p-4 rounded-xl border border-blue-100">
-        <div className="flex items-center gap-2 mb-2">
-          <Building2 size={16} className="text-blue-600" />
-          <h3 className="font-bold text-blue-900 text-sm">School Bank Account Details</h3>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-          <div>
-            <p className="text-xs text-blue-600">Account Name</p>
-            <p className="font-medium text-blue-900">{mockBankAccount.accountName}</p>
-          </div>
-          <div>
-            <p className="text-xs text-blue-600">Account Number</p>
-            <p className="font-medium text-blue-900">{mockBankAccount.accountNumber}</p>
-          </div>
-          <div>
-            <p className="text-xs text-blue-600">Bank</p>
-            <p className="font-medium text-blue-900">{mockBankAccount.bankName}</p>
-          </div>
         </div>
       </div>
 
       {/* Payments Table */}
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
         <div className="p-3 sm:p-4 border-b border-zinc-200">
-          <h2 className="font-bold text-zinc-900 text-sm sm:text-base">Recent Payments</h2>
+          <h2 className="font-bold text-zinc-900 text-sm sm:text-base">
+            {statusFilter === 'all' ? 'All Payments' : `${statusFilter} Payments`}
+          </h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px]">
@@ -428,7 +251,14 @@ export default function BursarDashboardClient() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {filteredPayments.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-8 sm:py-12 text-center text-zinc-500">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-xs">Loading payments...</p>
+                  </td>
+                </tr>
+              ) : filteredPayments.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 sm:py-12 text-center text-zinc-500">
                     <Wallet size={32} className="mx-auto mb-3 text-zinc-300" />
@@ -440,8 +270,12 @@ export default function BursarDashboardClient() {
                   <tr key={payment.id} className="hover:bg-zinc-50">
                     <td className="py-2 sm:py-3 px-3 sm:px-4">
                       <div>
-                        <p className="font-medium text-zinc-900 text-xs sm:text-sm">{payment.studentName}</p>
-                        <p className="text-[10px] sm:text-xs text-zinc-500">{payment.studentClass}</p>
+                        <p className="font-medium text-zinc-900 text-xs sm:text-sm">
+                          {payment.invoice?.student?.name || 'Unknown Student'}
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-zinc-500">
+                          {payment.invoice?.student?.admissionNumber || '-'}
+                        </p>
                       </div>
                     </td>
                     <td className="py-2 sm:py-3 px-3 sm:px-4">
@@ -535,7 +369,7 @@ export default function BursarDashboardClient() {
               <div className="bg-zinc-50 p-3 rounded-lg space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-zinc-600">Student:</span>
-                  <span className="font-medium text-sm">{selectedPayment.studentName}</span>
+                  <span className="font-medium text-sm">{selectedPayment.invoice?.student?.name}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-zinc-600">Amount:</span>
@@ -609,20 +443,26 @@ export default function BursarDashboardClient() {
                   setSelectedPayment(null);
                   setReviewAction(null);
                 }}
-                className="flex-1 py-2.5 bg-zinc-100 text-zinc-600 rounded-lg font-medium hover:bg-zinc-200"
+                disabled={processingAction}
+                className="flex-1 py-2.5 bg-zinc-100 text-zinc-600 rounded-lg font-medium hover:bg-zinc-200 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleReview}
-                disabled={reviewAction === 'reject' && !rejectionReason}
+                disabled={processingAction || (reviewAction === 'reject' && !rejectionReason)}
                 className={`flex-1 py-2.5 rounded-lg font-medium ${
                   reviewAction === 'approve'
                     ? 'bg-green-600 text-white hover:bg-green-700'
                     : 'bg-red-600 text-white hover:bg-red-700'
                 } disabled:opacity-50`}
               >
-                {reviewAction === 'approve' ? 'Approve Payment' : 'Reject Payment'}
+                {processingAction 
+                  ? 'Processing...' 
+                  : reviewAction === 'approve' 
+                    ? 'Approve Payment' 
+                    : 'Reject Payment'
+                }
               </button>
             </div>
           </div>
@@ -646,11 +486,11 @@ export default function BursarDashboardClient() {
             <div className="p-4 space-y-4">
               <div className="flex items-center gap-3 p-3 bg-zinc-50 rounded-lg">
                 <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center">
-                  {selectedPayment.studentName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  {(selectedPayment.invoice?.student?.name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2)}
                 </div>
                 <div>
-                  <p className="font-bold text-zinc-900">{selectedPayment.studentName}</p>
-                  <p className="text-sm text-zinc-500">{selectedPayment.studentClass}</p>
+                  <p className="font-bold text-zinc-900">{selectedPayment.invoice?.student?.name || 'Unknown Student'}</p>
+                  <p className="text-sm text-zinc-500">{selectedPayment.invoice?.student?.admissionNumber || '-'}</p>
                 </div>
               </div>
 
@@ -687,10 +527,6 @@ export default function BursarDashboardClient() {
                 <div className="flex justify-between py-2 border-b border-zinc-100">
                   <span className="text-sm text-zinc-600">Email</span>
                   <span className="text-sm font-medium">{selectedPayment.paidByEmail}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-zinc-100">
-                  <span className="text-sm text-zinc-600">Phone</span>
-                  <span className="text-sm font-medium">{selectedPayment.paidByPhone}</span>
                 </div>
               </div>
 

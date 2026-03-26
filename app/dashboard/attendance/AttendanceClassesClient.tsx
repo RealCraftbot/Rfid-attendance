@@ -8,9 +8,13 @@ import {
   ChevronRight, 
   Search,
   Calendar,
-  GraduationCap
+  GraduationCap,
+  Baby,
+  AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useRBAC } from '@/hooks/use-rbac';
+import { useSession } from 'next-auth/react';
 
 // Types
 interface Classroom {
@@ -51,19 +55,46 @@ const groupByGrade = (classrooms: Classroom[]) => {
   return grouped;
 };
 
+// Mock parent's children - in production, fetch from API
+const mockParentChildren = [
+  { id: 's1', name: 'Chukwuemeka Okafor', classId: '5', className: 'Primary 5', grade: 'Primary' },
+];
+
+// Mock teacher assignments - in production, fetch from API
+const mockTeacherAssignments = ['1', '2', '3']; // Classroom IDs
+
 export default function AttendanceClassesClient() {
   const router = useRouter();
+  const { role, isParent, isTeacher, isAdmin } = useRBAC();
+  const { data: session } = useSession();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  // Filter classrooms based on search
-  const filteredClassrooms = mockClassrooms.filter(
-    (classroom) =>
-      classroom.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      classroom.teacherName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      classroom.grade?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter classrooms based on role and search
+  const getFilteredClassrooms = () => {
+    let accessibleClassrooms = mockClassrooms;
 
+    // If parent, only show their children's classrooms
+    if (isParent) {
+      const childClassIds = mockParentChildren.map(child => child.classId);
+      accessibleClassrooms = mockClassrooms.filter(c => childClassIds.includes(c.id));
+    }
+    // If teacher, only show their assigned classrooms
+    else if (isTeacher) {
+      accessibleClassrooms = mockClassrooms.filter(c => mockTeacherAssignments.includes(c.id));
+    }
+    // Admin sees all classrooms
+
+    // Apply search filter
+    return accessibleClassrooms.filter(
+      (classroom) =>
+        classroom.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        classroom.teacherName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        classroom.grade?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  const filteredClassrooms = getFilteredClassrooms();
   const groupedClassrooms = groupByGrade(filteredClassrooms);
 
   const handleClassSelect = (classroomId: string) => {
@@ -109,37 +140,56 @@ export default function AttendanceClassesClient() {
         <div className="bg-blue-50 p-3 sm:p-4 rounded-xl border border-blue-100">
           <div className="flex items-center gap-2 mb-1">
             <BookOpen size={16} className="text-blue-600" />
-            <span className="text-xs text-blue-600 font-medium">Total Classes</span>
+            <span className="text-xs text-blue-600 font-medium">
+              {isParent ? 'Your Classes' : 'Total Classes'}
+            </span>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-blue-900">{mockClassrooms.length}</p>
+          <p className="text-xl sm:text-2xl font-bold text-blue-900">{filteredClassrooms.length}</p>
         </div>
         <div className="bg-green-50 p-3 sm:p-4 rounded-xl border border-green-100">
           <div className="flex items-center gap-2 mb-1">
             <Users size={16} className="text-green-600" />
-            <span className="text-xs text-green-600 font-medium">Total Students</span>
+            <span className="text-xs text-green-600 font-medium">
+              {isParent ? 'Your Children' : 'Total Students'}
+            </span>
           </div>
           <p className="text-xl sm:text-2xl font-bold text-green-900">
-            {mockClassrooms.reduce((sum, c) => sum + c.studentCount, 0)}
+            {isParent ? mockParentChildren.length : mockClassrooms.reduce((sum, c) => sum + c.studentCount, 0)}
           </p>
         </div>
-        <div className="bg-purple-50 p-3 sm:p-4 rounded-xl border border-purple-100">
-          <div className="flex items-center gap-2 mb-1">
-            <GraduationCap size={16} className="text-purple-600" />
-            <span className="text-xs text-purple-600 font-medium">Primary</span>
+        {!isParent && (
+          <>
+            <div className="bg-purple-50 p-3 sm:p-4 rounded-xl border border-purple-100">
+              <div className="flex items-center gap-2 mb-1">
+                <GraduationCap size={16} className="text-purple-600" />
+                <span className="text-xs text-purple-600 font-medium">Primary</span>
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-purple-900">
+                {filteredClassrooms.filter(c => c.grade === 'Primary').length}
+              </p>
+            </div>
+            <div className="bg-amber-50 p-3 sm:p-4 rounded-xl border border-amber-100">
+              <div className="flex items-center gap-2 mb-1">
+                <GraduationCap size={16} className="text-amber-600" />
+                <span className="text-xs text-amber-600 font-medium">Secondary</span>
+              </div>
+              <p className="text-xl sm:text-2xl font-bold text-amber-900">
+                {filteredClassrooms.filter(c => c.grade?.includes('Secondary')).length}
+              </p>
+            </div>
+          </>
+        )}
+        {isParent && (
+          <div className="col-span-2 bg-amber-50 p-3 sm:p-4 rounded-xl border border-amber-100">
+            <div className="flex items-center gap-2 mb-1">
+              <Baby size={16} className="text-amber-600" />
+              <span className="text-xs text-amber-600 font-medium">Viewing attendance for</span>
+            </div>
+            <p className="text-sm font-bold text-amber-900">
+              {mockParentChildren.map(c => c.name).join(', ')}
+            </p>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-purple-900">
-            {mockClassrooms.filter(c => c.grade === 'Primary').length}
-          </p>
-        </div>
-        <div className="bg-amber-50 p-3 sm:p-4 rounded-xl border border-amber-100">
-          <div className="flex items-center gap-2 mb-1">
-            <GraduationCap size={16} className="text-amber-600" />
-            <span className="text-xs text-amber-600 font-medium">Secondary</span>
-          </div>
-          <p className="text-xl sm:text-2xl font-bold text-amber-900">
-            {mockClassrooms.filter(c => c.grade?.includes('Secondary')).length}
-          </p>
-        </div>
+        )}
       </div>
 
       {/* Classes by Grade */}

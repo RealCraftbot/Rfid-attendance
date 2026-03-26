@@ -1,7 +1,7 @@
 'use client';
 
-
 import React, { useState } from 'react';
+import { RoleGuard } from '@/components/RoleGuard';
 import { 
   FileText,
   Printer,
@@ -11,7 +11,8 @@ import {
   User,
   Calendar,
   TrendingUp,
-  Wallet
+  Wallet,
+  Lock
 } from 'lucide-react';
 
 // Types
@@ -106,7 +107,7 @@ const schoolInfo = {
   motto: 'Education for Excellence',
 };
 
-export default function ParentViewReportsPage() {
+function ParentViewReportsContent() {
   const [selectedReport, setSelectedReport] = useState<ChildReport | null>(null);
   const [activeTab, setActiveTab] = useState<'reports' | 'fees'>('reports');
   const [selectedChild, setSelectedChild] = useState<string>('all');
@@ -345,5 +346,22 @@ export default function ParentViewReportsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ParentViewReportsPage() {
+  return (
+    <RoleGuard 
+      allowedRoles={['PARENT']}
+      fallback={
+        <div className="p-6 text-center">
+          <Lock size={48} className="mx-auto mb-4 text-red-400" />
+          <h2 className="text-xl font-bold text-zinc-900 mb-2">Access Denied</h2>
+          <p className="text-zinc-500">This page is only accessible to parents.</p>
+        </div>
+      }
+    >
+      <ParentViewReportsContent />
+    </RoleGuard>
   );
 }
