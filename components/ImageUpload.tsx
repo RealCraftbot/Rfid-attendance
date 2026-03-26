@@ -31,35 +31,52 @@ export default function ImageUpload({
   const [error, setError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleButtonClick = () => {
+    console.log('Upload button clicked, triggering file input');
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    } else {
+      console.error('File input ref is null');
+    }
+  };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('File selected');
+    console.log('File input onChange triggered');
+    console.log('Files:', e.target.files);
+    
     const file = e.target.files?.[0];
     if (!file) {
       console.log('No file selected');
       return;
     }
 
-    console.log('File details:', file.name, file.size, file.type);
+    console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
     setError('');
 
-    // Validate file
+    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setError('File size must be less than 5MB');
-      alert('File size must be less than 5MB');
+      const msg = 'File size must be less than 5MB';
+      console.error(msg);
+      setError(msg);
+      alert(msg);
       return;
     }
 
+    // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
-      setError('Only JPG, PNG, and WebP images are allowed');
-      alert('Only JPG, PNG, and WebP images are allowed');
+      const msg = 'Only JPG, PNG, and WebP images are allowed';
+      console.error(msg, 'Got type:', file.type);
+      setError(msg);
+      alert(msg);
       return;
     }
 
     // Show preview immediately
+    console.log('Reading file for preview...');
     const reader = new FileReader();
     reader.onloadend = () => {
-      console.log('File read complete, showing preview');
+      console.log('File read complete');
       setPreview(reader.result as string);
     };
     reader.onerror = (err) => {
@@ -69,27 +86,34 @@ export default function ImageUpload({
     reader.readAsDataURL(file);
 
     // Upload
-    console.log('Starting upload...');
+    console.log('Starting upload to server...');
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('type', type);
 
-      console.log('Sending request to /api/upload');
+      console.log('Sending POST request to /api/upload');
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
 
-      console.log('Response received:', response.status);
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Upload failed with status:', response.status, errorText);
+        throw new Error(`Upload failed: ${response.status}`);
+      }
+
       const data = await response.json();
       console.log('Response data:', data);
 
       if (data.success) {
         console.log('Upload successful, calling onUpload with URL:', data.url);
         await onUpload(data.url);
-        console.log('onUpload completed');
+        console.log('onUpload completed successfully');
       } else {
         console.error('Upload failed:', data.error);
         setError(data.error || 'Failed to upload image');
@@ -98,11 +122,16 @@ export default function ImageUpload({
       }
     } catch (error) {
       console.error('Upload error:', error);
-      setError('Failed to upload image. Check console for details.');
-      alert('Failed to upload image. Check console for details.');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to upload image';
+      setError(errorMsg);
+      alert(errorMsg);
       setPreview(currentImage || null);
     } finally {
       setUploading(false);
+      // Reset input so same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -141,7 +170,8 @@ export default function ImageUpload({
             {/* Hover overlay */}
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
               <button
-                onClick={() => fileInputRef.current?.click()}
+                type="button"
+                onClick={handleButtonClick}
                 className="p-2 bg-white rounded-full hover:bg-zinc-100"
                 title="Change"
               >
@@ -149,6 +179,7 @@ export default function ImageUpload({
               </button>
               {onRemove && (
                 <button
+                  type="button"
                   onClick={handleRemove}
                   className="p-2 bg-red-500 rounded-full hover:bg-red-600"
                   title="Remove"
@@ -173,17 +204,17 @@ export default function ImageUpload({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/jpg"
+        accept="image/jpeg,image/png,image/webp"
+        capture="user"
         onChange={handleFileSelect}
         className="hidden"
+        style={{ display: 'none' }}
       />
 
       {!preview && (
         <button
-          onClick={() => {
-            console.log('Upload button clicked');
-            fileInputRef.current?.click();
-          }}
+          type="button"
+          onClick={handleButtonClick}
           disabled={uploading}
           className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50"
         >
@@ -199,7 +230,8 @@ export default function ImageUpload({
       {preview && !uploading && (
         <div className="flex gap-2">
           <button
-            onClick={() => fileInputRef.current?.click()}
+            type="button"
+            onClick={handleButtonClick}
             className="flex items-center gap-1 px-3 py-1.5 bg-zinc-100 text-zinc-700 rounded-lg text-xs font-medium hover:bg-zinc-200"
           >
             <Camera size={14} />
@@ -207,6 +239,7 @@ export default function ImageUpload({
           </button>
           {onRemove && (
             <button
+              type="button"
               onClick={handleRemove}
               className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100"
             >
