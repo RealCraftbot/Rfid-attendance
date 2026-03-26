@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 interface AttendanceRecord {
   studentId: string;
   studentName: string;
+  studentImageUrl?: string | null;
   status: 'present' | 'absent' | 'late' | 'on-site' | 'checked-out';
   checkInTime: string | null;
   checkOutTime: string | null;
@@ -451,9 +452,17 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
                   <tr key={record.studentId} className="hover:bg-zinc-50">
                     <td className="py-2 sm:py-3 px-3 sm:px-4">
                       <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center text-xs sm:text-sm">
-                          {record.studentName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                        </div>
+                        {record.studentImageUrl ? (
+                          <img 
+                            src={record.studentImageUrl} 
+                            alt={record.studentName} 
+                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-blue-200"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center text-xs sm:text-sm">
+                            {record.studentName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                          </div>
+                        )}
                         <span className="font-medium text-zinc-900 text-xs sm:text-sm">{record.studentName}</span>
                       </div>
                     </td>

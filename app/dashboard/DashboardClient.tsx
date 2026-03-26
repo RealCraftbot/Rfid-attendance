@@ -13,6 +13,7 @@ interface DashboardData {
   recentRecords: Array<{
     id: string;
     studentName: string;
+    studentImageUrl?: string | null;
     checkType: string;
     scanTime: string;
     deviceId: string;
@@ -118,9 +119,17 @@ export default function DashboardClient({ orgId, orgName, initialData }: Dashboa
           <div className="space-y-4 max-h-[400px] overflow-y-auto">
             {stats.recentRecords.length > 0 ? stats.recentRecords.map((record) => (
               <div key={record.id} className="flex items-start gap-3 sm:gap-4">
-                <div className={`mt-1 p-1.5 sm:p-2 rounded-lg ${record.checkType === 'check_in' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
-                  <Clock size={14} className="sm:w-4 sm:h-4" />
-                </div>
+                {record.studentImageUrl ? (
+                  <img 
+                    src={record.studentImageUrl} 
+                    alt={record.studentName}
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-zinc-200"
+                  />
+                ) : (
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs font-bold ${record.checkType === 'check_in' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                    {record.studentName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start">
                     <p className="text-sm font-bold text-zinc-900 truncate">{record.studentName}</p>
