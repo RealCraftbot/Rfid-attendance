@@ -1,31 +1,67 @@
 import nodemailer from 'nodemailer';
 
-// Create SMTP transporter with cPanel-friendly settings
+// Try multiple cPanel SMTP configurations
 const createTransporter = () => {
-  const config: any = {
+  // Option 1: Port 587 with STARTTLS (most common for cPanel)
+  const config587 = {
     host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587'), // Default to 587 for cPanel
-    secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
+    port: 587,
+    secure: false, // STARTTLS
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
     tls: {
-      // Do not fail on invalid certs (for some cPanel configs)
       rejectUnauthorized: false,
     },
-    // Connection timeout
-    connectionTimeout: 10000,
-    // Greeting timeout
-    greetingTimeout: 10000,
+    debug: true, // Enable debug logging
+    logger: true,
   };
 
-  console.log('SMTP Config:', {
-    host: config.host,
-    port: config.port,
-    secure: config.secure,
-    user: config.auth.user,
+  // Option 2: Port 465 with SSL (older cPanel)
+  const config465 = {
+    host: process.env.SMTP_HOST,
+    port: 465,
+    secure: true, // SSL
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false,
+    },
+    debug: true,
+    logger: true,
+  };
+
+  // Option 3: Port 25 (if others fail - often blocked)
+  const config25 = {
+    host: process.env.SMTP_HOST,
+    port: 25,
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    tls: {
+      rejectUnauthorized: false,
+    },
+    debug: true,
+    logger: true,
+  };
+
+  console.log('Creating SMTP transporter with config:', {
+    host: process.env.SMTP_HOST,
+    user: process.env.SMTP_USER,
+    attemptedPort: process.env.SMTP_PORT || '587',
   });
+
+  // Use the port specified in env, default to 587
+  const port = parseInt(process.env.SMTP_PORT || '587');
+  let config = config587;
+  
+  if (port === 465) config = config465;
+  if (port === 25) config = config25;
 
   return nodemailer.createTransport(config);
 };
@@ -46,7 +82,12 @@ interface EmailOptions {
 
 export async function sendEmail(options: EmailOptions) {
   try {
-    console.log('Attempting to send email to:', options.to);
+    console.log('=== EMAIL SEND ATTEMPT ===');
+    console.log('To:', options.to);
+    console.log('Subject:', options.subject);
+    console.log('From:', process.env.SMTP_FROM);
+    console.log('Host:', process.env.SMTP_HOST);
+    console.log('Port:', process.env.SMTP_PORT || '587');
     
     const info = await transporter.sendMail({
       from: process.env.SMTP_FROM,
@@ -57,29 +98,38 @@ export async function sendEmail(options: EmailOptions) {
       attachments: options.attachments,
     });
 
-    console.log('Email sent successfully:', info.messageId);
+    console.log('✅ Email sent successfully!');
+    console.log('Message ID:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Email send error:', error);
-    console.error('Error details:', {
+    console.error('❌ Email send error:');
+    console.error('Error name:', (error as any).name);
+    console.error('Error message:', (error as any).message);
+    console.error('Error code:', (error as any).code);
+    console.error('Error command:', (error as any).command);
+    console.error('Error response:', (error as any).response);
+    console.error('Error responseCode:', (error as any).responseCode);
+    
+    return { 
+      success: false, 
+      error: (error as Error).message,
       code: (error as any).code,
-      command: (error as any).command,
       response: (error as any).response,
-      responseCode: (error as any).responseCode,
-    });
-    return { success: false, error: (error as Error).message };
+    };
   }
 }
 
 // Verify SMTP connection
 export async function verifySMTP() {
   try {
-    console.log('Verifying SMTP connection...');
+    console.log('Verifying SMTP connection to:', process.env.SMTP_HOST);
     await transporter.verify();
-    console.log('SMTP connection verified successfully');
+    console.log('✅ SMTP connection verified');
     return true;
   } catch (error) {
-    console.error('SMTP verification failed:', error);
+    console.error('❌ SMTP verification failed:');
+    console.error('Error:', (error as Error).message);
+    console.error('Code:', (error as any).code);
     return false;
   }
 }
