@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create admin user
+    // Create admin user (unverified - will need OTP verification)
     const user = await prisma.user.create({
       data: {
         email,
@@ -90,9 +90,22 @@ export async function POST(request: Request) {
       },
     });
 
+    // Send OTP for email verification
+    try {
+      await fetch(`${process.env.APP_URL || 'http://localhost:3000'}/api/otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, type: 'verification' }),
+      });
+    } catch (otpError) {
+      console.error('Failed to send OTP:', otpError);
+      // Don't fail signup if OTP fails, user can request again
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Organization and admin account created successfully',
+      message: 'Account created. Please check your email for OTP verification.',
+      requiresVerification: true,
       data: {
         user: {
           id: user.id,

@@ -64,6 +64,15 @@ export async function middleware(request: NextRequest) {
   }
 
   const userRole = token.role as string;
+  const emailVerified = token.emailVerified as string | null;
+
+  // Check if email is verified (skip for super-admin and certain routes)
+  if (!emailVerified && 
+      userRole !== 'SUPER_ADMIN' && 
+      !pathname.startsWith('/verify-email') &&
+      !pathname.startsWith('/api/otp')) {
+    return NextResponse.redirect(new URL('/verify-email', request.url));
+  }
 
   // Check route permissions
   const allowedRoles = Object.entries(routePermissions).find(([route]) => 
@@ -103,5 +112,6 @@ export const config = {
   matcher: [
     '/dashboard/:path*',
     '/api/dashboard/:path*',
+    '/verify-email',
   ],
 };
