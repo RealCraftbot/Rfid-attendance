@@ -3,11 +3,9 @@ import { verifySMTP, sendEmail } from '@/services/email-service';
 
 export async function GET(req: NextRequest) {
   try {
-    console.log('Testing SMTP connection...');
-    console.log('SMTP_HOST:', process.env.SMTP_HOST);
-    console.log('SMTP_PORT:', process.env.SMTP_PORT);
-    console.log('SMTP_USER:', process.env.SMTP_USER);
-    console.log('SMTP_FROM:', process.env.SMTP_FROM);
+    console.log('Testing Resend connection...');
+    console.log('RESEND_API_KEY configured:', !!process.env.RESEND_API_KEY);
+    console.log('RESEND_FROM_EMAIL:', process.env.RESEND_FROM_EMAIL);
 
     // Test connection
     const isConnected = await verifySMTP();
@@ -15,29 +13,27 @@ export async function GET(req: NextRequest) {
     if (!isConnected) {
       return NextResponse.json({
         success: false,
-        error: 'SMTP connection failed',
+        error: 'Resend connection failed',
         config: {
-          host: process.env.SMTP_HOST,
-          port: process.env.SMTP_PORT,
-          user: process.env.SMTP_USER,
-          from: process.env.SMTP_FROM,
+          hasApiKey: !!process.env.RESEND_API_KEY,
+          fromEmail: process.env.RESEND_FROM_EMAIL,
+          service: 'Resend'
         }
       }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      message: 'SMTP connection successful',
+      message: 'Resend connection successful',
       config: {
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT,
-        user: process.env.SMTP_USER,
-        from: process.env.SMTP_FROM,
+        hasApiKey: !!process.env.RESEND_API_KEY,
+        fromEmail: process.env.RESEND_FROM_EMAIL,
+        service: 'Resend'
       }
     });
 
   } catch (error) {
-    console.error('SMTP test error:', error);
+    console.error('Resend test error:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -53,18 +49,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    console.log('Sending test email to:', email);
+    console.log('Sending test email via Resend to:', email);
 
     const result = await sendEmail({
       to: email,
-      subject: 'Test Email - RFID Attendance',
+      subject: 'Test Email - RFID Attendance (Resend)',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">Test Email</h2>
-          <p>This is a test email from RFID Attendance system.</p>
-          <p>If you received this, your SMTP configuration is working!</p>
+          <h2 style="color: #2563eb;">Resend Test Email</h2>
+          <p>This is a test email from RFID Attendance system using Resend API.</p>
+          <p>If you received this, your Resend configuration is working!</p>
           <p style="margin-top: 30px; color: #6b7280; font-size: 12px;">
-            Sent at: ${new Date().toISOString()}
+            Sent via Resend at: ${new Date().toISOString()}
           </p>
         </div>
       `,
@@ -73,21 +69,24 @@ export async function POST(req: NextRequest) {
     if (result.success) {
       return NextResponse.json({
         success: true,
-        message: 'Test email sent successfully',
+        message: 'Test email sent successfully via Resend',
         messageId: result.messageId,
+        service: 'Resend'
       });
     } else {
       return NextResponse.json({
         success: false,
         error: result.error,
+        service: 'Resend'
       }, { status: 500 });
     }
 
   } catch (error) {
-    console.error('Test email error:', error);
+    console.error('Resend test email error:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
+      service: 'Resend'
     }, { status: 500 });
   }
 }
