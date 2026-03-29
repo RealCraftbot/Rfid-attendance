@@ -26,13 +26,18 @@ export async function POST(req: NextRequest) {
     });
     
     // Create new OTP record
-    await prisma.verificationToken.create({
+    const createdRecord = await prisma.verificationToken.create({
       data: {
-        email,
-        token: otp,
+        email: email.trim().toLowerCase(),
+        token: otp.trim(),
         expiresAt,
       },
     });
+
+    console.log('OTP Creation Debug:');
+    console.log('Email:', email);
+    console.log('OTP Generated:', otp);
+    console.log('Record Created:', createdRecord);
 
     // Send OTP via email
     const subject = type === 'password-reset' 
@@ -94,10 +99,16 @@ export async function PUT(req: NextRequest) {
     // Find the OTP record by email and token
     const verificationRecord = await prisma.verificationToken.findFirst({
       where: { 
-        email,
-        token: otp,
+        email: email.trim().toLowerCase(),
+        token: otp.trim(),
       },
     });
+
+    console.log('OTP Verification Debug:');
+    console.log('Email:', email);
+    console.log('OTP Provided:', otp);
+    console.log('Record Found:', !!verificationRecord);
+    console.log('Record:', verificationRecord);
 
     if (!verificationRecord) {
       return NextResponse.json({ error: 'Invalid OTP. Please try again.' }, { status: 400 });
