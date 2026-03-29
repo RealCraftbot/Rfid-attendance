@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import { sendEmail as resendSendEmail } from './resend-service';
 
 interface SMSOptions {
   to: string;
@@ -23,16 +23,8 @@ interface NotificationData {
   balance?: number;
 }
 
-// Initialize SMTP transporter
-const smtpTransporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// Using Mailtrap SDK for email delivery
+console.log('Notification service using Mailtrap SDK');
 
 /**
  * Send SMS using Termii API
@@ -92,20 +84,17 @@ export async function sendSMS({ to, message }: SMSOptions): Promise<boolean> {
  */
 export async function sendEmail({ to, subject, text, html }: EmailOptions): Promise<boolean> {
   try {
-    const from = process.env.SMTP_FROM || 'RFID Attendance <noreply@example.com>';
-
-    const info = await smtpTransporter.sendMail({
-      from,
+    const result = await resendSendEmail({
       to,
       subject,
-      text,
-      html,
+      html: html || '<p>No HTML content provided</p>',
+      text: text || undefined,
     });
 
-    console.log('Email sent:', info.messageId);
-    return true;
+    console.log('Email sent via Resend:', result.success ? 'Success' : 'Failed');
+    return result.success;
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('Error sending email via Resend:', error);
     return false;
   }
 }

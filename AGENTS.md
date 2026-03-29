@@ -1,218 +1,251 @@
-# AGENTS.md - RFID Attendance SaaS
+# Agent Guidelines for RFID Attendance System
 
-## Project Overview
-- **Framework:** Next.js 15 (App Router) with TypeScript
-- **Database:** PostgreSQL via Prisma ORM
-- **Auth:** NextAuth.js v4
-- **Styling:** Tailwind CSS v4
-- **Validation:** Zod v4
-- **Deployment:** Railway (Docker)
+This document provides guidelines for agentic coding agents working on this Next.js RFID attendance system.
 
----
+## Build, Lint, and Test Commands
 
-## Build & Development Commands
-
+### Development
 ```bash
-# Development
-npm run dev                    # Start dev server (http://localhost:3000)
-npm run build                  # Production build (runs prisma generate first)
-npm run start                  # Start production server
-
-# Database
-npm run db:generate           # Generate Prisma client
-npm run db:push               # Push schema changes (development)
-npm run db:migrate            # Run migrations (creates migration files)
-npm run db:seed               # Seed database with test data
-
-# Linting & Cache
-npm run lint                   # Run ESLint
-npm run clean                  # Clear Next.js cache (.next folder)
-
-# Testing (when added)
-npm test                       # Run all tests
-npm test -- --testNamePattern="should validate RFID scan"  # Single test
-npm test -- --watch            # Watch mode
+npm run dev          # Start development server
+npm run clean        # Clean Next.js cache
 ```
 
----
+### Build and Deploy
+```bash
+npm run build        # Build application (includes Prisma generation)
+npm run start        # Start production server
+```
+
+### Code Quality
+```bash
+npm run lint         # Run ESLint on all files
+```
+
+### Database Operations
+```bash
+npm run db:generate  # Generate Prisma client
+npm run db:push      # Push schema changes to database
+npm run db:migrate   # Run database migrations
+npm run db:seed      # Seed database with test data
+```
+
+### Testing
+**Note:** This project currently lacks a formal testing setup. When adding tests:
+- Use Jest or Vitest for unit testing
+- Use React Testing Library for component testing
+- Place tests in `__tests__` directories adjacent to source files
 
 ## Code Style Guidelines
 
-### Naming Conventions
-```
-Files:       kebab-case (e.g., attendance-service.ts)
-Components:  PascalCase (e.g., DashboardClient.tsx)
-Functions:   camelCase (e.g., processScan, validateDeviceToken)
-Constants:   UPPER_SNAKE_CASE (e.g., IDEMPOTENCY_WINDOW_MS)
-Types/Enums: PascalCase (e.g., CheckType, Role)
-```
-
-### Imports
-- Use absolute path alias `@/` for all imports
-- Group imports: external → internal → relative
+### Import Order and Organization
 ```typescript
+// External libraries first
+import React from 'react';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
+
+// Internal libraries
 import { prisma } from '@/lib/prisma';
-import { attendanceService } from '@/services/attendance-service';
+import { success, validationError } from '@/lib/api-response';
+
+// Relative imports
 import { scanAttendanceSchema } from '@/lib/validation';
 ```
 
-### TypeScript
-- Enable `strict: true` in tsconfig (already configured)
-- Use explicit return types on public functions
-- Use `type` for simple shapes, `interface` for extensible objects
-- Export types from validation schemas: `export type ScanInput = z.infer<typeof scanAttendanceSchema>`
+### File Naming Conventions
+- **Components**: PascalCase (`DashboardClient.tsx`, `Navbar.tsx`)
+- **API Routes**: lowercase (`route.ts`)
+- **Utility files**: camelCase (`utils.ts`, `api-response.ts`)
+- **Configuration**: kebab-case (`next.config.ts`, `eslint.config.mjs`)
 
-### Formatting
-- Use single quotes for strings
-- No trailing semicolons (Next.js default)
-- 2-space indentation
-- Max line length: 100 characters
-
-### Error Handling
-- Use Zod `.strict()` or `.strip()` on schemas to prevent injection
-- Try/catch at API route level, throw in services
-- Never log sensitive data (passwords, tokens, RFID UIDs)
+### Component Structure
 ```typescript
-try {
-  const result = await attendanceService.scan(rfidUid, deviceId, orgId);
-  return success(result);
-} catch (error) {
-  console.error('Scan failed:', error.message); // Safe to log
-  return serverError('Failed to process scan');
+'use client'; // Only for client components
+
+import React from 'react';
+import { motion } from 'motion/react';
+
+interface ComponentProps {
+  orgId: string;
+  orgName: string;
+  initialData: DashboardData;
+}
+
+export default function ComponentName({ orgId, orgName, initialData }: ComponentProps) {
+  // Component logic here
+  
+  return (
+    <div className="space-y-6">
+      {/* JSX content */}
+    </div>
+  );
 }
 ```
 
----
-
-## Architecture Standards
-
-### Database (Prisma)
-- Use singleton pattern: `import { prisma } from '@/lib/prisma'`
-- Multi-tenancy: All tables (except User, Organization) have `orgId` foreign key
-- Always scope queries to `orgId` for data isolation
+### API Route Structure
 ```typescript
-const students = await prisma.student.findMany({
-  where: { orgId, isActive: true }
+export const dynamic = 'force-dynamic';
+
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+import { success, validationError } from '@/lib/api-response';
+
+const requestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const parsed = requestSchema.safeParse(body);
+    
+    if (!parsed.success) {
+      return validationError(parsed.error);
+    }
+    
+    // Business logic here
+    
+    return success({ message: 'Operation completed' });
+  } catch (error) {
+    console.error('[API Error]', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### TypeScript Conventions
+- Use strict TypeScript configuration
+- Prefer `interface` over `type` for object definitions
+- Use Zod for runtime validation
+- Export types from validation schemas
+
+```typescript
+// Good: Export types from validation
+import { z } from 'zod';
+
+export const userSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+});
+
+export type UserInput = z.infer<typeof userSchema>;
+```
+
+### Error Handling Pattern
+```typescript
+// Use centralized error responses
+import { success, badRequest, serverError } from '@/lib/api-response';
+
+try {
+  // Operation
+  return success(result);
+} catch (error) {
+  console.error('[Operation Error]', error);
+  return serverError('Failed to complete operation');
+}
+```
+
+### Database Operations
+- Use Prisma client from `@/lib/prisma`
+- Always handle unique constraint errors
+- Use transactions for multiple operations
+
+```typescript
+import { prisma } from '@/lib/prisma';
+
+const user = await prisma.user.create({
+  data: { email, name },
 });
 ```
 
-### Service Layer
-- Business logic in `@/services/` files
-- API routes are entry points only
-- Never put business logic in route handlers
+### Styling with Tailwind CSS
+- Use utility-first approach
+- Prefer Tailwind classes over custom CSS
+- Use `cn` utility for conditional classes
 
-### API Routes
-- Add `export const dynamic = 'force-dynamic';` to all API routes
-- Use Zod `safeParse` for validation
-- Use response helpers from `@/lib/api-response.ts`
-
-### API Response Format
 ```typescript
-// Success (200/201)
-{ success: true, data: {...} }
+import { cn } from '@/lib/utils';
 
-// Error (400/401/403/429/500)
-{ success: false, error: { code: string, message: string, details: any } }
+const className = cn(
+  'bg-white p-6 rounded-xl',
+  isActive && 'border-blue-500 border-2'
+);
 ```
 
-### HTTP Status Codes
-- 200/201: Success
-- 400: Zod validation errors
-- 401/403: Auth/permission failures
-- 429: Rate limiting (device cooldown)
-- 500: Server/database errors
+### State Management
+- Use SWR for data fetching
+- Prefer local state for UI state
+- Use React hooks appropriately
 
----
+```typescript
+import useSWR from 'swr';
 
-## Security Best Practices
-
-- Use bcrypt for passwords (10 salt rounds)
-- Rate limit device endpoints (429 on duplicate scans)
-- HMAC signatures for RFID device authentication
-- Always scope queries to `orgId`
-- Use transactions for multi-table operations
-
----
-
-## Key Patterns
-
-### RFID Scan Flow
-1. Device POST to `/api/scanAttendance` with `X-Device-Token` header
-2. Validate device token against Device table
-3. Check idempotency (5s window) to prevent duplicates
-4. Use `prisma.$transaction` for atomic operations:
-   - Create AttendanceRecord
-   - Update Student.currentStatus and lastSeen
-   - Update Device.lastSeen and batteryLevel
-
-### Creating New Features
-1. Add model to `prisma/schema.prisma`
-2. Run `npm run db:push`
-3. Create service methods in `@/services/`
-4. Create API route handlers
-5. Add frontend components with proper loading states
-
----
-
-## Project Structure
-
-```
-app/
-├── api/                      # API routes
-│   ├── auth/[...nextauth]/   # NextAuth handler
-│   ├── attendance/           # Attendance CRUD
-│   └── scanAttendance/       # RFID scan endpoint
-├── dashboard/                # Dashboard pages
-├── login/                    # Auth pages
-└── (other routes)
-
-lib/
-├── prisma.ts                 # Prisma singleton
-├── auth.ts                   # NextAuth config
-├── validation.ts             # Zod schemas
-└── api-response.ts           # Response helpers
-
-services/
-├── attendance-service.ts     # Business logic
-└── notification-service.ts   # SMS/Email notifications (Termii + SMTP)
-
-prisma/
-└── schema.prisma             # Database schema
+const { data, error } = useSWR(`/api/data?id=${orgId}`, fetcher, {
+  refreshInterval: 10000,
+  fallbackData: initialData,
+});
 ```
 
----
+### File Structure Patterns
+- **API Routes**: `app/api/[route]/route.ts`
+- **Pages**: `app/[page]/page.tsx`
+- **Components**: `components/ComponentName.tsx`
+- **Libraries**: `lib/library-name.ts`
+- **Services**: `services/service-name.ts`
 
-## Environment Variables
+### Authentication Patterns
+- Use NextAuth.js for authentication
+- Check roles using session data
+- Protect routes with middleware
 
-```env
-# Database
-DATABASE_URL=postgresql://...
+```typescript
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-# NextAuth
-NEXTAUTH_URL=https://...
-NEXTAUTH_SECRET=...
-
-# Termii SMS (Nigerian SMS Gateway)
-# Get API key from: https://termii.com
-TERMII_API_KEY=your-termii-api-key
-TERMII_SENDER_ID=RFIDSCHOOL
-
-# SMTP Email Configuration
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-SMTP_FROM=RFID Attendance <noreply@yourdomain.com>
-
-# Application
-APP_URL=https://yourdomain.com
-APP_NAME=RFID Attendance
+const session = await getServerSession(authOptions);
+if (!session || session.user.role !== 'ADMIN') {
+  return forbidden('Access denied');
+}
 ```
 
-## Key Enums
-```prisma
-enum Role { SUPER_ADMIN, ADMIN, TEACHER, PARENT }
-enum CheckType { check_in, check_out }
-enum BusStatus { WAITING, ON_BUS_TO_SCHOOL, AT_SCHOOL, ON_BUS_TO_HOME, HOME }
-```
+### Environment Variables
+- Use `.env` for environment-specific configuration
+- Access via `process.env.VARIABLE_NAME`
+- Validate environment variables at startup
+
+### Code Quality Standards
+- Run `npm run lint` before committing
+- Follow ESLint configuration
+- Use Prettier for consistent formatting
+- Write descriptive commit messages
+
+## Project-Specific Conventions
+
+### RFID-Specific Patterns
+- Use `rfid_uid` for RFID card identifiers
+- Validate device authentication headers
+- Handle idempotency for attendance scans
+
+### Attendance System Patterns
+- Use `CheckType` enum for attendance types
+- Track `scanTime` with proper timezone handling
+- Implement real-time updates with SWR
+
+### Payment System Patterns
+- Use `PaymentStatus` enum for invoice tracking
+- Implement approval workflows for payments
+- Handle multiple payment methods
+
+## Important Notes
+
+- This is a Next.js 15 application with App Router
+- Uses Prisma ORM with PostgreSQL
+- Implements Tailwind CSS for styling
+- Uses NextAuth.js for authentication
+- No formal testing setup exists yet
+- Follow existing patterns when adding new features
