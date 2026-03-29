@@ -33,6 +33,12 @@ export async function POST(req: NextRequest) {
         expiresAt,
       },
     });
+    
+    // Verify the record was created by reading it back
+    const verifyRecord = await prisma.verificationToken.findFirst({
+      where: { id: createdRecord.id },
+    });
+    console.log('Record verification after creation:', !!verifyRecord);
 
     console.log('OTP Creation Debug:');
     console.log('Email:', email);
