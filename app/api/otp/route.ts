@@ -36,7 +36,9 @@ export async function POST(req: NextRequest) {
 
     console.log('OTP Creation Debug:');
     console.log('Email:', email);
+    console.log('Email (trimmed/lowercase):', email.trim().toLowerCase());
     console.log('OTP Generated:', otp);
+    console.log('OTP Generated (trimmed):', otp.trim());
     console.log('Record Created:', createdRecord);
 
     // Send OTP via email
@@ -106,9 +108,18 @@ export async function PUT(req: NextRequest) {
 
     console.log('OTP Verification Debug:');
     console.log('Email:', email);
+    console.log('Email (trimmed/lowercase):', email.trim().toLowerCase());
     console.log('OTP Provided:', otp);
+    console.log('OTP Provided (trimmed):', otp.trim());
+    console.log('OTP Type:', typeof otp);
     console.log('Record Found:', !!verificationRecord);
     console.log('Record:', verificationRecord);
+    
+    // Debug: Check all records for this email
+    const allRecords = await prisma.verificationToken.findMany({
+      where: { email: email.trim().toLowerCase() },
+    });
+    console.log('All records for this email:', allRecords);
 
     if (!verificationRecord) {
       return NextResponse.json({ error: 'Invalid OTP. Please try again.' }, { status: 400 });
