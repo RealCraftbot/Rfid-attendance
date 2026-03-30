@@ -131,7 +131,7 @@ const EntryModal: React.FC<{
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select a teacher</option>
-              {teachers.map((teacher) => (
+              {teachers?.map((teacher) => (
                 <option key={teacher.id} value={teacher.id}>
                   {teacher.name}
                 </option>
@@ -149,7 +149,7 @@ const EntryModal: React.FC<{
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select a classroom</option>
-              {classrooms.map((classroom) => (
+              {classrooms?.map((classroom) => (
                 <option key={classroom.id} value={classroom.id}>
                   {classroom.name} {classroom.grade && `(${classroom.grade})`}
                 </option>
@@ -190,6 +190,7 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ day: string; period: number } | null>(null);
@@ -208,6 +209,7 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
   // Fetch teachers and classrooms
   useEffect(() => {
     const fetchResources = async () => {
+      setIsLoading(true);
       try {
         const [teachersRes, classroomsRes] = await Promise.all([
           fetch('/api/teachers?orgId=' + orgId).then(res => res.json()),
@@ -215,14 +217,17 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
         ]);
         
         if (teachersRes.success) {
-          setTeachers(teachersRes.data);
+          setTeachers(teachersRes.data || []);
         }
         
         if (classroomsRes.success) {
-          setClassrooms(classroomsRes.data);
+          setClassrooms(classroomsRes.data || []);
         }
       } catch (err) {
         console.error('Failed to fetch resources:', err);
+        setError('Failed to load timetable data');
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -233,8 +238,10 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
 
   // Update local timetable when fetched data changes
   useEffect(() => {
-    if (fetchedTimetable?.success) {
+    if (fetchedTimetable?.success && Array.isArray(fetchedTimetable.data)) {
       setTimetable(fetchedTimetable.data);
+    } else if (fetchedTimetable && !fetchedTimetable.success) {
+      setError(fetchedTimetable.error || 'Failed to load timetable');
     }
   }, [fetchedTimetable]);
 
@@ -360,7 +367,14 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
         </div>
       </div>
 
-      {error && (
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="ml-3 text-gray-600">Loading timetable...</span>
+        </div>
+      )}
+
+      {error && !isLoading && (
         <div className="rounded-md bg-red-50 p-4">
           <p className="text-sm text-red-700">{error}</p>
         </div>
@@ -375,6 +389,7 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
       </div>
 
       {/* Timetable Grid */}
+      {!isLoading && (
       <div className="overflow-x-auto bg-white rounded-lg shadow">
         <div className="min-w-max">
           <table className="w-full border-collapse">
@@ -386,7 +401,7 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
                     Time / Day
                   </div>
                 </th>
-                {days.map(day => (
+                {days?.map(day => (
                   <th key={day} className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-700 min-w-[160px]">
                     {day}
                   </th>
@@ -411,7 +426,7 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
                   </td>
 
                   {/* Day Columns */}
-                  {days.map(day => {
+                  {days?.map(day => {
                     const entry = getEntry(day, periodInfo.period);
                     
                     if (periodInfo.isBreak) {
@@ -510,6 +525,7 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
           </table>
         </div>
       </div>
+      )}
 
       {/* Modal */}
       {selectedCell && selectedPeriodInfo && (
