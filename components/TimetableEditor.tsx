@@ -41,8 +41,17 @@ interface TimetableProps {
   orgName: string;
 }
 
-// API fetcher
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+// API fetcher with error handling
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const data = await res.json();
+  
+  if (!res.ok || !data.success) {
+    throw new Error(data.error?.message || data.error || 'Failed to fetch');
+  }
+  
+  return data;
+};
 
 // Nigerian Secondary School Standard Periods with Breaks
 const standardPeriods = [
@@ -197,12 +206,19 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
   const { toast } = useToast();
 
   // Fetch timetable data
-  const { data: fetchedTimetable, mutate } = useSWR(
+  const { data: fetchedTimetable, mutate, error: swrError } = useSWR(
     `/api/timetable?orgId=${orgId}`,
     fetcher,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      onError: (err) => {
+        setError(err.message || 'Failed to load timetable');
+        setIsLoading(false);
+      },
+      onSuccess: () => {
+        setError(null);
+      }
     }
   );
 
@@ -238,12 +254,16 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
 
   // Update local timetable when fetched data changes
   useEffect(() => {
-    if (fetchedTimetable?.success && Array.isArray(fetchedTimetable.data)) {
-      setTimetable(fetchedTimetable.data);
-    } else if (fetchedTimetable && !fetchedTimetable.success) {
-      setError(fetchedTimetable.error || 'Failed to load timetable');
+    if (swrError) {
+      setError(swrError.message || 'Failed to load timetable');
+      return;
     }
-  }, [fetchedTimetable]);
+    
+    if (fetchedTimetable?.data && Array.isArray(fetchedTimetable.data)) {
+      setTimetable(fetchedTimetable.data);
+      setError(null);
+    }
+  }, [fetchedTimetable, swrError]);
 
   // Find timetable entry by day and period
   const getEntry = (day: string, period: number) => {
@@ -375,8 +395,8 @@ const TimetableEditor: React.FC<TimetableProps> = ({ orgId, orgName }) => {
       )}
 
       {error && !isLoading && (
-        <div className="rounded-md bg-red-50 p-4">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="rounded-md bg-red-50 p-4 mb-4">
+          <p className="text-sm text-red-700">{String(error)}</p>
         </div>
       )}
 
