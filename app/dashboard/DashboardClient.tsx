@@ -43,13 +43,11 @@ const StatCard = ({ title, value, change, icon: Icon, trend }: { title: string; 
 interface DashboardClientProps {
   orgId: string;
   orgName: string;
-  initialData: DashboardData;
 }
 
-export default function DashboardClient({ orgId, orgName, initialData }: DashboardClientProps) {
-  const { data } = useSWR<DashboardData>(`/api/dashboard?orgId=${orgId}`, fetcher, {
+export default function DashboardClient({ orgId, orgName }: DashboardClientProps) {
+  const { data, isLoading } = useSWR<DashboardData>(`/api/dashboard`, fetcher, {
     refreshInterval: 10000,
-    fallbackData: initialData,
   });
 
   const chartData = [
@@ -60,7 +58,13 @@ export default function DashboardClient({ orgId, orgName, initialData }: Dashboa
     { day: 'Fri', present: 44, total: 50 },
   ];
 
-  const stats = data || initialData;
+  const stats = data || {
+    totalStudents: 0,
+    presentToday: 0,
+    absentToday: 0,
+    attendanceRate: 0,
+    recentRecords: []
+  };
 
   return (
     <div className="space-y-6">

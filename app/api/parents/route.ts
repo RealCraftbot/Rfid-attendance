@@ -4,6 +4,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { success, forbidden, serverError } from '@/lib/api-response';
 
 const parentSignupSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -11,6 +14,39 @@ const parentSignupSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   phone: z.string().optional(),
 }).strict();
+
+// GET /api/parents - Get all parents for organization
+export async function GET(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.orgId) {
+      return forbidden('Organization ID required');
+    }
+
+    const orgId = session.user.orgId;
+    
+    const parents = await prisma.user.findMany({
+      where: { 
+        orgId,
+        role: 'PARENT'
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    return success(parents);
+  } catch (error) {
+    console.error('[Parents API Error]', error);
+    return serverError('Failed to fetch parents');
+  }
+}
 
 export async function POST(request: Request) {
   try {

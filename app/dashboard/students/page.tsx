@@ -1,7 +1,6 @@
 'use client';
 
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -13,20 +12,26 @@ import {
   Link2,
   UserPlus,
   XCircle as XCircleIcon,
-  Upload,
-  Camera
+  Camera,
+  Loader2
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useToast } from '@/hooks/use-toast';
 
 const studentSchema = z.object({
   name: z.string().min(2, 'Name is required'),
-  email: z.string().email('Invalid email'),
-  rfid_uid: z.string().min(4, 'RFID UID is required'),
-  class: z.string().optional(),
-  parent_id: z.string().optional(),
-  is_active: z.boolean().default(true),
+  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  rfidUid: z.string().min(4, 'RFID UID is required'),
+  grade: z.string().optional(),
+  classroomId: z.string().optional(),
+  guardianName: z.string().optional(),
+  guardianPhone: z.string().optional(),
+  guardianEmail: z.string().email('Invalid email').optional().or(z.literal('')),
+  dateOfBirth: z.string().optional(),
+  isActive: z.boolean().default(true),
+  usesSchoolBus: z.boolean().default(false),
 });
 
 const NIGERIAN_CLASSES = [
@@ -35,108 +40,275 @@ const NIGERIAN_CLASSES = [
   'SS 1', 'SS 2', 'SS 3'
 ];
 
-const mockClassrooms = NIGERIAN_CLASSES.map((name, i) => ({ id: String(i + 1), name }));
+type Student = {
+  id: string;
+  name: string;
+  email: string | null;
+  rfidUid: string;
+  grade: string | null;
+  classroomId: string | null;
+  classroom: { id: string; name: string; grade: string | null } | null;
+  guardianName: string | null;
+  guardianPhone: string | null;
+  guardianEmail: string | null;
+  admissionNumber: string | null;
+  dateOfBirth: string | null;
+  isActive: boolean;
+  imageUrl: string | null;
+  usesSchoolBus: boolean;
+};
 
-const mockParents = [
-  { id: 'p1', name: 'Mrs. Adebayo', email: 'adebayo@email.com' },
-  { id: 'p2', name: 'Mr. Okonkwo', email: 'okonkwo@email.com' },
-  { id: 'p3', name: 'Mrs. Nnamdi', email: 'nnamdi@email.com' },
-];
+type Classroom = {
+  id: string;
+  name: string;
+  grade: string | null;
+};
 
-const mockStudents: Array<{
+type Parent = {
   id: string;
   name: string;
   email: string;
-  rfid_uid: string;
-  class: string;
-  parent_id: string | null;
-  is_active: boolean;
-  imageUrl?: string;
-  admissionNo?: string;
-}> = [
-  { id: 's1', name: 'Adebayo Oluwaseun', email: 'adebayo.j@student.com', rfid_uid: '1A2B3C4D', class: 'Primary 1', parent_id: 'p1', is_active: true, admissionNo: 'GA/2023/001' },
-  { id: 's2', name: 'Chukwu Adaobi', email: 'adaobi.c@student.com', rfid_uid: '5E6F7G8H', class: 'Primary 1', parent_id: 'p1', is_active: true, admissionNo: 'GA/2023/002' },
-  { id: 's3', name: 'Okonkwo Chibueze', email: 'chibueze.o@student.com', rfid_uid: '9I0J1K2L', class: 'Primary 2', parent_id: 'p2', is_active: true, admissionNo: 'GA/2022/015' },
-  { id: 's4', name: 'Nnamdi Somtochi', email: 'somtochi.n@student.com', rfid_uid: '3M4N5O6P', class: 'JSS 1', parent_id: 'p3', is_active: true, admissionNo: 'GA/2021/008' },
-  { id: 's5', name: 'Eze Ifeoma', email: 'ifeoma.e@student.com', rfid_uid: '7Q8R9S0T', class: 'SS 2', parent_id: 'p3', is_active: false, admissionNo: 'GA/2020/023' },
-];
-
-let studentCounter = 10;
-const nextStudentId = () => `s${++studentCounter}`;
-
-const role = 'admin';
+};
 
 export default function StudentsPage() {
-  const [students, setStudents] = useState(mockStudents);
-  const [classrooms] = useState(mockClassrooms);
-  const [parents] = useState(mockParents);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [parents, setParents] = useState<Parent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('all');
+  const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<z.infer<typeof studentSchema>>({
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<z.infer<typeof studentSchema>>({
     resolver: zodResolver(studentSchema),
     defaultValues: {
       name: '',
       email: '',
-      rfid_uid: '',
-      class: '',
-      parent_id: '',
-      is_active: true
+      rfidUid: '',
+      grade: '',
+      classroomId: '',
+      guardianName: '',
+      guardianPhone: '',
+      guardianEmail: '',
+      dateOfBirth: '',
+      isActive: true,
+      usesSchoolBus: false,
     }
   });
 
-  const onSubmit = (data: any) => {
-    const newStudent = {
-      id: nextStudentId(),
-      ...data
-    };
-    setStudents([...students, newStudent]);
-    setIsModalOpen(false);
-    reset();
-  };
+  // Fetch all data
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const toggleStatus = (studentId: string) => {
-    setStudents(students.map(s => 
-      s.id === studentId ? { ...s, is_active: !s.is_active } : s
-    ));
-  };
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch students
+      const studentsRes = await fetch('/api/students');
+      const studentsData = await studentsRes.json();
+      if (studentsData.success) {
+        setStudents(studentsData.data);
+      }
 
-  const deleteStudent = (id: string) => {
-    if (confirm('Are you sure?')) {
-      setStudents(students.filter(s => s.id !== id));
+      // Fetch classrooms
+      const classroomsRes = await fetch('/api/classrooms');
+      const classroomsData = await classroomsRes.json();
+      if (classroomsData.success) {
+        setClassrooms(classroomsData.data);
+      }
+
+      // Fetch parents
+      const parentsRes = await fetch('/api/parents');
+      const parentsData = await parentsRes.json();
+      if (parentsData.success) {
+        setParents(parentsData.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load data',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const openLinkModal = (student: any) => {
+  const onSubmit = async (data: z.infer<typeof studentSchema>) => {
+    try {
+      const response = await fetch('/api/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: 'Student added successfully',
+        });
+        setStudents([...students, result.data]);
+        setIsModalOpen(false);
+        reset();
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to add student',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to add student',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const toggleStatus = async (studentId: string, currentStatus: boolean) => {
+    try {
+      const student = students.find(s => s.id === studentId);
+      if (!student) return;
+
+      const response = await fetch('/api/students', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...student, isActive: !currentStatus }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setStudents(students.map(s => 
+          s.id === studentId ? { ...s, isActive: !currentStatus } : s
+        ));
+        toast({
+          title: 'Success',
+          description: `Student ${!currentStatus ? 'activated' : 'deactivated'}`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const deleteStudent = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this student?')) return;
+
+    try {
+      const response = await fetch(`/api/students?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setStudents(students.filter(s => s.id !== id));
+        toast({
+          title: 'Success',
+          description: 'Student deleted',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete student',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleImageUpload = async (studentId: string, file: File) => {
+    setUploadingImage(studentId);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'student');
+      formData.append('studentId', studentId);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update student with new image URL
+        const student = students.find(s => s.id === studentId);
+        if (student) {
+          const updateRes = await fetch('/api/students', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...student, imageUrl: data.url }),
+          });
+
+          if (updateRes.ok) {
+            setStudents(students.map(s => 
+              s.id === studentId ? { ...s, imageUrl: data.url } : s
+            ));
+            toast({
+              title: 'Success',
+              description: 'Image uploaded successfully',
+            });
+          }
+        }
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to upload image',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to upload image',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingImage(null);
+    }
+  };
+
+  const openLinkModal = (student: Student) => {
     setSelectedStudent(student);
     setIsLinkModalOpen(true);
   };
 
-  const linkParent = (parentId: string) => {
-    setStudents(students.map(s => 
-      s.id === selectedStudent.id ? { ...s, parent_id: parentId } : s
-    ));
-    setIsLinkModalOpen(false);
-    setSelectedStudent(null);
-  };
-
-  const unlinkParent = () => {
-    setStudents(students.map(s => 
-      s.id === selectedStudent.id ? { ...s, parent_id: null } : s
-    ));
-    setIsLinkModalOpen(false);
-    setSelectedStudent(null);
-  };
-
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         s.rfid_uid.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = selectedClass === 'all' || s.class === selectedClass;
+                         s.rfidUid.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         s.admissionNumber?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesClass = selectedClass === 'all' || s.classroom?.name === selectedClass || s.grade === selectedClass;
     return matchesSearch && matchesClass;
   });
+
+  if (loading) {
+    return (
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <p className="text-zinc-500">Loading students...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -145,15 +317,13 @@ export default function StudentsPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tight">Students</h1>
           <p className="text-zinc-500 mt-1 text-sm md:text-base">Manage student records and RFID assignments</p>
         </div>
-        {role === 'admin' && (
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-zinc-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-95 text-sm"
-          >
-            <Plus size={18} />
-            Add Student
-          </button>
-        )}
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 bg-zinc-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 active:scale-95 text-sm"
+        >
+          <Plus size={18} />
+          Add Student
+        </button>
       </div>
 
       <div className="bg-white p-3 md:p-4 rounded-2xl border border-zinc-200 flex flex-col sm:flex-row gap-3 md:gap-4 items-stretch sm:items-center justify-between shadow-sm">
@@ -162,7 +332,7 @@ export default function StudentsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
             <input 
               type="text" 
-              placeholder="Search by name or RFID..." 
+              placeholder="Search by name, RFID, or admission number..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
@@ -174,12 +344,34 @@ export default function StudentsPage() {
             className="px-3 md:px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 outline-none focus:ring-2 ring-zinc-100"
           >
             <option value="all">All Classes</option>
-            {classrooms.map(c => (
-              <option key={c.id} value={c.name}>{c.name}</option>
+            {NIGERIAN_CLASSES.map((cls) => (
+              <option key={cls} value={cls}>{cls}</option>
             ))}
           </select>
         </div>
-        <button className="flex items-center justify-center gap-2 px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 hover:bg-zinc-50">
+        <button 
+          onClick={() => {
+            const csv = [
+              ['Name', 'Email', 'RFID UID', 'Class', 'Admission Number', 'Status'].join(','),
+              ...filteredStudents.map(s => [
+                s.name,
+                s.email || '',
+                s.rfidUid,
+                s.classroom?.name || s.grade || '',
+                s.admissionNumber || '',
+                s.isActive ? 'Active' : 'Inactive'
+              ].join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `students-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+          }}
+          className="flex items-center justify-center gap-2 px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 hover:bg-zinc-50"
+        >
           <Download size={18} />
           Export
         </button>
@@ -212,104 +404,59 @@ export default function StudentsPage() {
                       )}
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-zinc-900 truncate">{student.name}</p>
-                        <p className="text-[10px] md:text-xs text-zinc-500 hidden sm:block">{student.admissionNo || student.email}</p>
+                        <p className="text-[10px] md:text-xs text-zinc-500 hidden sm:block">{student.admissionNumber || student.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-3 md:px-6 py-3 md:py-4">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold bg-zinc-100 text-zinc-600 border border-zinc-200">
-                      {student.class}
+                      {student.classroom?.name || student.grade || 'N/A'}
                     </span>
                   </td>
                   <td className="px-3 md:px-6 py-3 md:py-4 hidden sm:table-cell">
                     <code className="text-[10px] md:text-xs font-mono bg-zinc-50 px-1.5 md:px-2 py-0.5 md:py-1 rounded border border-zinc-200 text-zinc-600">
-                      {student.rfid_uid}
+                      {student.rfidUid}
                     </code>
                   </td>
                   <td className="px-3 md:px-6 py-3 md:py-4 hidden md:table-cell">
-                    {student.parent_id ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-zinc-600">
-                          {parents.find(p => p.id === student.parent_id)?.name || 'Linked'}
-                        </span>
-                        <button
-                          onClick={() => openLinkModal(student)}
-                          className="text-xs text-brand-blue hover:underline"
-                        >
-                          Change
-                        </button>
-                      </div>
+                    {student.guardianName ? (
+                      <span className="text-xs font-medium text-zinc-600">
+                        {student.guardianName}
+                      </span>
                     ) : (
-                      <button
-                        onClick={() => openLinkModal(student)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-colors"
-                      >
-                        <Link2 size={12} />
-                        Link
-                      </button>
+                      <span className="text-xs text-zinc-400">Not linked</span>
                     )}
                   </td>
                   <td className="px-3 md:px-6 py-3 md:py-4">
                     <button 
-                      onClick={() => toggleStatus(student.id)}
+                      onClick={() => toggleStatus(student.id, student.isActive)}
                       className={`inline-flex items-center gap-1 px-2 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider border ${
-                        student.is_active 
+                        student.isActive 
                           ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
                           : 'bg-red-50 text-red-600 border-red-100'
                       }`}
                     >
-                      {student.is_active ? <CheckCircle2 size={10} className="md:w-3 md:h-3" /> : <XCircle size={10} className="md:w-3 md:h-3" />}
-                      {student.is_active ? 'Active' : 'Inactive'}
+                      {student.isActive ? <CheckCircle2 size={10} className="md:w-3 md:h-3" /> : <XCircle size={10} className="md:w-3 md:h-3" />}
+                      {student.isActive ? 'Active' : 'Inactive'}
                     </button>
                   </td>
                   <td className="px-3 md:px-6 py-3 md:py-4 text-right hidden sm:table-cell">
                     <div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <label className="p-1.5 md:p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer" title="Upload Photo">
+                      <label className="p-1.5 md:p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer relative" title="Upload Photo">
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
-                          onChange={async (e) => {
+                          onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (!file) return;
-                            
-                            // Show preview immediately
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                              setStudents(prev => prev.map(s => 
-                                s.id === student.id ? { ...s, imageUrl: reader.result as string } : s
-                              ));
-                            };
-                            reader.readAsDataURL(file);
-                            
-                            // Upload to server
-                            const formData = new FormData();
-                            formData.append('file', file);
-                            formData.append('type', 'student');
-                            formData.append('studentId', student.id);
-                            
-                            try {
-                              const response = await fetch('/api/upload', {
-                                method: 'POST',
-                                body: formData,
-                              });
-                              
-                              const data = await response.json();
-                              if (data.success) {
-                                // Update with actual URL from server
-                                setStudents(prev => prev.map(s => 
-                                  s.id === student.id ? { ...s, imageUrl: data.url } : s
-                                ));
-                              } else {
-                                alert('Failed to upload image');
-                              }
-                            } catch (error) {
-                              console.error('Upload error:', error);
-                              alert('Failed to upload image');
-                            }
+                            if (file) handleImageUpload(student.id, file);
                           }}
                         />
-                        <Camera size={14} className="md:w-4 md:h-4" />
+                        {uploadingImage === student.id ? (
+                          <Loader2 size={14} className="md:w-4 md:h-4 animate-spin" />
+                        ) : (
+                          <Camera size={14} className="md:w-4 md:h-4" />
+                        )}
                       </label>
                       <button className="p-1.5 md:p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors">
                         <Edit2 size={14} className="md:w-4 md:h-4" />
@@ -318,7 +465,7 @@ export default function StudentsPage() {
                         onClick={() => deleteStudent(student.id)}
                         className="p-1.5 md:p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
-                        <Users size={14} className="md:w-4 md:h-4" />
+                        <XCircle size={14} className="md:w-4 md:h-4" />
                       </button>
                     </div>
                   </td>
@@ -342,7 +489,7 @@ export default function StudentsPage() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
               <h3 className="text-xl font-bold text-zinc-900">Add New Student</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
@@ -350,22 +497,8 @@ export default function StudentsPage() {
               </button>
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
-              {/* Profile Picture Upload */}
-              <div className="flex justify-center mb-4">
-                <div className="relative">
-                  <div className="w-24 h-24 rounded-full bg-zinc-100 border-2 border-dashed border-zinc-300 flex items-center justify-center overflow-hidden">
-                    <Camera size={32} className="text-zinc-400" />
-                  </div>
-                  <button
-                    type="button"
-                    className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
-                  >
-                    <Upload size={14} />
-                  </button>
-                </div>
-              </div>
               <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Full Name</label>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Full Name *</label>
                 <input 
                   {...register('name')}
                   className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
@@ -373,51 +506,87 @@ export default function StudentsPage() {
                 />
                 {errors.name && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.name.message}</p>}
               </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Email</label>
                   <input 
                     {...register('email')}
                     className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
-                    placeholder="john@example.com"
+                    placeholder="student@school.com"
                   />
                   {errors.email && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.email.message}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Class</label>
                   <select 
-                    {...register('class')}
+                    {...register('grade')}
                     className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
                   >
                     <option value="">Select Class</option>
-                    {classrooms.map(c => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
+                    {NIGERIAN_CLASSES.map((cls) => (
+                      <option key={cls} value={cls}>{cls}</option>
                     ))}
                   </select>
-                  {errors.class && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.class.message}</p>}
                 </div>
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Parent / Guardian</label>
-                <select 
-                  {...register('parent_id')}
-                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
-                >
-                  <option value="">Select Parent (Optional)</option>
-                  {parents.map(p => (
-                    <option key={p.id} value={p.id}>{p.name || p.email}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">RFID UID</label>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">RFID UID *</label>
                 <input 
-                  {...register('rfid_uid')}
+                  {...register('rfidUid')}
                   className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm font-mono"
                   placeholder="e.g. 1A2B3C4D"
                 />
-                {errors.rfid_uid && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.rfid_uid.message}</p>}
+                {errors.rfidUid && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.rfidUid.message}</p>}
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Parent/Guardian Name</label>
+                <input 
+                  {...register('guardianName')}
+                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                  placeholder="e.g. Mr. John Doe"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Parent Phone</label>
+                  <input 
+                    {...register('guardianPhone')}
+                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                    placeholder="+234..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Parent Email</label>
+                  <input 
+                    {...register('guardianEmail')}
+                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                    placeholder="parent@email.com"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Date of Birth</label>
+                <input 
+                  type="date"
+                  {...register('dateOfBirth')}
+                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  {...register('usesSchoolBus')}
+                  className="w-4 h-4 rounded border-zinc-300"
+                />
+                <label className="text-sm text-zinc-600">Uses School Bus</label>
+              </div>
+
               <div className="pt-4 flex gap-3">
                 <button 
                   type="button"
@@ -428,72 +597,13 @@ export default function StudentsPage() {
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-3 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20"
+                  disabled={isSubmitting}
+                  className="flex-1 py-3 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 disabled:opacity-50"
                 >
-                  Save Student
+                  {isSubmitting ? 'Saving...' : 'Save Student'}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {isLinkModalOpen && selectedStudent && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-bold text-zinc-900">Link Parent</h3>
-                <p className="text-sm text-zinc-500 mt-1">Link a parent/guardian to {selectedStudent.name}</p>
-              </div>
-              <button onClick={() => setIsLinkModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
-                <XCircleIcon size={24} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {parents.length > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Available Parents</p>
-                  {parents.map((parent) => (
-                    <button
-                      key={parent.id}
-                      onClick={() => linkParent(parent.id)}
-                      className="w-full p-4 text-left bg-zinc-50 hover:bg-brand-blue/5 border border-zinc-200 hover:border-brand-blue rounded-xl transition-colors group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-zinc-200 flex items-center justify-center text-zinc-900 font-bold">
-                            {parent.name?.charAt(0) || parent.email?.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-zinc-900">{parent.name || 'Unnamed'}</p>
-                            <p className="text-xs text-zinc-500">{parent.email}</p>
-                          </div>
-                        </div>
-                        {selectedStudent.parent_id === parent.id && (
-                          <CheckCircle2 size={20} className="text-brand-blue" />
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <UserPlus size={48} className="mx-auto text-zinc-300 mb-4" />
-                  <p className="text-zinc-500">No parent accounts available.</p>
-                  <p className="text-xs text-zinc-400 mt-1">Add parents from the Staff page first.</p>
-                </div>
-              )}
-              
-              {selectedStudent.parent_id && (
-                <button
-                  onClick={unlinkParent}
-                  className="w-full py-3 text-red-600 font-bold text-sm hover:bg-red-50 rounded-xl transition-colors"
-                >
-                  Unlink Current Parent
-                </button>
-              )}
-            </div>
           </div>
         </div>
       )}
