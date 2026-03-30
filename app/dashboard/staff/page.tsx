@@ -1,7 +1,6 @@
 'use client';
 
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -12,11 +11,13 @@ import {
   UserCog,
   Shield,
   User,
-  XCircle as XCircleIcon
+  XCircle as XCircleIcon,
+  Loader2
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useSession } from 'next-auth/react';
 
 const staffSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -25,21 +26,19 @@ const staffSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
-const mockStaff = [
-  { id: '1', name: 'Mrs. Sarah Johnson', email: 'sarah.johnson@school.com', role: 'teacher', is_active: true },
-  { id: '2', name: 'Mr. Michael Brown', email: 'michael.brown@school.com', role: 'teacher', is_active: true },
-  { id: '3', name: 'Mrs. Emily Davis', email: 'emily.davis@school.com', role: 'admin', is_active: true },
-  { id: '4', name: 'Mr. James Wilson', email: 'james.wilson@school.com', role: 'teacher', is_active: true },
-  { id: '5', name: 'Mrs. Patricia Moore', email: 'patricia.moore@school.com', role: 'teacher', is_active: false },
-];
-
-let staffCounter = 10;
-const nextStaffId = () => `s${++staffCounter}`;
-
-const currentUserRole = 'admin';
+interface StaffMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+}
 
 export default function StaffPage() {
-  const [staff, setStaff] = useState(mockStaff);
+  const { data: session } = useSession();
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -53,25 +52,86 @@ export default function StaffPage() {
     }
   });
 
-  const onSubmit = (data: any) => {
-    const newStaff = {
-      id: nextStaffId(),
-      ...data
-    };
-    setStaff([...staff, newStaff]);
-    setIsModalOpen(false);
-    reset();
+  useEffect(() => {
+    fetchStaff();
+  }, []);
+
+  const fetchStaff = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch('/api/staff');
+      if (!response.ok) {
+        throw new Error('Failed to fetch staff');
+      }
+      const data = await response.json();
+      setStaff(data.data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load staff');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const toggleStatus = (id: string) => {
-    setStaff(staff.map(s => 
-      s.id === id ? { ...s, is_active: !s.is_active } : s
-    ));
+  const onSubmit = async (data: z.infer<typeof staffSchema>) => {
+    try {
+      const response = await fetch('/api/staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create staff member');
+      }
+      
+      await fetchStaff();
+      setIsModalOpen(false);
+      reset();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create staff member');
+    }
   };
 
-  const deleteStaff = (id: string) => {
-    if (confirm('Are you sure?')) {
-      setStaff(staff.filter(s => s.id !== id));
+  const toggleStatus = async (id: string) => {
+    try {
+      const member = staff.find(s => s.id === id);
+      if (!member) return;
+
+      const response = await fetch('/api/staff', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          is_active: !member.is_active
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+      
+      await fetchStaff();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update status');
+    }
+  };
+
+  const deleteStaff = async (id: string) => {
+    if (!confirm('Are you sure?')) return;
+    
+    try {
+      const response = await fetch(`/api/staff?id=${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete staff member');
+      }
+      
+      await fetchStaff();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete staff member');
     }
   };
 
@@ -80,7 +140,9 @@ export default function StaffPage() {
     s.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (currentUserRole !== 'admin' && currentUserRole !== 'super-admin') {
+  const currentUserRole = session?.user?.role;
+
+  if (currentUserRole !== 'ADMIN' && currentUserRole !== 'SUPER_ADMIN') {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-zinc-500">You do not have permission to view this page.</p>
@@ -103,6 +165,19 @@ export default function StaffPage() {
           Add Staff Member
         </button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
+          <XCircle size={18} />
+          {error}
+          <button 
+            onClick={() => setError(null)}
+            className="ml-auto text-red-400 hover:text-red-600"
+          >
+            <XCircleIcon size={16} />
+          </button>
+        </div>
+      )}
 
       <div className="bg-white p-3 md:p-4 rounded-2xl border border-zinc-200 flex flex-wrap gap-3 md:gap-4 items-center justify-between shadow-sm">
         <div className="relative flex-1 w-full sm:min-w-[250px]">
@@ -129,65 +204,76 @@ export default function StaffPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {filteredStaff.map((member) => (
-                <tr key={member.id} className="hover:bg-zinc-50/50 transition-colors group">
-                  <td className="px-3 md:px-6 py-3 md:py-4">
-                    <div className="flex items-center gap-2 md:gap-3">
-                      <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 font-bold border border-zinc-200">
-                        {member.name?.charAt(0) || member.email?.charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-zinc-900 truncate">{member.name || 'Unnamed'}</p>
-                        <p className="text-[10px] md:text-xs text-zinc-500 hidden sm:block truncate">{member.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 md:px-6 py-3 md:py-4 hidden sm:table-cell">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold border ${
-                      member.role === 'admin' 
-                        ? 'bg-brand-blue/5 text-brand-blue border-brand-blue/10' 
-                        : member.role === 'parent'
-                        ? 'bg-emerald-500/5 text-emerald-600 border-emerald-500/10'
-                        : 'bg-brand-purple/5 text-brand-purple border-brand-purple/10'
-                    }`}>
-                      {member.role === 'admin' && <Shield size={10} className="md:w-3 md:h-3" />}
-                      {member.role === 'teacher' && <UserCog size={10} className="md:w-3 md:h-3" />}
-                      {member.role === 'parent' && <User size={10} className="md:w-3 md:h-3" />}
-                      {member.role === 'admin' ? 'Admin' : member.role === 'parent' ? 'Parent' : 'Teacher'}
-                    </span>
-                  </td>
-                  <td className="px-3 md:px-6 py-3 md:py-4">
-                    <button 
-                      onClick={() => toggleStatus(member.id)}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider border ${
-                        member.is_active 
-                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                          : 'bg-red-50 text-red-600 border-red-100'
-                      }`}
-                    >
-                      {member.is_active ? <CheckCircle2 size={10} className="md:w-3 md:h-3" /> : <XCircle size={10} className="md:w-3 md:h-3" />}
-                      {member.is_active ? 'Active' : 'Inactive'}
-                    </button>
-                  </td>
-                  <td className="px-3 md:px-6 py-3 md:py-4 text-right hidden sm:table-cell">
-                    <div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-1.5 md:p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors">
-                        <Edit2 size={14} className="md:w-4 md:h-4" />
-                      </button>
-                      <button 
-                        onClick={() => deleteStaff(member.id)}
-                        className="p-1.5 md:p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 size={14} className="md:w-4 md:h-4" />
-                      </button>
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="px-3 md:px-6 py-16 md:py-20 text-center">
+                    <div className="flex flex-col items-center justify-center text-zinc-400 space-y-4">
+                      <Loader2 size={40} className="md:w-12 md:h-12 animate-spin" strokeWidth={1.5} />
+                      <p className="text-sm">Loading staff members...</p>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredStaff.map((member) => (
+                  <tr key={member.id} className="hover:bg-zinc-50/50 transition-colors group">
+                    <td className="px-3 md:px-6 py-3 md:py-4">
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 font-bold border border-zinc-200">
+                          {member.name?.charAt(0) || member.email?.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-zinc-900 truncate">{member.name || 'Unnamed'}</p>
+                          <p className="text-[10px] md:text-xs text-zinc-500 hidden sm:block truncate">{member.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 md:px-6 py-3 md:py-4 hidden sm:table-cell">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold border ${
+                        member.role === 'admin' 
+                          ? 'bg-brand-blue/5 text-brand-blue border-brand-blue/10' 
+                          : member.role === 'parent'
+                          ? 'bg-emerald-500/5 text-emerald-600 border-emerald-500/10'
+                          : 'bg-brand-purple/5 text-brand-purple border-brand-purple/10'
+                      }`}>
+                        {member.role === 'admin' && <Shield size={10} className="md:w-3 md:h-3" />}
+                        {member.role === 'teacher' && <UserCog size={10} className="md:w-3 md:h-3" />}
+                        {member.role === 'parent' && <User size={10} className="md:w-3 md:h-3" />}
+                        {member.role === 'admin' ? 'Admin' : member.role === 'parent' ? 'Parent' : 'Teacher'}
+                      </span>
+                    </td>
+                    <td className="px-3 md:px-6 py-3 md:py-4">
+                      <button 
+                        onClick={() => toggleStatus(member.id)}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider border ${
+                          member.is_active 
+                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                            : 'bg-red-50 text-red-600 border-red-100'
+                        }`}
+                      >
+                        {member.is_active ? <CheckCircle2 size={10} className="md:w-3 md:h-3" /> : <XCircle size={10} className="md:w-3 md:h-3" />}
+                        {member.is_active ? 'Active' : 'Inactive'}
+                      </button>
+                    </td>
+                    <td className="px-3 md:px-6 py-3 md:py-4 text-right hidden sm:table-cell">
+                      <div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button className="p-1.5 md:p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors">
+                          <Edit2 size={14} className="md:w-4 md:h-4" />
+                        </button>
+                        <button 
+                          onClick={() => deleteStaff(member.id)}
+                          className="p-1.5 md:p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={14} className="md:w-4 md:h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-        {filteredStaff.length === 0 && (
+        {!loading && filteredStaff.length === 0 && (
           <div className="py-16 md:py-20 flex flex-col items-center justify-center text-zinc-400 space-y-4">
             <div className="p-4 bg-zinc-50 rounded-full">
               <UserCog size={40} className="md:w-12 md:h-12" strokeWidth={1} />
