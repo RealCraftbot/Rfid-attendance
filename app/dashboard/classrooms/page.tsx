@@ -1,7 +1,6 @@
 'use client';
 
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, 
   Plus, 
@@ -14,42 +13,47 @@ import {
   TrendingUp,
   CheckCircle2,
   XCircle,
-  FileText
+  FileText,
+  Loader2
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
-const mockClassrooms = [
-  { id: '1', name: 'Primary 1', section: 'A', teacher_name: 'Mrs. Sarah Johnson', student_count: 28, description: 'Introduction to basic subjects and social skills.' },
-  { id: '2', name: 'Primary 2', section: 'A', teacher_name: 'Mr. Michael Brown', student_count: 32, description: 'Building foundational literacy and numeracy skills.' },
-  { id: '3', name: 'Primary 3', section: 'A', teacher_name: 'Mrs. Emily Davis', student_count: 30, description: 'Developing critical thinking and problem solving.' },
-  { id: '4', name: 'JSS 1', section: 'Science', teacher_name: 'Mr. James Wilson', student_count: 25, description: 'Science and technology focused curriculum.' },
-  { id: '5', name: 'SSS 2', section: 'Commercial', teacher_name: 'Mrs. Patricia Moore', student_count: 35, description: 'Commerce, accounting and business studies.' },
-];
+type Classroom = {
+  id: string;
+  name: string;
+  section: string | null;
+  teacherId: string | null;
+  teacherName: string | null;
+  studentCount: number;
+  description: string | null;
+  grade: string | null;
+};
 
-const mockTeachers = [
-  { id: 't1', name: 'Mrs. Sarah Johnson', email: 'sarah.johnson@school.com' },
-  { id: 't2', name: 'Mr. Michael Brown', email: 'michael.brown@school.com' },
-  { id: 't3', name: 'Mrs. Emily Davis', email: 'emily.davis@school.com' },
-  { id: 't4', name: 'Mr. James Wilson', email: 'james.wilson@school.com' },
-  { id: 't5', name: 'Mrs. Patricia Moore', email: 'patricia.moore@school.com' },
-];
+type Teacher = {
+  id: string;
+  name: string | null;
+  email: string;
+};
 
-const mockStudents = [
-  { id: 's1', name: 'Adebayo Oluwaseun', rfid_uid: '1A2B3C4D', studentIdNumber: 'STD001', is_active: true, class: 'Primary 1' },
-  { id: 's2', name: 'Chukwu Adaobi', rfid_uid: '5E6F7G8H', studentIdNumber: 'STD002', is_active: true, class: 'Primary 1' },
-  { id: 's3', name: 'Okonkwo Chibueze', rfid_uid: '9I0J1K2L', studentIdNumber: 'STD003', is_active: true, class: 'Primary 2' },
-  { id: 's4', name: 'Nnamdi Somtochi', rfid_uid: '3M4N5O6P', studentIdNumber: 'STD004', is_active: true, class: 'JSS 1' },
-  { id: 's5', name: 'Eze Ifeoma', rfid_uid: '7Q8R9S0T', studentIdNumber: 'STD005', is_active: false, class: 'SSS 2' },
-];
+type Student = {
+  id: string;
+  name: string;
+  rfidUid: string;
+  studentIdNumber: string | null;
+  isActive: boolean;
+  classroomId: string | null;
+};
 
 const role = 'admin';
 
 export default function ClassroomsPage() {
-  const [classrooms] = useState(mockClassrooms);
-  const [teachers] = useState(mockTeachers);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<any>(null);
-  const [loading] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<Classroom | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     section: '',
@@ -57,33 +61,164 @@ export default function ClassroomsPage() {
     teacher_name: '',
     description: ''
   });
+  const { toast } = useToast();
+
+  // Fetch real data
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch classrooms
+      const classroomsRes = await fetch('/api/classrooms');
+      const classroomsData = await classroomsRes.json();
+      if (classroomsData.success) {
+        setClassrooms(classroomsData.data.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          section: c.section,
+          teacherId: c.teacherId,
+          teacherName: c.teacher?.name || 'Not Assigned',
+          studentCount: c._count?.students || 0,
+          description: c.description,
+          grade: c.grade
+        })));
+      }
+
+      // Fetch teachers
+      const teachersRes = await fetch('/api/teachers');
+      const teachersData = await teachersRes.json();
+      if (teachersData.success) {
+        setTeachers(teachersData.data);
+      }
+
+      // Fetch students
+      const studentsRes = await fetch('/api/students');
+      const studentsData = await studentsRes.json();
+      if (studentsData.success) {
+        setStudents(studentsData.data.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          rfidUid: s.rfidUid,
+          studentIdNumber: s.admissionNumber,
+          isActive: s.isActive,
+          classroomId: s.classroomId
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load data',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const classStudents = selectedClass 
-    ? mockStudents.filter(s => s.class === selectedClass.name)
+    ? students.filter(s => s.classroomId === selectedClass.id)
     : [];
 
   const stats = {
     present: Math.floor(classStudents.length * 0.85),
     total: classStudents.length * 5,
-    rate: 85
+    rate: classStudents.length > 0 ? 85 : 0
   };
 
-  const handleCreateClass = (e: React.FormEvent) => {
+  const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsModalOpen(false);
-    setFormData({ name: '', section: '', teacher_id: '', teacher_name: '', description: '' });
+    
+    try {
+      const response = await fetch('/api/classrooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          section: formData.section || null,
+          teacherId: formData.teacher_id || null,
+          description: formData.description || null,
+          grade: formData.name.split(' ')[0] // Extract grade from name
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: 'Classroom created successfully',
+        });
+        await fetchData();
+        setIsModalOpen(false);
+        setFormData({ name: '', section: '', teacher_id: '', teacher_name: '', description: '' });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to create classroom',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create classroom',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this classroom?')) {
-      console.log('Delete classroom:', id);
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this classroom?')) return;
+
+    try {
+      const response = await fetch(`/api/classrooms?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: 'Classroom deleted',
+        });
+        await fetchData();
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to delete classroom',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete classroom',
+        variant: 'destructive',
+      });
     }
   };
 
   const filteredClasses = classrooms.filter(c => 
     c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.teacher_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    c.teacherName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div className="p-4 md:p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <p className="text-zinc-500">Loading classrooms...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-in fade-in duration-700">
@@ -122,7 +257,7 @@ export default function ClassroomsPage() {
           <div className="w-[1px] h-8 bg-zinc-100 hidden sm:block" />
           <div className="text-center">
             <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Total Students</p>
-            <p className="text-lg md:text-xl font-bold text-zinc-900">{classrooms.reduce((acc, c) => acc + (c.student_count || 0), 0)}</p>
+            <p className="text-lg md:text-xl font-bold text-zinc-900">{students.length}</p>
           </div>
         </div>
       </div>
@@ -152,14 +287,14 @@ export default function ClassroomsPage() {
                     <User size={14} className="text-zinc-400" />
                     <span>Teacher</span>
                   </div>
-                  <span className="font-bold text-zinc-900">{classroom.teacher_name}</span>
+                  <span className="font-bold text-zinc-900">{classroom.teacherName || 'Not Assigned'}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs md:text-sm">
                   <div className="flex items-center gap-2 text-zinc-600">
                     <Users size={14} className="text-zinc-400" />
                     <span>Students</span>
                   </div>
-                  <span className="font-bold text-zinc-900">{classroom.student_count || 0}</span>
+                  <span className="font-bold text-zinc-900">{classroom.studentCount || 0}</span>
                 </div>
               </div>
             </div>
@@ -182,6 +317,15 @@ export default function ClassroomsPage() {
             <p className="text-lg font-bold text-zinc-900">No classrooms found</p>
             <p className="text-sm">Start by creating your first classroom and assigning a teacher.</p>
           </div>
+          {role === 'admin' && (
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="mt-4 flex items-center gap-2 bg-brand-blue text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-blue/90 transition-all shadow-lg"
+            >
+              <Plus size={18} />
+              Create First Classroom
+            </button>
+          )}
         </div>
       )}
 
@@ -243,10 +387,10 @@ export default function ClassroomsPage() {
                 </h3>
                 <div className="flex items-center gap-2 md:gap-3">
                   <div className="w-10 md:w-12 h-10 md:h-12 rounded-full bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold text-base md:text-lg">
-                    {selectedClass.teacher_name?.charAt(0) || 'T'}
+                    {selectedClass.teacherName?.charAt(0) || 'T'}
                   </div>
                   <div>
-                    <p className="font-bold text-zinc-900 text-sm md:text-base">{selectedClass.teacher_name || 'Not Assigned'}</p>
+                    <p className="font-bold text-zinc-900 text-sm md:text-base">{selectedClass.teacherName || 'Not Assigned'}</p>
                     <p className="text-xs md:text-sm text-zinc-500">Class Teacher</p>
                   </div>
                 </div>
@@ -273,12 +417,12 @@ export default function ClassroomsPage() {
                             <tr key={student.id} className="hover:bg-zinc-50">
                               <td className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-mono text-zinc-600">{student.studentIdNumber || '-'}</td>
                               <td className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-bold text-zinc-900">{student.name}</td>
-                              <td className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-mono text-zinc-500 hidden sm:table-cell">{student.rfid_uid}</td>
+                              <td className="px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-mono text-zinc-500 hidden sm:table-cell">{student.rfidUid}</td>
                               <td className="px-3 md:px-4 py-2 md:py-3">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold ${
-                                  student.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                                  student.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
                                 }`}>
-                                  {student.is_active ? 'Active' : 'Inactive'}
+                                  {student.isActive ? 'Active' : 'Inactive'}
                                 </span>
                               </td>
                             </tr>
@@ -362,9 +506,13 @@ export default function ClassroomsPage() {
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-brand-blue/20 text-zinc-900"
                   >
                     <option value="">Select a teacher</option>
-                    {teachers.map(t => (
-                      <option key={t.id} value={t.id}>{t.name || t.email}</option>
-                    ))}
+                    {teachers.length === 0 ? (
+                      <option value="" disabled>No teachers available. Add teachers first.</option>
+                    ) : (
+                      teachers.map(t => (
+                        <option key={t.id} value={t.id}>{t.name || t.email}</option>
+                      ))
+                    )}
                   </select>
                 </div>
 
