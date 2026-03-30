@@ -16,17 +16,7 @@ interface UseRBACReturn {
 }
 
 export function useRBAC(): UseRBACReturn {
-  // Safely call useSession - it might be undefined during static generation
-  let sessionData: any = { data: null, status: 'loading' };
-  
-  try {
-    sessionData = useSession() || { data: null, status: 'unauthenticated' };
-  } catch (e) {
-    // useSession might throw during static generation
-    sessionData = { data: null, status: 'unauthenticated' };
-  }
-  
-  const { data: session, status } = sessionData;
+  const { data: session, status } = useSession();
   const role = (session?.user?.role as Role) || null;
   const isLoading = status === 'loading';
 

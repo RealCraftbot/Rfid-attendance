@@ -1750,7 +1750,7 @@ export default function AdminFeesClient() {
               {/* Footer */}
               <div className="mt-8 text-center text-xs text-zinc-400">
                 <p>Thank you for your business!</p>
-                <p className="mt-1">For inquiries, please contact the bursar's office.</p>
+                <p className="mt-1">For inquiries, please contact the bursar&apos;s office.</p>
               </div>
             </div>
           </div>

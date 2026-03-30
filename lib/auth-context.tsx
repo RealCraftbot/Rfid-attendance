@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState } from 'react';
+import { useSession, signIn as nextAuthSignIn, signOut as nextAuthSignOut } from 'next-auth/react';
 
 interface Organization {
   id: string;
@@ -38,29 +39,14 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    async function checkSession() {
-      try {
-        const { useSession, signIn: nextAuthSignIn, signOut: nextAuthSignOut } = await import('next-auth/react');
-        const { data: session } = useSession();
-        if (session?.user) {
-          setUser(session.user as unknown as User);
-        }
-      } catch (e) {
-        console.log('NextAuth not configured');
-      } finally {
-        setLoading(false);
-      }
-    }
-    checkSession();
-  }, []);
+  
+  const user = session?.user ? (session.user as unknown as User) : null;
+  const isLoading = status === 'loading';
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { signIn: nextAuthSignIn } = await import('next-auth/react');
       return nextAuthSignIn('credentials', { email, password, redirect: false });
     } catch (e) {
       return { error: 'Auth not configured' };
@@ -69,7 +55,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      const { signOut: nextAuthSignOut } = await import('next-auth/react');
       await nextAuthSignOut({ redirect: false });
     } catch (e) {
       // Ignore
@@ -80,7 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     <AuthContext.Provider
       value={{
         user,
-        loading,
+        loading: isLoading || loading,
         organization: user?.organization || null,
         role: user?.role || null,
         signIn,

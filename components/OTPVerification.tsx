@@ -189,7 +189,7 @@ export default function OTPVerification({ email, onVerified, onCancel }: OTPVeri
 
           <div className="text-center">
             <p className="text-sm text-zinc-500 mb-2">
-              Didn't receive the code?
+              Didn&apos;t receive the code?
             </p>
             {countdown > 0 ? (
               <p className="text-sm text-zinc-400">

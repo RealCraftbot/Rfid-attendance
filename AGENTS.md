@@ -34,6 +34,8 @@ npm run db:seed      # Seed database with test data
 - Use Jest or Vitest for unit testing
 - Use React Testing Library for component testing
 - Place tests in `__tests__` directories adjacent to source files
+- To run a single test, use `npm run test -- <test-file-path>` or `npx vitest <test-file-path>`
+- To run tests in watch mode, use `npm run test:watch` or `npx vitest --watch`
 
 ## Code Style Guidelines
 
@@ -57,6 +59,7 @@ import { scanAttendanceSchema } from '@/lib/validation';
 - **API Routes**: lowercase (`route.ts`)
 - **Utility files**: camelCase (`utils.ts`, `api-response.ts`)
 - **Configuration**: kebab-case (`next.config.ts`, `eslint.config.mjs`)
+- **Tests**: `*.test.ts` or `*.spec.ts` with descriptive names
 
 ### Component Structure
 ```typescript
@@ -197,6 +200,7 @@ const { data, error } = useSWR(`/api/data?id=${orgId}`, fetcher, {
 - **Components**: `components/ComponentName.tsx`
 - **Libraries**: `lib/library-name.ts`
 - **Services**: `services/service-name.ts`
+- **Tests**: `__tests__/[filename].test.ts`
 
 ### Authentication Patterns
 - Use NextAuth.js for authentication
@@ -249,3 +253,6 @@ if (!session || session.user.role !== 'ADMIN') {
 - Uses NextAuth.js for authentication
 - No formal testing setup exists yet
 - Follow existing patterns when adding new features
+- Use `npm run test -- <test-file-path>` to run a single test
+- Use `npx vitest <test-file-path>` to run a single test
+- Use `npm run test:watch` or `npx vitest --watch` to run tests in watch mode

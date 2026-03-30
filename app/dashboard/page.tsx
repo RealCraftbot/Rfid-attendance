@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import DashboardClient from './DashboardClient';
+import TimetableEditor from '@/components/TimetableEditor';
 
 interface DashboardData {
   totalStudents: number;
@@ -14,19 +15,8 @@ interface DashboardData {
     checkType: string;
     scanTime: string;
     deviceId: string;
-  }>;
+  }>
 }
-
-const mockData: DashboardData = {
-  totalStudents: 150,
-  presentToday: 142,
-  absentToday: 8,
-  attendanceRate: 95,
-  recentRecords: [
-    { id: '1', studentName: 'John Doe', checkType: 'check_in', scanTime: new Date().toISOString(), deviceId: 'dev_1' },
-    { id: '2', studentName: 'Jane Smith', checkType: 'check_out', scanTime: new Date().toISOString(), deviceId: 'dev_1' },
-  ],
-};
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -47,5 +37,22 @@ export default async function DashboardPage() {
     redirect('/login');
   }
 
-  return <DashboardClient orgId={orgId} orgName={user.organization?.name || ''} initialData={mockData} />;
+  // Mock data for dashboard
+  const mockData: DashboardData = {
+    totalStudents: 150,
+    presentToday: 142,
+    absentToday: 8,
+    attendanceRate: 95,
+    recentRecords: [
+      { id: '1', studentName: 'John Doe', checkType: 'check_in', scanTime: new Date().toISOString(), deviceId: 'dev_1' },
+      { id: '2', studentName: 'Jane Smith', checkType: 'check_out', scanTime: new Date().toISOString(), deviceId: 'dev_1' },
+    ],
+  };
+
+  return (
+    <div className="space-y-6">
+      <DashboardClient orgId={orgId} orgName={user.organization?.name || ''} initialData={mockData} />
+      <TimetableEditor orgId={orgId} orgName={user.organization?.name || ''} />
+    </div>
+  );
 }

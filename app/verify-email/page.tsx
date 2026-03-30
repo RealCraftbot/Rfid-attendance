@@ -45,8 +45,11 @@ export default function VerifyEmailPage() {
             router.push('/dashboard');
         }
       } else {
-        setEmail(session.user.email);
-        setLoading(false);
+        // Use microtask to avoid synchronous setState in effect
+        Promise.resolve().then(() => {
+          setEmail(session.user.email);
+          setLoading(false);
+        });
       }
     }
   }, [status, session, router]);
@@ -149,7 +152,7 @@ export default function VerifyEmailPage() {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-zinc-500">
-            Didn't receive the code? Check your spam folder or{' '}
+            Didn&apos;t receive the code? Check your spam folder or{' '}
             <button 
               onClick={handleCancel}
               className="text-blue-600 hover:underline"

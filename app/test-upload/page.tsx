@@ -108,7 +108,7 @@ export default function TestUpload() {
       <div className="mt-8 p-4 bg-yellow-50 rounded-lg">
         <p className="font-bold">Instructions:</p>
         <ol className="list-decimal ml-4 mt-2">
-          <li>Click "Select Image" button</li>
+          <li>Click &quot;Select Image&quot; button</li>
           <li>Choose a photo from your device</li>
           <li>Watch the logs above</li>
           <li>If you see errors, screenshot this page</li>
