@@ -62,6 +62,21 @@ export async function POST(request: Request) {
       return validationError(parsed.error);
     }
     
+    // Check if classroom with same name already exists
+    const existing = await prisma.classroom.findFirst({
+      where: {
+        orgId,
+        name: parsed.data.name
+      }
+    });
+    
+    if (existing) {
+      return NextResponse.json(
+        { success: false, error: 'A classroom with this name already exists' },
+        { status: 400 }
+      );
+    }
+    
     const classroom = await prisma.classroom.create({
       data: {
         name: parsed.data.name,

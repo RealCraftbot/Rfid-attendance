@@ -134,6 +134,15 @@ export default function ClassroomsPage() {
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.name.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a class name',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       const response = await fetch('/api/classrooms', {
         method: 'POST',
@@ -165,7 +174,7 @@ export default function ClassroomsPage() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to create classroom',
+        description: 'Failed to create classroom. Please try again.',
         variant: 'destructive',
       });
     }
