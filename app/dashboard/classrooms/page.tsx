@@ -21,12 +21,11 @@ import { useToast } from '@/hooks/use-toast';
 type Classroom = {
   id: string;
   name: string;
-  section: string | null;
   teacherId: string | null;
-  teacherName: string | null;
   studentCount: number;
-  description: string | null;
   grade: string | null;
+  section?: string | null;
+  description?: string | null;
 };
 
 type Teacher = {
@@ -56,10 +55,8 @@ export default function ClassroomsPage() {
   const [selectedClass, setSelectedClass] = useState<Classroom | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    section: '',
-    teacher_id: '',
-    teacher_name: '',
-    description: ''
+    teacherId: '',
+    grade: ''
   });
   const { toast } = useToast();
 
@@ -72,32 +69,36 @@ export default function ClassroomsPage() {
     try {
       setLoading(true);
       
-      // Fetch classrooms
-      const classroomsRes = await fetch('/api/classrooms');
-      const classroomsData = await classroomsRes.json();
+      const [classroomsRes, teachersRes, studentsRes] = await Promise.all([
+        fetch('/api/classrooms'),
+        fetch('/api/teachers'),
+        fetch('/api/students')
+      ]);
+      
+      const [classroomsData, teachersData, studentsData] = await Promise.all([
+        classroomsRes.json(),
+        teachersRes.json(),
+        studentsRes.json()
+      ]);
+      
       if (classroomsData.success) {
         setClassrooms(classroomsData.data.map((c: any) => ({
           id: c.id,
           name: c.name,
-          section: c.section,
           teacherId: c.teacherId,
-          teacherName: c.teacher?.name || 'Not Assigned',
-          studentCount: c._count?.students || 0,
-          description: c.description,
+          studentCount: c.studentCount || 0,
           grade: c.grade
         })));
       }
 
-      // Fetch teachers
-      const teachersRes = await fetch('/api/teachers');
-      const teachersData = await teachersRes.json();
       if (teachersData.success) {
-        setTeachers(teachersData.data);
+        setTeachers(teachersData.data.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          email: t.email
+        })));
       }
 
-      // Fetch students
-      const studentsRes = await fetch('/api/students');
-      const studentsData = await studentsRes.json();
       if (studentsData.success) {
         setStudents(studentsData.data.map((s: any) => ({
           id: s.id,
@@ -139,10 +140,8 @@ export default function ClassroomsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
-          section: formData.section || null,
-          teacherId: formData.teacher_id || null,
-          description: formData.description || null,
-          grade: formData.name.split(' ')[0] // Extract grade from name
+          teacherId: formData.teacherId || null,
+          grade: formData.grade || null
         }),
       });
 
@@ -155,7 +154,7 @@ export default function ClassroomsPage() {
         });
         await fetchData();
         setIsModalOpen(false);
-        setFormData({ name: '', section: '', teacher_id: '', teacher_name: '', description: '' });
+        setFormData({ name: '', teacherId: '', grade: '' });
       } else {
         toast({
           title: 'Error',
@@ -204,9 +203,15 @@ export default function ClassroomsPage() {
     }
   };
 
+  const getTeacherName = (teacherId: string | null) => {
+    if (!teacherId) return 'Not Assigned';
+    const teacher = teachers.find(t => t.id === teacherId);
+    return teacher?.name || 'Not Assigned';
+  };
+
   const filteredClasses = classrooms.filter(c => 
     c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.teacherName?.toLowerCase().includes(searchTerm.toLowerCase())
+    getTeacherName(c.teacherId).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -287,7 +292,7 @@ export default function ClassroomsPage() {
                     <User size={14} className="text-zinc-400" />
                     <span>Teacher</span>
                   </div>
-                  <span className="font-bold text-zinc-900">{classroom.teacherName || 'Not Assigned'}</span>
+                  <span className="font-bold text-zinc-900">{getTeacherName(classroom.teacherId)}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs md:text-sm">
                   <div className="flex items-center gap-2 text-zinc-600">
@@ -387,10 +392,10 @@ export default function ClassroomsPage() {
                 </h3>
                 <div className="flex items-center gap-2 md:gap-3">
                   <div className="w-10 md:w-12 h-10 md:h-12 rounded-full bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold text-base md:text-lg">
-                    {selectedClass.teacherName?.charAt(0) || 'T'}
+                    {getTeacherName(selectedClass.teacherId).charAt(0) || 'T'}
                   </div>
                   <div>
-                    <p className="font-bold text-zinc-900 text-sm md:text-base">{selectedClass.teacherName || 'Not Assigned'}</p>
+                    <p className="font-bold text-zinc-900 text-sm md:text-base">{getTeacherName(selectedClass.teacherId)}</p>
                     <p className="text-xs md:text-sm text-zinc-500">Class Teacher</p>
                   </div>
                 </div>
@@ -453,78 +458,43 @@ export default function ClassroomsPage() {
               <form onSubmit={handleCreateClass} className="space-y-6">
                 <div>
                   <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Class Name *</label>
-                  <select 
+                  <input 
+                    type="text"
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    placeholder="e.g., Primary 1, JSS 1, SSS 2"
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-brand-blue/20 text-zinc-900"
-                  >
-                    <option value="">Select Class</option>
-                    <optgroup label="Primary">
-                      <option value="Primary 1">Primary 1</option>
-                      <option value="Primary 2">Primary 2</option>
-                      <option value="Primary 3">Primary 3</option>
-                      <option value="Primary 4">Primary 4</option>
-                      <option value="Primary 5">Primary 5</option>
-                      <option value="Primary 6">Primary 6</option>
-                    </optgroup>
-                    <optgroup label="Junior Secondary (JSS)">
-                      <option value="JSS 1">JSS 1</option>
-                      <option value="JSS 2">JSS 2</option>
-                      <option value="JSS 3">JSS 3</option>
-                    </optgroup>
-                    <optgroup label="Senior Secondary (SSS)">
-                      <option value="SSS 1">SSS 1</option>
-                      <option value="SSS 2">SSS 2</option>
-                      <option value="SSS 3">SSS 3</option>
-                    </optgroup>
-                  </select>
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Section/Arm</label>
-                  <select 
-                    value={formData.section}
-                    onChange={(e) => setFormData({...formData, section: e.target.value})}
+                  <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Grade (Optional)</label>
+                  <input 
+                    type="text"
+                    value={formData.grade}
+                    onChange={(e) => setFormData({...formData, grade: e.target.value})}
+                    placeholder="e.g., JSS1, SSS3"
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-brand-blue/20 text-zinc-900"
-                  >
-                    <option value="">General (No Section)</option>
-                    <option value="A">Section A</option>
-                    <option value="B">Section B</option>
-                    <option value="C">Section C</option>
-                    <option value="Science">Science</option>
-                    <option value="Commercial">Commercial</option>
-                    <option value="Arts">Arts</option>
-                  </select>
+                  />
                 </div>
                 
                 <div>
                   <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Assign Teacher</label>
                   <select 
-                    value={formData.teacher_id}
-                    onChange={(e) => setFormData({...formData, teacher_id: e.target.value})}
+                    value={formData.teacherId}
+                    onChange={(e) => setFormData({...formData, teacherId: e.target.value})}
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-brand-blue/20 text-zinc-900"
                   >
                     <option value="">Select a teacher</option>
                     {teachers.length === 0 ? (
-                      <option value="" disabled>No teachers available. Add teachers first.</option>
+                      <option value="" disabled>No teachers available. Add staff first.</option>
                     ) : (
                       teachers.map(t => (
                         <option key={t.id} value={t.id}>{t.name || t.email}</option>
                       ))
                     )}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Description</label>
-                  <textarea 
-                    rows={3}
-                    placeholder="Briefly describe the class..."
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-brand-blue/20 text-zinc-900 resize-none"
-                  />
                 </div>
 
                 <div className="flex gap-4 pt-4">

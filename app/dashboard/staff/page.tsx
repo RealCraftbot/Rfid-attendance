@@ -39,6 +39,7 @@ export default function StaffPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<z.infer<typeof staffSchema>>({
@@ -71,6 +72,22 @@ export default function StaffPage() {
     }
   };
 
+  const openAddModal = () => {
+    setEditingStaff(null);
+    reset({ name: '', email: '', role: 'teacher' });
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (member: StaffMember) => {
+    setEditingStaff(member);
+    reset({ 
+      name: member.name, 
+      email: member.email, 
+      role: member.role === 'TEACHER' ? 'teacher' : 'admin' 
+    });
+    setIsModalOpen(true);
+  };
+
   const onSubmit = async (data: z.infer<typeof staffSchema>) => {
     try {
       const payload = {
@@ -79,23 +96,28 @@ export default function StaffPage() {
         role: data.role === 'teacher' ? 'TEACHER' : 'ADMIN',
       };
       
-      const response = await fetch('/api/staff', {
-        method: 'POST',
+      const url = editingStaff ? '/api/staff' : '/api/staff';
+      const method = editingStaff ? 'PUT' : 'POST';
+      const body = editingStaff ? { ...payload, id: editingStaff.id } : payload;
+      
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
       
       const result = await response.json();
       
       if (!response.ok || !result.success) {
-        throw new Error(result.error?.message || result.error || 'Failed to create staff member');
+        throw new Error(result.error?.message || result.error || 'Failed to save staff member');
       }
       
       await fetchStaff();
       setIsModalOpen(false);
+      setEditingStaff(null);
       reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create staff member');
+      setError(err instanceof Error ? err.message : 'Failed to save staff member');
     }
   };
 
@@ -260,14 +282,19 @@ export default function StaffPage() {
                         {member.isActive ? 'Active' : 'Inactive'}
                       </button>
                     </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4 text-right hidden sm:table-cell">
-                      <div className="flex items-center justify-end gap-1 md:gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-1.5 md:p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors">
+                    <td className="px-3 md:px-6 py-3 md:py-4">
+                      <div className="flex items-center justify-end gap-1 md:gap-2">
+                        <button 
+                          onClick={() => openEditModal(member)}
+                          className="p-1.5 md:p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit"
+                        >
                           <Edit2 size={14} className="md:w-4 md:h-4" />
                         </button>
                         <button 
                           onClick={() => deleteStaff(member.id)}
                           className="p-1.5 md:p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
                         >
                           <Trash2 size={14} className="md:w-4 md:h-4" />
                         </button>
@@ -296,8 +323,8 @@ export default function StaffPage() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-zinc-900">Add Staff Member</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
+              <h3 className="text-xl font-bold text-zinc-900">{editingStaff ? 'Edit Staff Member' : 'Add Staff Member'}</h3>
+              <button onClick={() => { setIsModalOpen(false); setEditingStaff(null); }} className="text-zinc-400 hover:text-zinc-900">
                 <XCircleIcon size={24} />
               </button>
             </div>
@@ -334,7 +361,7 @@ export default function StaffPage() {
               <div className="pt-4 flex gap-3">
                 <button 
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => { setIsModalOpen(false); setEditingStaff(null); }}
                   className="flex-1 py-3 bg-zinc-50 text-zinc-600 font-bold rounded-xl hover:bg-zinc-100 transition-colors border border-zinc-200"
                 >
                   Cancel
@@ -343,7 +370,7 @@ export default function StaffPage() {
                   type="submit"
                   className="flex-1 py-3 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20"
                 >
-                  Save Staff
+                  {editingStaff ? 'Update Staff' : 'Save Staff'}
                 </button>
               </div>
             </form>
