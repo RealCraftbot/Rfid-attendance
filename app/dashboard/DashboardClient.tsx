@@ -20,7 +20,14 @@ interface DashboardData {
   }>;
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    throw new Error(json.error || 'Failed to fetch');
+  }
+  return json.data;
+};
 
 const StatCard = ({ title, value, change, icon: Icon, trend }: { title: string; value: string | number; change: string; icon: any; trend: 'up' | 'down' }) => (
   <div className="bg-white p-4 sm:p-6 rounded-xl border border-zinc-200 shadow-sm hover:shadow-md transition-shadow">
@@ -121,7 +128,7 @@ export default function DashboardClient({ orgId, orgName }: DashboardClientProps
           </div>
 
           <div className="space-y-4 max-h-[400px] overflow-y-auto">
-            {stats.recentRecords && stats.recentRecords.length > 0 ? stats.recentRecords.map((record) => (
+            {stats.recentRecords?.length > 0 ? stats.recentRecords.map((record) => (
               <div key={record.id} className="flex items-start gap-3 sm:gap-4">
                 {record.studentImageUrl ? (
                   <img 
