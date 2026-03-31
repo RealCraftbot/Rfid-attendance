@@ -330,36 +330,36 @@ function GradesContent() {
             <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
               <FileText size={16} className="text-blue-600 sm:w-[18px] sm:h-[18px]" />
             </div>
-            <span className="text-[10px] sm:text-xs text-zinc-500">Total Reports</span>
+            <span className="text-[10px] sm:text-xs text-zinc-500">Total Students</span>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-zinc-900">24</p>
+          <p className="text-lg sm:text-xl font-bold text-zinc-900">{students.length}</p>
         </div>
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
             <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
               <TrendingUp size={16} className="text-green-600 sm:w-[18px] sm:h-[18px]" />
             </div>
-            <span className="text-[10px] sm:text-xs text-zinc-500">Class Average</span>
+            <span className="text-[10px] sm:text-xs text-zinc-500">Reports Created</span>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-zinc-900">72%</p>
+          <p className="text-lg sm:text-xl font-bold text-zinc-900">0</p>
         </div>
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
             <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg">
               <GraduationCap size={16} className="text-purple-600 sm:w-[18px] sm:h-[18px]" />
             </div>
-            <span className="text-[10px] sm:text-xs text-zinc-500">Promoted</span>
+            <span className="text-[10px] sm:text-xs text-zinc-500">Classes</span>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-zinc-900">18</p>
+          <p className="text-lg sm:text-xl font-bold text-zinc-900">{new Set(students.map(s => s.class)).size}</p>
         </div>
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
             <div className="p-1.5 sm:p-2 bg-amber-100 rounded-lg">
               <User size={16} className="text-amber-600 sm:w-[18px] sm:h-[18px]" />
             </div>
-            <span className="text-[10px] sm:text-xs text-zinc-500">Pending</span>
+            <span className="text-[10px] sm:text-xs text-zinc-500">Active Students</span>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-zinc-900">6</p>
+          <p className="text-lg sm:text-xl font-bold text-zinc-900">{students.filter(s => s.rfidAttendance.percentage > 0).length}</p>
         </div>
       </div>
 
