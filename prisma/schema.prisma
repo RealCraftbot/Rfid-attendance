@@ -98,6 +98,7 @@ model User {
 
   org       Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
   sessions  Session[]
+  timetables Timetable[]
 
   @@index([orgId])
   @@index([email])
@@ -153,6 +154,7 @@ model Classroom {
   org               Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
   students          Student[]
   teacherAttendance TeacherAttendance[]
+  timetables       Timetable[]
 
   @@unique([orgId, name])
   @@index([orgId])
@@ -423,19 +425,24 @@ model VerificationToken {
 }
 
 model Timetable {
-  id         String    @id @default(cuid())
-  orgId      String
-  day        String    // Monday, Tuesday, etc.
-  period     Int       // 1, 2, 3, etc.
-  subject    String
-  teacherId  String
-  classroomId String
-  startTime  String    // HH:MM format
-  endTime    String    // HH:MM format
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  orgId       String
+  day         String    // Monday, Tuesday, etc.
+  period      Float     // 1, 2, 2.5, 3, etc. (allows breaks between periods)
+  periodLabel String?   // "1st Period", "Short Break", "Lunch"
+  subject     String?
+  teacherId   String?
+  classroomId String?
+  startTime   String    // HH:MM format
+  endTime     String    // HH:MM format
+  isBreak     Boolean   @default(false)
+  breakType   String?   // "short", "long", "lunch"
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  classroom Classroom?    @relation(fields: [classroomId], references: [id])
+  teacher  User?         @relation(fields: [teacherId], references: [id])
 
   @@unique([orgId, day, period])
   @@index([orgId])

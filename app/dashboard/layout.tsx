@@ -29,7 +29,8 @@ import {
   GraduationCap,
   FileText,
   UserCheck,
-  Loader2
+  Loader2,
+  Calendar
 } from 'lucide-react';
 
 // Role type matching the database
@@ -61,21 +62,23 @@ const SidebarItem = ({ icon: Icon, label, href, active, onClick }: SidebarItemPr
 // Navigation items configuration with role-based access
 const getNavItems = (role: string) => {
   const adminItems = [
-    { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
-    { icon: BookOpen, label: 'Classrooms', href: '/dashboard/classrooms' },
-    { icon: Users, label: 'Students', href: '/dashboard/students' },
-    { icon: UserPlus, label: 'Parents', href: '/dashboard/parents' },
-    { icon: UserCog, label: 'Staff', href: '/dashboard/staff' },
-    { icon: Cpu, label: 'Devices', href: '/dashboard/devices' },
-    { icon: Bus, label: 'Bus Tracking', href: '/dashboard/bus' },
-    { icon: History, label: 'Attendance', href: '/dashboard/attendance' },
-    { icon: UserCheck, label: 'Teacher Attendance', href: '/dashboard/teacher-attendance' },
-    { icon: Wallet, label: 'Fees & Payments', href: '/dashboard/admin/fees' },
-    { icon: GraduationCap, label: 'Grades', href: '/dashboard/grades' },
+    { icon: LayoutDashboard, label: '1. Overview', href: '/dashboard' },
+    { icon: UserCog, label: '2. Staff', href: '/dashboard/staff' },
+    { icon: BookOpen, label: '3. Classrooms', href: '/dashboard/classrooms' },
+    { icon: Users, label: '4. Students', href: '/dashboard/students' },
+    { icon: UserPlus, label: '5. Parents', href: '/dashboard/parents' },
+    { icon: Cpu, label: '6. Devices', href: '/dashboard/devices' },
+    { icon: Bus, label: '7. Bus Tracking', href: '/dashboard/bus' },
+    { icon: Calendar, label: '8. Timetable', href: '/dashboard/timetable' },
+    { icon: UserCheck, label: '9. Teacher Schedule', href: '/dashboard/teacher-schedule' },
+    { icon: History, label: '10. Attendance', href: '/dashboard/attendance' },
+    { icon: Wallet, label: '11. Fees & Payments', href: '/dashboard/admin/fees' },
+    { icon: GraduationCap, label: '12. Grades', href: '/dashboard/grades' },
   ];
 
   const teacherItems = [
     { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
+    { icon: Calendar, label: 'My Schedule', href: '/dashboard/teacher-schedule' },
     { icon: BookOpen, label: 'My Classes', href: '/dashboard/classrooms' },
     { icon: Users, label: 'Students', href: '/dashboard/students' },
     { icon: History, label: 'Attendance', href: '/dashboard/attendance' },

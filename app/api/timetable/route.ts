@@ -8,7 +8,8 @@ import type { NextRequest } from 'next/server';
 
 // Schema for validation
 const timetableSchema = z.object({
-  orgId: z.string().min(1, 'Organization ID is required'),
+  id: z.string().optional(),
+  orgId: z.string().min(1, 'Organization ID is required').optional(),
   day: z.enum([
     'Monday',
     'Tuesday',
@@ -18,12 +19,15 @@ const timetableSchema = z.object({
     'Saturday',
     'Sunday'
   ], { message: 'Invalid day of week' }),
-  period: z.number().int().positive('Period must be a positive integer'),
-  subject: z.string().min(1, 'Subject is required'),
-  teacherId: z.string().min(1, 'Teacher ID is required'),
-  classroomId: z.string().min(1, 'Classroom ID is required'),
+  period: z.number().positive('Period must be a positive number'),
+  periodLabel: z.string().optional(),
+  subject: z.string().optional(),
+  teacherId: z.string().optional(),
+  classroomId: z.string().optional(),
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)'),
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)'),
+  isBreak: z.boolean().optional().default(false),
+  breakType: z.enum(['short', 'long', 'lunch']).optional().nullable(),
 });
 
 // Validate time order
@@ -120,7 +124,16 @@ export async function POST(request: NextRequest) {
     
     const timetable = await prisma.timetable.create({
       data: {
-        ...parsed.data,
+        day: parsed.data.day,
+        period: parsed.data.period,
+        subject: parsed.data.subject,
+        teacherId: parsed.data.teacherId,
+        classroomId: parsed.data.classroomId,
+        startTime: parsed.data.startTime,
+        endTime: parsed.data.endTime,
+        isBreak: parsed.data.isBreak ?? false,
+        breakType: parsed.data.breakType,
+        periodLabel: parsed.data.periodLabel,
         orgId
       }
     });
