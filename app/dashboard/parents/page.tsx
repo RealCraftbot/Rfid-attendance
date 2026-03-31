@@ -12,7 +12,9 @@ import {
   ChevronLeft,
   ChevronRight,
   XCircle,
-  Loader2
+  Loader2,
+  Link as LinkIcon,
+  Unlink
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,7 +32,7 @@ const parentSchema = z.object({
 const studentSchema = z.object({
   name: z.string().min(2, 'Student name required'),
   email: z.string().email('Valid email required').optional().or(z.literal('')),
-  rfid_uid: z.string().min(4, 'RFID required'),
+  rfidUid: z.string().min(4, 'RFID required'),
   class: z.string().optional(),
   dateOfBirth: z.string().optional(),
   bloodGroup: z.string().optional(),
@@ -39,15 +41,25 @@ const studentSchema = z.object({
   studentIdNumber: z.string().optional(),
 });
 
-let parentCounter = 10;
-const nextParentId = () => `p${++parentCounter}`;
-
 interface Parent {
   id: string;
   name: string;
   email: string;
-  phone: string;
-  address: string;
+  imageUrl?: string;
+  students: Student[];
+  studentCount: number;
+}
+
+interface Student {
+  id: string;
+  name: string;
+  rfidUid: string;
+  grade?: string;
+  classroom?: {
+    id: string;
+    name: string;
+  };
+  isActive: boolean;
 }
 
 interface Student {
@@ -60,8 +72,9 @@ interface Student {
 
 export default function ParentRegistrationPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLinkStudentOpen, setIsLinkStudentOpen] = useState(false);
   const [parents, setParents] = useState<Parent[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [unlinkedStudents, setUnlinkedStudents] = useState<Student[]>([]);
   const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [calendarStudent, setCalendarStudent] = useState<Student | null>(null);
@@ -69,6 +82,8 @@ export default function ParentRegistrationPage() {
   const [attendanceData] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [linkSearchTerm, setLinkSearchTerm] = useState('');
 
   const fetchData = useCallback(async () => {
     try {
@@ -78,17 +93,26 @@ export default function ParentRegistrationPage() {
         const json = await response.json();
         if (json.success) {
           setParents(json.data || []);
-          // Flatten students from all parents
-          const allStudents = (json.data || []).flatMap((p: any) => 
-            (p.students || []).map((s: any) => ({ ...s, parent_id: p.id }))
-          );
-          setStudents(allStudents);
         }
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const fetchUnlinkedStudents = useCallback(async () => {
+    try {
+      const response = await fetch('/api/students/unlinked');
+      if (response.ok) {
+        const json = await response.json();
+        if (json.success) {
+          setUnlinkedStudents(json.data || []);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch unlinked students:', error);
     }
   }, []);
 
@@ -112,7 +136,7 @@ export default function ParentRegistrationPage() {
     defaultValues: {
       name: '',
       email: '',
-      rfid_uid: '',
+      rfidUid: '',
       class: '',
       dateOfBirth: '',
       bloodGroup: '',
@@ -122,26 +146,129 @@ export default function ParentRegistrationPage() {
     }
   });
 
-  const filteredStudents = selectedParent 
-    ? students.filter(s => s.parent_id === selectedParent.id)
-    : [];
+  const filteredStudents = selectedParent?.students || [];
 
-  const onParentSubmit = (data: z.infer<typeof parentSchema>) => {
-    const newParent = {
-      id: nextParentId(),
-      name: data.parentName,
-      email: data.parentEmail,
-      phone: data.parentPhone,
-      address: data.parentAddress
-    };
-    setParents([...parents, newParent]);
-    setIsModalOpen(false);
-    parentForm.reset();
+  const onParentSubmit = async (data: z.infer<typeof parentSchema>) => {
+    try {
+      setSubmitting(true);
+      const response = await fetch('/api/parents/manage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.parentName,
+          email: data.parentEmail,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchData();
+        setIsModalOpen(false);
+        parentForm.reset();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to add parent');
+      }
+    } catch (error) {
+      console.error('Failed to add parent:', error);
+      alert('Failed to add parent');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const onStudentSubmit = (data: z.infer<typeof studentSchema>) => {
-    console.log('Add student:', data);
-    studentForm.reset();
+  const onStudentSubmit = async (data: z.infer<typeof studentSchema>) => {
+    try {
+      setSubmitting(true);
+      const response = await fetch('/api/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          rfidUid: data.rfidUid,
+          email: data.email || null,
+          grade: data.class || null,
+          guardianName: selectedParent?.name,
+          guardianEmail: selectedParent?.email,
+          guardianPhone: null,
+          dateOfBirth: data.dateOfBirth || null,
+          admissionNumber: data.studentIdNumber || null,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchData();
+        studentForm.reset();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to add student');
+      }
+    } catch (error) {
+      console.error('Failed to add student:', error);
+      alert('Failed to add student');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleLinkStudent = async (studentId: string) => {
+    if (!selectedParent) return;
+    
+    try {
+      setSubmitting(true);
+      const response = await fetch('/api/students/unlinked', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId,
+          guardianEmail: selectedParent.email,
+          guardianName: selectedParent.name,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchData();
+        await fetchUnlinkedStudents();
+        setIsLinkStudentOpen(false);
+        setLinkSearchTerm('');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to link student');
+      }
+    } catch (error) {
+      console.error('Failed to link student:', error);
+      alert('Failed to link student');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUnlinkStudent = async (studentId: string) => {
+    try {
+      setSubmitting(true);
+      const response = await fetch('/api/students', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: studentId,
+          guardianEmail: null,
+          guardianName: null,
+          guardianPhone: null,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchData();
+        await fetchUnlinkedStudents();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to unlink student');
+      }
+    } catch (error) {
+      console.error('Failed to unlink student:', error);
+      alert('Failed to unlink student');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const openCalendar = (student: any) => {
@@ -201,8 +328,7 @@ export default function ParentRegistrationPage() {
 
   const filteredParents = parents.filter(p => 
     p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.phone?.includes(searchTerm)
+    p.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -254,7 +380,7 @@ export default function ParentRegistrationPage() {
                   <h3 className="font-bold text-zinc-900 text-sm md:text-base truncate">{parent.name}</h3>
                   <div className="flex flex-wrap items-center gap-2 md:gap-3 text-xs text-zinc-500">
                     <span className="flex items-center gap-1"><Mail size={12} /> <span className="hidden sm:inline">{parent.email}</span></span>
-                    <span className="flex items-center gap-1"><Phone size={12} /> {parent.phone}</span>
+                    <span className="flex items-center gap-1"><Users size={12} /> {parent.studentCount || 0} student(s)</span>
                   </div>
                 </div>
               </div>
@@ -265,12 +391,23 @@ export default function ParentRegistrationPage() {
               <div className="border-t border-zinc-100 p-3 md:p-4 bg-zinc-50/50">
                 <div className="flex justify-between items-center mb-3 md:mb-4">
                   <h4 className="text-xs md:text-sm font-bold text-zinc-500 uppercase tracking-wider">Linked Students</h4>
-                  <button 
-                    onClick={() => studentForm.reset()}
-                    className="flex items-center gap-1 text-xs font-bold text-brand-blue hover:underline"
-                  >
-                    <Plus size={14} /> Add Student
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        fetchUnlinkedStudents();
+                        setIsLinkStudentOpen(true);
+                      }}
+                      className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:underline"
+                    >
+                      <LinkIcon size={14} /> Link Existing
+                    </button>
+                    <button 
+                      onClick={() => studentForm.reset()}
+                      className="flex items-center gap-1 text-xs font-bold text-brand-blue hover:underline"
+                    >
+                      <Plus size={14} /> Add New
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mb-3 md:mb-4 p-3 md:p-4 bg-white rounded-xl border border-zinc-200">
@@ -287,7 +424,7 @@ export default function ParentRegistrationPage() {
                       className="px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm"
                     />
                     <input 
-                      {...studentForm.register('rfid_uid')}
+                      {...studentForm.register('rfidUid')}
                       placeholder="RFID UID *"
                       className="px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm font-mono"
                     />
@@ -328,9 +465,9 @@ export default function ParentRegistrationPage() {
                   </form>
                 </div>
 
-                {students.length > 0 ? (
+                {filteredStudents.length > 0 ? (
                   <div className="space-y-2">
-                    {students.map((student) => (
+                    {filteredStudents.map((student) => (
                       <div key={student.id} className="flex items-center justify-between p-2 md:p-3 bg-white rounded-xl border border-zinc-200">
                         <div className="flex items-center gap-2 md:gap-3">
                           <div className="w-8 md:w-10 h-8 md:h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 font-bold text-sm">
@@ -339,8 +476,8 @@ export default function ParentRegistrationPage() {
                           <div className="min-w-0">
                             <p className="font-bold text-xs md:text-sm text-zinc-900 truncate">{student.name}</p>
                             <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs text-zinc-500">
-                              <code className="bg-zinc-100 px-1 py-0.5 rounded">{student.rfid_uid}</code>
-                              <span className="hidden sm:inline">{student.class || 'No class'}</span>
+                              <code className="bg-zinc-100 px-1 py-0.5 rounded">{student.rfidUid}</code>
+                              <span className="hidden sm:inline">{student.grade || student.classroom?.name || 'No class'}</span>
                             </div>
                           </div>
                         </div>
@@ -351,6 +488,13 @@ export default function ParentRegistrationPage() {
                             title="View Attendance Calendar"
                           >
                             <Calendar size={16} className="md:w-[18px] md:h-[18px]" />
+                          </button>
+                          <button 
+                            onClick={() => handleUnlinkStudent(student.id)}
+                            className="p-1.5 md:p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                            title="Unlink Student"
+                          >
+                            <Unlink size={16} className="md:w-[18px] md:h-[18px]" />
                           </button>
                         </div>
                       </div>
@@ -487,6 +631,69 @@ export default function ParentRegistrationPage() {
                   <div className="w-3 h-3 bg-blue-100 rounded"></div>
                   <span className="text-zinc-500">Check-out</span>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLinkStudentOpen && selectedParent && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-zinc-100 flex justify-between items-center sticky top-0 bg-white">
+              <div>
+                <h3 className="text-xl font-bold text-zinc-900">Link Existing Student</h3>
+                <p className="text-sm text-zinc-500">Link a student to {selectedParent.name}</p>
+              </div>
+              <button onClick={() => setIsLinkStudentOpen(false)} className="text-zinc-400 hover:text-zinc-900">
+                <XCircle size={24} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+                  <input 
+                    type="text"
+                    placeholder="Search students..."
+                    value={linkSearchTerm}
+                    onChange={(e) => setLinkSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {unlinkedStudents
+                  .filter(s => s.name.toLowerCase().includes(linkSearchTerm.toLowerCase()) || s.rfidUid.includes(linkSearchTerm))
+                  .map((student) => (
+                    <div key={student.id} className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-brand-blue/10 flex items-center justify-center text-brand-blue font-bold">
+                          {student.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-zinc-900">{student.name}</p>
+                          <p className="text-xs text-zinc-500">
+                            <code className="bg-zinc-200 px-1 py-0.5 rounded">{student.rfidUid}</code>
+                            {' '}{student.grade || student.classroom?.name || 'No class'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleLinkStudent(student.id)}
+                        disabled={submitting}
+                        className="px-3 py-1.5 bg-emerald-600 text-white text-sm font-bold rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {submitting ? <Loader2 size={16} className="animate-spin" /> : 'Link'}
+                      </button>
+                    </div>
+                  ))}
+                {unlinkedStudents.length === 0 && (
+                  <div className="text-center py-8 text-zinc-400">
+                    <Users size={32} className="mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No unlinked students found</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

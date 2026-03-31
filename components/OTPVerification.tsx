@@ -144,15 +144,17 @@ export default function OTPVerification({ email, onVerified, onCancel }: OTPVeri
             </svg>
           )}
         </div>
-        <h2 className="text-2xl font-bold text-zinc-900">
-          {success ? 'Verified!' : 'Verify Your Email'}
-        </h2>
-        <p className="text-zinc-500 mt-2">
-          {success 
-            ? 'Your email has been verified successfully.'
-            : `Enter the 6-digit code sent to ${email}`
-          }
-        </p>
+        {success ? (
+          <>
+            <h2 className="text-2xl font-bold text-zinc-900">Verified!</h2>
+            <p className="text-zinc-500 mt-2">Your email has been verified successfully.</p>
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl font-bold text-zinc-900">Enter Verification Code</h2>
+            <p className="text-zinc-500 mt-2">Enter the 6-digit code sent to {email}</p>
+          </>
+        )}
       </div>
 
       {!success && (
