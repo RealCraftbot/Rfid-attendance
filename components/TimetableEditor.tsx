@@ -60,7 +60,8 @@ const fetcher = async (url: string) => {
   const res = await fetch(url);
   const json = await res.json();
   if (!res.ok) {
-    throw new Error(json.error || 'Failed to fetch');
+    const errorMsg = json.error?.message || json.error || json.message || 'Failed to fetch';
+    throw new Error(typeof errorMsg === 'object' ? JSON.stringify(errorMsg) : errorMsg);
   }
   return json.data || [];
 };

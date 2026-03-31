@@ -4,11 +4,16 @@ import { getToken } from 'next-auth/jwt';
 
 // Define role-based route access
 const routePermissions: Record<string, string[]> = {
+  // Base dashboard - all authenticated users
+  '/dashboard': ['ADMIN', 'SUPER_ADMIN', 'TEACHER', 'BURSAR', 'PARENT'],
+  
   // Admin routes
   '/dashboard/admin': ['ADMIN', 'SUPER_ADMIN'],
   '/dashboard/staff': ['ADMIN', 'SUPER_ADMIN'],
   '/dashboard/devices': ['ADMIN', 'SUPER_ADMIN'],
   '/dashboard/bus': ['ADMIN', 'SUPER_ADMIN'],
+  '/dashboard/timetable': ['ADMIN', 'SUPER_ADMIN'],
+  '/dashboard/teacher-schedule': ['ADMIN', 'SUPER_ADMIN', 'TEACHER'],
   '/dashboard/teacher-attendance': ['ADMIN', 'SUPER_ADMIN'],
   '/dashboard/admin/fees': ['ADMIN', 'SUPER_ADMIN'],
   
@@ -27,7 +32,7 @@ const routePermissions: Record<string, string[]> = {
   
   // Shared routes
   '/dashboard/students': ['ADMIN', 'SUPER_ADMIN', 'TEACHER', 'BURSAR'],
-  '/dashboard/parents': ['ADMIN', 'SUPER_ADMIN', 'TEACHER', 'BURSAR'],
+  '/dashboard/parents': ['ADMIN', 'SUPER_ADMIN', 'TEACHER', 'BURSAR', 'PARENT'],
   '/dashboard/grades': ['ADMIN', 'SUPER_ADMIN', 'TEACHER'],
   '/dashboard/settings': ['ADMIN', 'SUPER_ADMIN', 'TEACHER', 'BURSAR', 'PARENT'],
 };
@@ -79,8 +84,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(route)
   )?.[1];
 
-  // If route has specific permissions and user doesn't have access
+  // If route requires specific permissions and user doesn't have access
   if (allowedRoles && !allowedRoles.includes(userRole)) {
+    console.log(`Access denied for role ${userRole} to ${pathname}. Allowed: ${allowedRoles.join(', ')}`);
     // Redirect to appropriate dashboard based on role
     let redirectPath = '/dashboard';
     
