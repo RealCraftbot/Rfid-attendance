@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Wallet,
   CreditCard,
@@ -16,11 +16,13 @@ import {
   ChevronRight,
   Banknote,
   Receipt,
-  Smartphone
+  Smartphone,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useSession } from 'next-auth/react';
 import { useRBAC } from '@/hooks/use-rbac';
+import { RoleGuard } from '@/components/RoleGuard';
 
 interface Child {
   id: string;
@@ -56,38 +58,14 @@ interface PaymentSubmission {
   proofOfPayment?: File;
 }
 
-// Mock data - replace with API calls
-const mockChildren: Child[] = [
-  { 
-    id: '1', 
-    name: 'Chukwuemeka Okafor', 
-    class: 'Primary 5', 
-    admissionNo: 'GA/2023/001',
-    outstandingFees: 45000,
-    paidAmount: 90000
-  },
-];
-
-const mockFees: FeeItem[] = [
-  { id: '1', name: 'Second Term Tuition', amount: 85000, dueDate: '2026-01-15', status: 'PARTIAL', paidAmount: 40000 },
-  { id: '2', name: 'Laboratory Fee', amount: 10000, dueDate: '2025-09-15', status: 'OVERDUE', paidAmount: 0 },
-];
-
-const mockBankAccounts: BankAccount[] = [
-  { id: '1', bankName: 'First Bank of Nigeria', accountNumber: '1234567890', accountName: 'Greenfield Academy', isDefault: true },
-  { id: '2', bankName: 'Guaranty Trust Bank', accountNumber: '0987654321', accountName: 'Greenfield Academy', isDefault: false },
-];
-
-const mockPaymentHistory = [
-  { id: '1', date: '2025-09-10', amount: 85000, method: 'BANK_TRANSFER', status: 'VERIFIED', description: 'First Term Tuition' },
-  { id: '2', date: '2025-09-10', amount: 15000, method: 'BANK_TRANSFER', status: 'VERIFIED', description: 'Development Levy' },
-  { id: '3', date: '2026-01-05', amount: 40000, method: 'POS', status: 'VERIFIED', description: 'Second Term Tuition (Partial)' },
-];
-
 function ParentFeesContent() {
   const { data: session } = useSession();
   const { role } = useRBAC();
-  const [selectedChild, setSelectedChild] = useState<Child>(mockChildren[0]);
+  const [children, setChildren] = useState<Child[]>([]);
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const [fees, setFees] = useState<FeeItem[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'pay' | 'history'>('overview');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedFee, setSelectedFee] = useState<FeeItem | null>(null);
@@ -100,10 +78,36 @@ function ParentFeesContent() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const totalOutstanding = mockFees.reduce((sum, fee) => sum + (fee.amount - fee.paidAmount), 0);
-  const totalPaid = mockFees.reduce((sum, fee) => sum + fee.paidAmount, 0);
-  const totalExpected = mockFees.reduce((sum, fee) => sum + fee.amount, 0);
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/fees');
+      if (response.ok) {
+        const data = await response.json();
+        setChildren(data.children || []);
+        setFees(data.fees || []);
+        setBankAccounts(data.bankAccounts || []);
+        setPaymentHistory(data.paymentHistory || []);
+        if (data.children?.length > 0 && !selectedChild) {
+          setSelectedChild(data.children[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch fee data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedChild]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const totalOutstanding = fees.reduce((sum, fee) => sum + (fee.amount - fee.paidAmount), 0);
+  const totalPaid = fees.reduce((sum, fee) => sum + fee.paidAmount, 0);
+  const totalExpected = fees.reduce((sum, fee) => sum + fee.amount, 0);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -120,24 +124,65 @@ function ParentFeesContent() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      let proofUrl = '';
+      
+      if (uploadedFile) {
+        const formData = new FormData();
+        formData.append('file', uploadedFile);
+        formData.append('type', 'payment-proof');
+        
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          proofUrl = uploadData.url || '';
+        }
+      }
 
-    setIsSubmitting(false);
-    setSubmitSuccess(true);
-
-    // Reset after 3 seconds
-    setTimeout(() => {
-      setSubmitSuccess(false);
-      setShowPaymentModal(false);
-      setPaymentForm({
-        amount: 0,
-        transactionRef: '',
-        paymentMethod: 'BANK_TRANSFER',
-        notes: '',
+      const response = await fetch('/api/payments/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceId: selectedFee?.id,
+          amount: paymentForm.amount,
+          paymentMethod: paymentForm.paymentMethod,
+          transactionRef: paymentForm.transactionRef,
+          notes: paymentForm.notes,
+          proofOfPaymentUrl: proofUrl,
+        }),
       });
-      setUploadedFile(null);
-    }, 3000);
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSubmitSuccess(true);
+        await fetchData();
+        
+        setTimeout(() => {
+          setSubmitSuccess(false);
+          setShowPaymentModal(false);
+          setPaymentForm({
+            amount: 0,
+            transactionRef: '',
+            paymentMethod: 'BANK_TRANSFER',
+            notes: '',
+          });
+          setUploadedFile(null);
+          setSelectedFee(null);
+        }, 3000);
+      } else {
+        alert(data.error || 'Failed to submit payment');
+      }
+    } catch (error) {
+      console.error('Payment submission error:', error);
+      alert('Failed to submit payment. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const openPaymentModal = (fee?: FeeItem) => {
@@ -171,12 +216,12 @@ function ParentFeesContent() {
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm p-4">
         <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">Select Child</label>
         <div className="flex flex-wrap gap-2">
-          {mockChildren.map((child) => (
+          {children.map((child) => (
             <button
               key={child.id}
               onClick={() => setSelectedChild(child)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedChild.id === child.id
+                selectedChild?.id === child.id
                   ? 'bg-blue-600 text-white'
                   : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
               }`}
@@ -198,7 +243,7 @@ function ParentFeesContent() {
             <span className="text-sm text-zinc-500">Outstanding Balance</span>
           </div>
           <p className="text-2xl font-bold text-red-600">₦{totalOutstanding.toLocaleString()}</p>
-          <p className="text-xs text-zinc-400 mt-1">{mockFees.filter(f => f.status !== 'PAID').length} pending payments</p>
+          <p className="text-xs text-zinc-400 mt-1">{fees.filter(f => f.status !== 'PAID').length} pending payments</p>
         </div>
 
         <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
@@ -270,8 +315,8 @@ function ParentFeesContent() {
             <div className="space-y-6">
               {/* Outstanding Fees Table */}
               <div>
-                <h3 className="font-bold text-zinc-900 mb-4">Outstanding Fees for {selectedChild.name}</h3>
-                {mockFees.length === 0 ? (
+                <h3 className="font-bold text-zinc-900 mb-4">Outstanding Fees for {selectedChild?.name}</h3>
+                {fees.length === 0 ? (
                   <div className="text-center py-8 text-zinc-500">
                     <CheckCircle2 size={48} className="mx-auto mb-3 text-green-500" />
                     <p>No outstanding fees. All payments are up to date!</p>
@@ -291,7 +336,7 @@ function ParentFeesContent() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-200">
-                        {mockFees.map((fee) => (
+                        {fees.map((fee) => (
                           <tr key={fee.id} className="hover:bg-zinc-50">
                             <td className="py-4 px-4">
                               <p className="font-medium text-zinc-900">{fee.name}</p>
@@ -366,7 +411,7 @@ function ParentFeesContent() {
                 <p className="text-sm text-blue-700 mb-4">Please transfer the payment to one of the following accounts:</p>
                 
                 <div className="space-y-3">
-                  {mockBankAccounts.map((account) => (
+                  {bankAccounts.map((account) => (
                     <div key={account.id} className={`p-4 bg-white rounded-lg border ${account.isDefault ? 'border-blue-300 ring-1 ring-blue-200' : 'border-zinc-200'}`}>
                       <div className="flex justify-between items-start">
                         <div>
@@ -412,15 +457,15 @@ function ParentFeesContent() {
           {/* Payment History Tab */}
           {activeTab === 'history' && (
             <div>
-              <h3 className="font-bold text-zinc-900 mb-4">Payment History for {selectedChild.name}</h3>
-              {mockPaymentHistory.length === 0 ? (
+              <h3 className="font-bold text-zinc-900 mb-4">Payment History for {selectedChild?.name}</h3>
+              {paymentHistory.length === 0 ? (
                 <div className="text-center py-8 text-zinc-500">
                   <History size={48} className="mx-auto mb-3 text-zinc-300" />
                   <p>No payment history found</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {mockPaymentHistory.map((payment) => (
+                  {paymentHistory.map((payment) => (
                     <div key={payment.id} className="flex items-center justify-between p-4 bg-zinc-50 rounded-lg">
                       <div className="flex items-center gap-4">
                         <div className={`p-2 rounded-lg ${
@@ -620,5 +665,4 @@ export default function ParentFeesPage() {
   );
 }
 
-import { RoleGuard } from '@/components/RoleGuard';
 import { ShieldAlert } from 'lucide-react';

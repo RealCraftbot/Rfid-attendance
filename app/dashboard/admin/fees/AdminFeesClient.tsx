@@ -1,8 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
 import { 
   Wallet,
   Users,
@@ -10,15 +8,11 @@ import {
   XCircle,
   Clock,
   Search,
-  Filter,
   Download,
   Eye,
   Banknote,
   TrendingUp,
-  Calendar,
   AlertCircle,
-  ChevronDown,
-  ChevronRight,
   FileText,
   MoreHorizontal,
   Check,
@@ -29,10 +23,8 @@ import {
   CreditCard,
   Trash2,
   Edit3,
-  ArrowUpDown,
   History,
-  Printer,
-  ArrowLeft
+  Printer
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -113,154 +105,12 @@ interface AdminStats {
   paidStudents: number;
 }
 
-// Mock data
-const mockTransactions: PaymentTransaction[] = [
-  {
-    id: 'pay1',
-    invoiceId: 'inv1',
-    studentName: 'Chukwuemeka Okafor',
-    studentClass: 'Primary 5',
-    amount: 50000,
-    paymentMethod: 'BANK_TRANSFER',
-    transactionStatus: 'PENDING',
-    paidByName: 'Mr. Okafor',
-    paidByEmail: 'okafor@email.com',
-    paidByPhone: '08012345678',
-    transactionDate: '2025-12-15T10:30:00Z',
-    transactionRef: 'TRX123456789',
-    notes: 'First term tuition fee payment',
-  },
-  {
-    id: 'pay2',
-    invoiceId: 'inv2',
-    studentName: 'Adaeze Nwosu',
-    studentClass: 'Primary 5',
-    amount: 50000,
-    paymentMethod: 'BANK_TRANSFER',
-    transactionStatus: 'VERIFIED',
-    paidByName: 'Mrs. Nwosu',
-    paidByEmail: 'nwosu@email.com',
-    paidByPhone: '08087654321',
-    transactionDate: '2025-12-14T14:20:00Z',
-    transactionRef: 'TRX987654321',
-    reviewedByName: 'Mr. Adeyemi (Bursar)',
-    reviewedAt: '2025-12-14T16:00:00Z',
-    reviewNotes: 'Payment confirmed from bank statement',
-  },
-  {
-    id: 'pay3',
-    invoiceId: 'inv3',
-    studentName: 'Oluwaseun Adebayo',
-    studentClass: 'JSS 2',
-    amount: 55000,
-    paymentMethod: 'CASH',
-    transactionStatus: 'COMPLETED',
-    paidByName: 'Mr. Adebayo',
-    paidByEmail: 'adebayo@email.com',
-    paidByPhone: '08023456789',
-    transactionDate: '2025-12-13T09:00:00Z',
-    reviewedByName: 'Mr. Adeyemi (Bursar)',
-    reviewedAt: '2025-12-13T10:00:00Z',
-  },
-  {
-    id: 'pay4',
-    invoiceId: 'inv4',
-    studentName: 'Fatima Ibrahim',
-    studentClass: 'SS 3',
-    amount: 60000,
-    paymentMethod: 'CHEQUE',
-    transactionStatus: 'REJECTED',
-    paidByName: 'Alhaji Ibrahim',
-    paidByEmail: 'ibrahim@email.com',
-    paidByPhone: '08034567890',
-    transactionDate: '2025-12-12T11:00:00Z',
-    transactionRef: 'CHQ001234',
-    reviewedByName: 'Mr. Adeyemi (Bursar)',
-    reviewedAt: '2025-12-12T14:00:00Z',
-    rejectionReason: 'Cheque bounced - insufficient funds',
-  },
-  {
-    id: 'pay5',
-    invoiceId: 'inv5',
-    studentName: 'Emmanuel Chidi',
-    studentClass: 'Primary 3',
-    amount: 45000,
-    paymentMethod: 'POS',
-    transactionStatus: 'COMPLETED',
-    paidByName: 'Mrs. Chidi',
-    paidByEmail: 'chidi@email.com',
-    paidByPhone: '08045678901',
-    transactionDate: '2025-12-15T08:15:00Z',
-    transactionRef: 'POS567890',
-    reviewedByName: 'Admin User',
-    reviewedAt: '2025-12-15T09:30:00Z',
-  },
-  {
-    id: 'pay6',
-    invoiceId: 'inv6',
-    studentName: 'Blessing Okonkwo',
-    studentClass: 'JSS 1',
-    amount: 52000,
-    paymentMethod: 'ONLINE',
-    transactionStatus: 'PENDING',
-    paidByName: 'Mr. Okonkwo',
-    paidByEmail: 'okonkwo@email.com',
-    paidByPhone: '08056789012',
-    transactionDate: '2025-12-15T16:45:00Z',
-    transactionRef: 'ONL789012',
-  },
-];
-
-const mockFeeStructures: FeeStructure[] = [
-  { id: 'fs1', name: 'First Term Tuition', amount: 50000, dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, isActive: true, createdAt: '2025-08-01', description: 'Tuition fee for first term' },
-  { id: 'fs2', name: 'Second Term Tuition', amount: 50000, dueDate: '2026-01-15', academicYear: '2025/2026', term: 2, isActive: true, createdAt: '2025-08-01', description: 'Tuition fee for second term' },
-  { id: 'fs3', name: 'Third Term Tuition', amount: 50000, dueDate: '2026-04-15', academicYear: '2025/2026', term: 3, isActive: true, createdAt: '2025-08-01', description: 'Tuition fee for third term' },
-  { id: 'fs4', name: 'Development Levy', amount: 15000, dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, isActive: true, createdAt: '2025-08-01', description: 'Annual development levy' },
-  { id: 'fs5', name: 'WAEC Registration', amount: 35000, dueDate: '2026-02-28', academicYear: '2025/2026', term: 2, isActive: true, createdAt: '2025-08-01', description: 'WAEC exam registration fee' },
-];
-
-const mockInvoices: Invoice[] = [
-  { id: 'inv1', studentName: 'Chukwuemeka Okafor', studentClass: 'Primary 5', admissionNumber: 'GA/2020/001', amount: 135000, paidAmount: 85000, status: 'PARTIAL', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01', items: [
-    { description: 'Tuition Fee', amount: 50000 },
-    { description: 'Development Levy', amount: 15000 },
-    { description: 'ICT Fee', amount: 20000 },
-    { description: 'Sports Fee', amount: 5000 },
-    { description: 'Books & Materials', amount: 45000 },
-  ]},
-  { id: 'inv2', studentName: 'Adaeze Nwosu', studentClass: 'Primary 5', admissionNumber: 'GA/2020/002', amount: 135000, paidAmount: 135000, status: 'PAID', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01' },
-  { id: 'inv3', studentName: 'Oluwaseun Adebayo', studentClass: 'JSS 2', admissionNumber: 'GA/2021/015', amount: 155000, paidAmount: 155000, status: 'PAID', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01' },
-  { id: 'inv4', studentName: 'Fatima Ibrahim', studentClass: 'SS 3', admissionNumber: 'GA/2019/008', amount: 220000, paidAmount: 160000, status: 'PARTIAL', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01' },
-  { id: 'inv5', studentName: 'Emmanuel Chidi', studentClass: 'Primary 3', admissionNumber: 'GA/2022/045', amount: 125000, paidAmount: 0, status: 'OVERDUE', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01' },
-  { id: 'inv6', studentName: 'Blessing Okonkwo', studentClass: 'JSS 1', admissionNumber: 'GA/2023/012', amount: 145000, paidAmount: 0, status: 'PENDING', dueDate: '2025-09-15', academicYear: '2025/2026', term: 1, feeName: 'First Term Fees', createdAt: '2025-08-01' },
-];
-
-const mockBankAccounts: BankAccount[] = [
-  { id: 'ba1', accountName: 'Greenfield Academy', accountNumber: '1234567890', bankName: 'First Bank of Nigeria', bankCode: 'FBN', accountType: 'current', isDefault: true, isActive: true },
-  { id: 'ba2', accountName: 'Greenfield Academy', accountNumber: '0987654321', bankName: 'Guaranty Trust Bank', bankCode: 'GTB', accountType: 'savings', isDefault: false, isActive: true },
-];
-
-const mockStats: AdminStats = {
-  totalRevenue: 3250000,
-  totalExpected: 4500000,
-  collectionRate: 72,
-  pendingPayments: 18,
-  overduePayments: 7,
-  verifiedToday: 5,
-  totalStudents: 245,
-  paidStudents: 198,
-};
-
-// Available students for invoice creation
-const availableStudents = [
-  { id: 's1', name: 'Chukwuemeka Okafor', class: 'Primary 5', admissionNo: 'GA/2020/001' },
-  { id: 's2', name: 'Adaeze Nwosu', class: 'Primary 5', admissionNo: 'GA/2020/002' },
-  { id: 's3', name: 'Oluwaseun Adebayo', class: 'JSS 2', admissionNo: 'GA/2021/015' },
-  { id: 's4', name: 'Fatima Ibrahim', class: 'SS 3', admissionNo: 'GA/2019/008' },
-  { id: 's5', name: 'Emmanuel Chidi', class: 'Primary 3', admissionNo: 'GA/2022/045' },
-  { id: 's6', name: 'Blessing Okonkwo', class: 'JSS 1', admissionNo: 'GA/2023/012' },
-  { id: 's7', name: 'John Smith', class: 'Primary 1', admissionNo: 'GA/2024/001' },
-  { id: 's8', name: 'Mary Johnson', class: 'Primary 2', admissionNo: 'GA/2023/089' },
-];
+interface Student {
+  id: string;
+  name: string;
+  admissionNumber: string;
+  classroom?: { name: string };
+}
 
 const NIGERIAN_FEE_TYPES = [
   'Tuition Fee',
@@ -299,14 +149,19 @@ const NIGERIAN_BANKS = [
 ];
 
 export default function AdminFeesClient() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'invoices' | 'fee-structures' | 'bank-accounts'>('overview');
   
   // Data states
-  const [transactions, setTransactions] = useState<PaymentTransaction[]>(mockTransactions);
-  const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices);
-  const [feeStructures, setFeeStructures] = useState<FeeStructure[]>(mockFeeStructures);
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>(mockBankAccounts);
+  const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  
+  // Loading states
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Transaction filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -367,6 +222,125 @@ export default function AdminFeesClient() {
     accountType: 'current',
     isDefault: false,
   });
+
+  // Fetch data
+  const fetchOverview = async () => {
+    try {
+      const res = await fetch(`/api/admin/fees?dateRange=${dateRange}`);
+      const data = await res.json();
+      if (data.success) {
+        setStats(data.data.stats);
+        setTransactions(data.data.recentTransactions || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch overview:', err);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    try {
+      const params = new URLSearchParams({
+        dateRange,
+        status: statusFilter,
+        search: searchQuery,
+      });
+      const res = await fetch(`/api/admin/fees/transactions?${params}`);
+      const data = await res.json();
+      if (data.success) {
+        setTransactions(data.data.transactions || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch transactions:', err);
+    }
+  };
+
+  const fetchInvoices = async () => {
+    try {
+      const params = new URLSearchParams({
+        status: invoiceStatusFilter,
+        search: invoiceSearch,
+      });
+      const res = await fetch(`/api/admin/fees/invoices?${params}`);
+      const data = await res.json();
+      if (data.success) {
+        setInvoices(data.data.invoices || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch invoices:', err);
+    }
+  };
+
+  const fetchFeeStructures = async () => {
+    try {
+      const res = await fetch('/api/admin/fees/fee-structures');
+      const data = await res.json();
+      if (data.success) {
+        setFeeStructures(data.data.feeStructures || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch fee structures:', err);
+    }
+  };
+
+  const fetchBankAccounts = async () => {
+    try {
+      const res = await fetch('/api/admin/fees/bank-accounts');
+      const data = await res.json();
+      if (data.success) {
+        setBankAccounts(data.data.bankAccounts || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch bank accounts:', err);
+    }
+  };
+
+  const fetchStudents = async () => {
+    try {
+      const res = await fetch('/api/students');
+      const data = await res.json();
+      if (data.success) {
+        setStudents(data.data.students || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch students:', err);
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        await Promise.all([
+          fetchOverview(),
+          fetchTransactions(),
+          fetchInvoices(),
+          fetchFeeStructures(),
+          fetchBankAccounts(),
+          fetchStudents(),
+        ]);
+      } catch (err) {
+        setError('Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      fetchOverview();
+    } else if (activeTab === 'transactions') {
+      fetchTransactions();
+    } else if (activeTab === 'invoices') {
+      fetchInvoices();
+    } else if (activeTab === 'fee-structures') {
+      fetchFeeStructures();
+    } else if (activeTab === 'bank-accounts') {
+      fetchBankAccounts();
+    }
+  }, [activeTab, dateRange, statusFilter, searchQuery, invoiceStatusFilter, invoiceSearch]);
 
   // Filter transactions
   const filteredTransactions = transactions.filter((transaction) => {
@@ -447,12 +421,13 @@ export default function AdminFeesClient() {
   };
 
   const handleExportReport = () => {
+    if (!stats) return;
     const reportData = {
-      totalRevenue: mockStats.totalRevenue,
-      totalExpected: mockStats.totalExpected,
-      collectionRate: mockStats.collectionRate,
-      pendingPayments: mockStats.pendingPayments,
-      overduePayments: mockStats.overduePayments,
+      totalRevenue: stats.totalRevenue,
+      totalExpected: stats.totalExpected,
+      collectionRate: stats.collectionRate,
+      pendingPayments: stats.pendingPayments,
+      overduePayments: stats.overduePayments,
       generatedAt: new Date().toISOString(),
     };
     exportToCSV([reportData], 'financial-report');
@@ -462,64 +437,63 @@ export default function AdminFeesClient() {
   const handleReview = async () => {
     if (!selectedTransaction || !reviewAction) return;
     
-    // Update transaction status
-    setTransactions(prev => prev.map(t => {
-      if (t.id === selectedTransaction.id) {
-        return {
-          ...t,
-          transactionStatus: reviewAction === 'approve' ? 'VERIFIED' : 'REJECTED',
-          reviewedByName: 'Current User',
-          reviewedAt: new Date().toISOString(),
-          reviewNotes: reviewNotes || undefined,
+    try {
+      const res = await fetch('/api/admin/fees/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentId: selectedTransaction.id,
+          action: reviewAction,
+          notes: reviewNotes,
           rejectionReason: reviewAction === 'reject' ? rejectionReason : undefined,
-        };
+        }),
+      });
+      
+      if (res.ok) {
+        await fetchTransactions();
+        setShowReviewModal(false);
+        setSelectedTransaction(null);
+        setReviewAction(null);
+        setReviewNotes('');
+        setRejectionReason('');
       }
-      return t;
-    }));
-    
-    setShowReviewModal(false);
-    setSelectedTransaction(null);
-    setReviewAction(null);
-    setReviewNotes('');
-    setRejectionReason('');
+    } catch (err) {
+      console.error('Failed to review payment:', err);
+    }
   };
 
   // Invoice handlers
-  const handleCreateInvoice = (e: React.FormEvent) => {
+  const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
-    const student = availableStudents.find(s => s.id === newInvoice.studentId);
-    const feeStructure = feeStructures.find(f => f.id === newInvoice.feeStructureId);
     
-    if (!student || !feeStructure) return;
-    
-    const totalAmount = newInvoice.items.reduce((sum, item) => sum + item.amount, 0);
-    
-    const invoice: Invoice = {
-      id: `inv${Date.now()}`,
-      studentName: student.name,
-      studentClass: student.class,
-      admissionNumber: student.admissionNo,
-      amount: totalAmount,
-      paidAmount: 0,
-      status: 'PENDING',
-      dueDate: newInvoice.dueDate,
-      academicYear: newInvoice.academicYear,
-      term: newInvoice.term,
-      feeName: feeStructure.name,
-      items: newInvoice.items,
-      createdAt: new Date().toISOString(),
-    };
-    
-    setInvoices(prev => [invoice, ...prev]);
-    setShowInvoiceModal(false);
-    setNewInvoice({
-      studentId: '',
-      feeStructureId: '',
-      items: [{ description: '', amount: 0 }],
-      dueDate: '',
-      academicYear: '2025/2026',
-      term: 1,
-    });
+    try {
+      const res = await fetch('/api/admin/fees/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: newInvoice.studentId,
+          feeStructureId: newInvoice.feeStructureId,
+          dueDate: newInvoice.dueDate,
+          academicYear: newInvoice.academicYear,
+          term: newInvoice.term,
+        }),
+      });
+      
+      if (res.ok) {
+        await fetchInvoices();
+        setShowInvoiceModal(false);
+        setNewInvoice({
+          studentId: '',
+          feeStructureId: '',
+          items: [{ description: '', amount: 0 }],
+          dueDate: '',
+          academicYear: '2025/2026',
+          term: 1,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to create invoice:', err);
+    }
   };
 
   const handlePreviewInvoice = (invoice: Invoice) => {
@@ -532,41 +506,70 @@ export default function AdminFeesClient() {
   };
 
   // Fee structure handlers
-  const handleAddFeeStructure = (e: React.FormEvent) => {
+  const handleAddFeeStructure = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newFee: FeeStructure = {
-      id: `fs${Date.now()}`,
-      ...feeForm,
-      createdAt: new Date().toISOString(),
-    };
-    setFeeStructures(prev => [...prev, newFee]);
-    setShowAddFeeModal(false);
-    setFeeForm({
-      name: '',
-      description: '',
-      amount: 0,
-      dueDate: '',
-      academicYear: '2025/2026',
-      term: 1,
-      isActive: true,
-    });
+    
+    try {
+      const res = await fetch('/api/admin/fees/fee-structures', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(feeForm),
+      });
+      
+      if (res.ok) {
+        await fetchFeeStructures();
+        setShowAddFeeModal(false);
+        setFeeForm({
+          name: '',
+          description: '',
+          amount: 0,
+          dueDate: '',
+          academicYear: '2025/2026',
+          term: 1,
+          isActive: true,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to add fee structure:', err);
+    }
   };
 
-  const handleEditFeeStructure = (e: React.FormEvent) => {
+  const handleEditFeeStructure = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFeeStructure) return;
     
-    setFeeStructures(prev => prev.map(f => 
-      f.id === selectedFeeStructure.id ? { ...f, ...feeForm } : f
-    ));
-    setShowEditFeeModal(false);
-    setSelectedFeeStructure(null);
+    try {
+      const res = await fetch('/api/admin/fees/fee-structures', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selectedFeeStructure.id, ...feeForm }),
+      });
+      
+      if (res.ok) {
+        await fetchFeeStructures();
+        setShowEditFeeModal(false);
+        setSelectedFeeStructure(null);
+      }
+    } catch (err) {
+      console.error('Failed to edit fee structure:', err);
+    }
   };
 
-  const handleDeleteFeeStructure = () => {
+  const handleDeleteFeeStructure = async () => {
     if (!showDeleteConfirm) return;
-    setFeeStructures(prev => prev.filter(f => f.id !== showDeleteConfirm.id));
-    setShowDeleteConfirm(null);
+    
+    try {
+      const res = await fetch(`/api/admin/fees/fee-structures?id=${showDeleteConfirm.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        await fetchFeeStructures();
+        setShowDeleteConfirm(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete fee structure:', err);
+    }
   };
 
   const openEditFeeModal = (fee: FeeStructure) => {
@@ -584,57 +587,68 @@ export default function AdminFeesClient() {
   };
 
   // Bank account handlers
-  const handleAddBankAccount = (e: React.FormEvent) => {
+  const handleAddBankAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    const bank = NIGERIAN_BANKS.find(b => b.code === bankForm.bankCode);
     
-    const newAccount: BankAccount = {
-      id: `ba${Date.now()}`,
-      ...bankForm,
-      bankName: bank?.name || '',
-      isActive: true,
-    };
-    
-    // If setting as default, unset others
-    if (newAccount.isDefault) {
-      setBankAccounts(prev => prev.map(b => ({ ...b, isDefault: false })));
+    try {
+      const res = await fetch('/api/admin/fees/bank-accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bankForm),
+      });
+      
+      if (res.ok) {
+        await fetchBankAccounts();
+        setShowAddBankModal(false);
+        setBankForm({
+          bankCode: '',
+          accountNumber: '',
+          accountName: '',
+          accountType: 'current',
+          isDefault: false,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to add bank account:', err);
     }
-    
-    setBankAccounts(prev => [...prev, newAccount]);
-    setShowAddBankModal(false);
-    setBankForm({
-      bankCode: '',
-      accountNumber: '',
-      accountName: '',
-      accountType: 'current',
-      isDefault: false,
-    });
   };
 
-  const handleEditBankAccount = (e: React.FormEvent) => {
+  const handleEditBankAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBankAccount) return;
     
-    const bank = NIGERIAN_BANKS.find(b => b.code === bankForm.bankCode);
-    
-    // If setting as default, unset others
-    if (bankForm.isDefault && !selectedBankAccount.isDefault) {
-      setBankAccounts(prev => prev.map(b => ({ ...b, isDefault: false })));
+    try {
+      const res = await fetch('/api/admin/fees/bank-accounts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selectedBankAccount.id, ...bankForm }),
+      });
+      
+      if (res.ok) {
+        await fetchBankAccounts();
+        setShowEditBankModal(false);
+        setSelectedBankAccount(null);
+      }
+    } catch (err) {
+      console.error('Failed to edit bank account:', err);
     }
-    
-    setBankAccounts(prev => prev.map(b => 
-      b.id === selectedBankAccount.id 
-        ? { ...b, ...bankForm, bankName: bank?.name || b.bankName } 
-        : b
-    ));
-    setShowEditBankModal(false);
-    setSelectedBankAccount(null);
   };
 
-  const handleDeleteBankAccount = () => {
+  const handleDeleteBankAccount = async () => {
     if (!showDeleteConfirm) return;
-    setBankAccounts(prev => prev.filter(b => b.id !== showDeleteConfirm.id));
-    setShowDeleteConfirm(null);
+    
+    try {
+      const res = await fetch(`/api/admin/fees/bank-accounts?id=${showDeleteConfirm.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        await fetchBankAccounts();
+        setShowDeleteConfirm(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete bank account:', err);
+    }
   };
 
   const openEditBankModal = (account: BankAccount) => {
@@ -660,8 +674,8 @@ export default function AdminFeesClient() {
             </div>
             <span className="text-xs text-zinc-500">Total Revenue</span>
           </div>
-          <p className="text-xl font-bold text-zinc-900">{formatAmount(mockStats.totalRevenue)}</p>
-          <p className="text-xs text-green-600 mt-1">{mockStats.collectionRate}% collection rate</p>
+          <p className="text-xl font-bold text-zinc-900">{formatAmount(stats?.totalRevenue || 0)}</p>
+          <p className="text-xs text-green-600 mt-1">{stats?.collectionRate || 0}% collection rate</p>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
@@ -671,8 +685,8 @@ export default function AdminFeesClient() {
             </div>
             <span className="text-xs text-zinc-500">Total Expected</span>
           </div>
-          <p className="text-xl font-bold text-zinc-900">{formatAmount(mockStats.totalExpected)}</p>
-          <p className="text-xs text-zinc-500 mt-1">From {mockStats.totalStudents} students</p>
+          <p className="text-xl font-bold text-zinc-900">{formatAmount(stats?.totalExpected || 0)}</p>
+          <p className="text-xs text-zinc-500 mt-1">From {stats?.totalStudents || 0} students</p>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
@@ -682,7 +696,7 @@ export default function AdminFeesClient() {
             </div>
             <span className="text-xs text-zinc-500">Pending</span>
           </div>
-          <p className="text-xl font-bold text-amber-600">{mockStats.pendingPayments}</p>
+          <p className="text-xl font-bold text-amber-600">{stats?.pendingPayments || 0}</p>
           <p className="text-xs text-zinc-500 mt-1">Awaiting verification</p>
         </div>
 
@@ -693,7 +707,7 @@ export default function AdminFeesClient() {
             </div>
             <span className="text-xs text-zinc-500">Overdue</span>
           </div>
-          <p className="text-xl font-bold text-red-600">{mockStats.overduePayments}</p>
+          <p className="text-xl font-bold text-red-600">{stats?.overduePayments || 0}</p>
           <p className="text-xs text-zinc-500 mt-1">Require follow-up</p>
         </div>
       </div>
@@ -753,31 +767,31 @@ export default function AdminFeesClient() {
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-zinc-600">Paid Students</span>
-                <span className="font-medium">{mockStats.paidStudents}/{mockStats.totalStudents}</span>
+                <span className="font-medium">{(stats?.paidStudents || 0)}/{(stats?.totalStudents || 0)}</span>
               </div>
               <div className="w-full bg-zinc-100 rounded-full h-2">
                 <div 
                   className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(mockStats.paidStudents / mockStats.totalStudents) * 100}%` }}
+                  style={{ width: `${stats?.totalStudents ? (stats.paidStudents / stats.totalStudents) * 100 : 0}%` }}
                 />
               </div>
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-zinc-600">Collection Rate</span>
-                <span className="font-medium">{mockStats.collectionRate}%</span>
+                <span className="font-medium">{stats?.collectionRate || 0}%</span>
               </div>
               <div className="w-full bg-zinc-100 rounded-full h-2">
                 <div 
                   className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${mockStats.collectionRate}%` }}
+                  style={{ width: `${stats?.collectionRate || 0}%` }}
                 />
               </div>
             </div>
             <div className="pt-4 border-t border-zinc-100">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-zinc-600">Verified Today</span>
-                <span className="text-lg font-bold text-green-600">{mockStats.verifiedToday}</span>
+                <span className="text-lg font-bold text-green-600">{stats?.verifiedToday || 0}</span>
               </div>
             </div>
           </div>
@@ -1489,8 +1503,8 @@ export default function AdminFeesClient() {
                     required
                   >
                     <option value="">Select Student</option>
-                    {availableStudents.map(student => (
-                      <option key={student.id} value={student.id}>{student.name} - {student.class}</option>
+                    {students.map(student => (
+                      <option key={student.id} value={student.id}>{student.name} - {student.classroom?.name || 'N/A'}</option>
                     ))}
                   </select>
                 </div>

@@ -1,29 +1,49 @@
 'use client';
 
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Bell,
   CheckCircle2,
   XCircle,
   Clock,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-const mockNotifications = [
-  { id: 'n1', title: 'Check-in Alert', message: 'Adebayo Oluwaseun checked in at Main Entrance', type: 'success', created_at: new Date(Date.now() - 1000 * 60 * 30) },
-  { id: 'n2', title: 'Check-out Alert', message: 'Chukwu Adaobi checked out at Back Gate', type: 'success', created_at: new Date(Date.now() - 1000 * 60 * 60 * 2) },
-  { id: 'n3', title: 'Late Arrival', message: 'Okonkwo Chibueze arrived late at 8:45 AM', type: 'alert', created_at: new Date(Date.now() - 1000 * 60 * 60 * 5) },
-  { id: 'n4', title: 'System Update', message: 'RFID reader firmware updated successfully', type: 'info', created_at: new Date(Date.now() - 1000 * 60 * 60 * 24) },
-  { id: 'n5', title: 'Weekly Report', message: 'Weekly attendance report is now available', type: 'info', created_at: new Date(Date.now() - 1000 * 60 * 60 * 48) },
-];
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'success' | 'alert' | 'info';
+  created_at: Date;
+}
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/notifications');
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   return (
@@ -37,7 +57,12 @@ export default function NotificationsPage() {
 
       <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
         <div className="divide-y divide-zinc-100">
-          {notifications.length > 0 ? notifications.map((notif) => (
+          {loading ? (
+            <div className="py-20 flex flex-col items-center justify-center text-zinc-400 space-y-4">
+              <Loader2 size={48} className="animate-spin" />
+              <p className="text-sm">Loading notifications...</p>
+            </div>
+          ) : notifications.length > 0 ? notifications.map((notif) => (
             <div key={notif.id} className="p-4 md:p-6 hover:bg-zinc-50 transition-colors group flex gap-3 md:gap-4">
               <div className={`w-10 md:w-12 h-10 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 ${
                 notif.type === 'alert' ? 'bg-red-50 text-red-600' : 

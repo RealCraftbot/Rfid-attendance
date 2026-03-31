@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { z } from 'zod';
@@ -19,11 +19,11 @@ import {
   AlertCircle,
   ArrowLeft,
   Users,
-  BookOpen
+  BookOpen,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-// Types
 interface AttendanceRecord {
   studentId: string;
   studentName: string;
@@ -54,82 +54,9 @@ interface AttendanceStats {
   checkedOut: number;
 }
 
-// Validation schema
 const searchSchema = z.object({
   query: z.string().min(1).max(100),
 });
-
-// Mock data
-const mockClassroom: ClassroomInfo = {
-  id: '1',
-  name: 'Primary 1',
-  grade: 'Primary',
-  section: 'A',
-  teacherName: 'Mrs. Sarah Johnson',
-  studentCount: 28,
-};
-
-const mockAttendanceData: AttendanceRecord[] = [
-  {
-    studentId: 's1',
-    studentName: 'Chukwuemeka Okafor',
-    status: 'checked-out',
-    checkInTime: '2025-12-15T07:45:00Z',
-    checkOutTime: '2025-12-15T14:30:00Z',
-    deviceId: 'main-gate',
-    durationOnSite: 405,
-    totalScans: 2,
-  },
-  {
-    studentId: 's2',
-    studentName: 'Adaeze Nwosu',
-    status: 'on-site',
-    checkInTime: '2025-12-15T08:15:00Z',
-    checkOutTime: null,
-    deviceId: 'main-gate',
-    durationOnSite: null,
-    totalScans: 1,
-  },
-  {
-    studentId: 's3',
-    studentName: 'Oluwaseun Adebayo',
-    status: 'late',
-    checkInTime: '2025-12-15T08:45:00Z',
-    checkOutTime: null,
-    deviceId: 'side-entrance',
-    durationOnSite: null,
-    totalScans: 1,
-  },
-  {
-    studentId: 's4',
-    studentName: 'Fatima Ibrahim',
-    status: 'absent',
-    checkInTime: null,
-    checkOutTime: null,
-    deviceId: null,
-    durationOnSite: null,
-    totalScans: 0,
-  },
-  {
-    studentId: 's5',
-    studentName: 'Emmanuel Chidi',
-    status: 'checked-out',
-    checkInTime: '2025-12-15T07:30:00Z',
-    checkOutTime: '2025-12-15T13:45:00Z',
-    deviceId: 'main-gate',
-    durationOnSite: 375,
-    totalScans: 2,
-  },
-];
-
-const mockStats: AttendanceStats = {
-  total: 28,
-  present: 26,
-  absent: 2,
-  late: 1,
-  onSite: 10,
-  checkedOut: 15,
-};
 
 interface ClassroomAttendanceClientProps {
   classroomId: string;
@@ -143,10 +70,35 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
   const [searchQuery, setSearchQuery] = useState('');
   const [searchError, setSearchError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'absent' | 'late' | 'on-site' | 'checked-out'>('all');
-  const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>(mockAttendanceData);
+  const [classroomInfo, setClassroomInfo] = useState<ClassroomInfo | null>(null);
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+  const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>([]);
+  const [stats, setStats] = useState<AttendanceStats>({ total: 0, present: 0, absent: 0, late: 0, onSite: 0, checkedOut: 0 });
   const [isExporting, setIsExporting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Initialize from URL params
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const dateStr = selectedDate.toISOString();
+      const response = await fetch(`/api/attendance/${classroomId}?date=${dateStr}`);
+      if (response.ok) {
+        const data = await response.json();
+        setClassroomInfo(data.classroom);
+        setAttendanceData(data.records || []);
+        setStats(data.stats || { total: 0, present: 0, absent: 0, late: 0, onSite: 0, checkedOut: 0 });
+      }
+    } catch (error) {
+      console.error('Failed to fetch attendance:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [classroomId, selectedDate]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
     const dateParam = searchParams.get('date');
     if (dateParam) {
@@ -154,9 +106,8 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
     }
   }, [searchParams]);
 
-  // Filter records
   useEffect(() => {
-    let filtered = mockAttendanceData;
+    let filtered = attendanceData;
 
     if (statusFilter !== 'all') {
       filtered = filtered.filter((record) => record.status === statusFilter);
@@ -180,7 +131,7 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
     }
 
     setFilteredRecords(filtered);
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, attendanceData]);
 
   const handleDateChange = (days: number) => {
     const newDate = new Date(selectedDate);
@@ -207,7 +158,7 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `attendance-${mockClassroom.name}-${format(selectedDate, 'yyyy-MM-dd')}.csv`;
+        a.download = `attendance-${classroomInfo?.name || 'class'}-${format(selectedDate, 'yyyy-MM-dd')}.csv`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -232,7 +183,7 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `attendance-${mockClassroom.name}-${format(selectedDate, 'yyyy-MM-dd')}.pdf`;
+        a.download = `attendance-${classroomInfo?.name || 'class'}-${format(selectedDate, 'yyyy-MM-dd')}.pdf`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -286,9 +237,9 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
             <ArrowLeft size={20} className="text-zinc-600" />
           </Link>
           <div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-zinc-900">{mockClassroom.name}</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-zinc-900">{loading ? 'Loading...' : (classroomInfo?.name || 'Class')}</h1>
             <p className="text-zinc-500 mt-0.5 text-xs sm:text-sm">
-              {mockClassroom.grade} • Section {mockClassroom.section} • {mockClassroom.teacherName}
+              {loading ? '' : `${classroomInfo?.grade || ''} • Section ${classroomInfo?.section || ''} • ${classroomInfo?.teacherName || ''}`}
             </p>
           </div>
         </div>
@@ -321,7 +272,7 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
             </div>
             <div>
               <p className="text-xs text-blue-600">Students</p>
-              <p className="font-bold text-blue-900 text-sm sm:text-base">{mockClassroom.studentCount}</p>
+              <p className="font-bold text-blue-900 text-sm sm:text-base">{loading ? '-' : (classroomInfo?.studentCount || 0)}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -330,7 +281,7 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
             </div>
             <div>
               <p className="text-xs text-green-600">Present</p>
-              <p className="font-bold text-green-900 text-sm sm:text-base">{mockStats.present}</p>
+              <p className="font-bold text-green-900 text-sm sm:text-base">{loading ? '-' : stats.present}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -339,7 +290,7 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
             </div>
             <div>
               <p className="text-xs text-red-600">Absent</p>
-              <p className="font-bold text-red-900 text-sm sm:text-base">{mockStats.absent}</p>
+              <p className="font-bold text-red-900 text-sm sm:text-base">{loading ? '-' : stats.absent}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -348,7 +299,7 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
             </div>
             <div>
               <p className="text-xs text-amber-600">Late</p>
-              <p className="font-bold text-amber-900 text-sm sm:text-base">{mockStats.late}</p>
+              <p className="font-bold text-amber-900 text-sm sm:text-base">{loading ? '-' : stats.late}</p>
             </div>
           </div>
         </div>
@@ -440,7 +391,14 @@ export default function ClassroomAttendanceClient({ classroomId }: ClassroomAtte
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {filteredRecords.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-8 sm:py-12 text-center text-zinc-500">
+                    <Loader2 size={32} className="mx-auto mb-3 text-zinc-300 animate-spin" />
+                    <p className="text-xs sm:text-sm">Loading attendance records...</p>
+                  </td>
+                </tr>
+              ) : filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 sm:py-12 text-center text-zinc-500">
                     <Clock size={32} className="mx-auto mb-3 text-zinc-300" />

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Users, 
   Clock, 
@@ -10,12 +10,12 @@ import {
   BookOpen,
   CheckCircle2,
   ArrowLeft,
-  MapPin
+  MapPin,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
-// Types
 interface TeacherAttendanceRecord {
   id: string;
   teacherName: string;
@@ -33,36 +33,39 @@ interface Teacher {
   rfidUid?: string;
 }
 
-// Mock teachers
-const mockTeachers: Teacher[] = [
-  { id: 't1', name: 'Mrs. Sarah Johnson', email: 'sarah.j@school.com', subject: 'Mathematics', rfidUid: 'T001' },
-  { id: 't2', name: 'Mr. Michael Brown', email: 'michael.b@school.com', subject: 'English', rfidUid: 'T002' },
-  { id: 't3', name: 'Mrs. Emily Davis', email: 'emily.d@school.com', subject: 'Science', rfidUid: 'T003' },
-  { id: 't4', name: 'Mr. James Wilson', email: 'james.w@school.com', subject: 'History', rfidUid: 'T004' },
-  { id: 't5', name: 'Mrs. Patricia Moore', email: 'patricia.m@school.com', subject: 'Commerce', rfidUid: 'T005' },
-];
-
-// Mock attendance records
-const mockAttendanceRecords: TeacherAttendanceRecord[] = [
-  { id: '1', teacherName: 'Mrs. Sarah Johnson', classroomName: 'Primary 1', checkType: 'check_in', scanTime: '2025-12-15T07:30:00Z', deviceId: 'classroom-1' },
-  { id: '2', teacherName: 'Mrs. Sarah Johnson', classroomName: 'Primary 1', checkType: 'check_out', scanTime: '2025-12-15T14:00:00Z', deviceId: 'classroom-1' },
-  { id: '3', teacherName: 'Mr. Michael Brown', classroomName: 'Primary 2', checkType: 'check_in', scanTime: '2025-12-15T07:45:00Z', deviceId: 'classroom-2' },
-  { id: '4', teacherName: 'Mr. Michael Brown', classroomName: 'Primary 2', checkType: 'check_out', scanTime: '2025-12-15T13:45:00Z', deviceId: 'classroom-2' },
-  { id: '5', teacherName: 'Mrs. Emily Davis', classroomName: 'Primary 3', checkType: 'check_in', scanTime: '2025-12-15T08:00:00Z', deviceId: 'classroom-3' },
-  { id: '6', teacherName: 'Mr. James Wilson', classroomName: 'JSS 1', checkType: 'check_in', scanTime: '2025-12-15T07:15:00Z', deviceId: 'lab-1' },
-  { id: '7', teacherName: 'Mr. James Wilson', classroomName: 'JSS 1', checkType: 'check_out', scanTime: '2025-12-15T15:30:00Z', deviceId: 'lab-1' },
-];
-
 export default function TeacherAttendanceClient() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<TeacherAttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filter records
-  const filteredRecords = mockAttendanceRecords.filter((record) => {
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      const response = await fetch(`/api/teachers/attendance?date=${dateStr}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTeachers(data.teachers || []);
+        setAttendanceRecords(data.records || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch teacher attendance:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedDate]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const filteredRecords = attendanceRecords.filter((record) => {
     const matchesSearch = record.teacherName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          record.classroomName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTeacher = selectedTeacher ? record.teacherName === mockTeachers.find(t => t.id === selectedTeacher)?.name : true;
+    const matchesTeacher = selectedTeacher ? record.teacherName === teachers.find(t => t.id === selectedTeacher)?.name : true;
     return matchesSearch && matchesTeacher;
   });
 
@@ -132,7 +135,7 @@ export default function TeacherAttendanceClient() {
             <Users size={14} className="text-blue-600" />
             <span className="text-[10px] sm:text-xs text-blue-600 font-medium">Total Teachers</span>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-blue-900">{mockTeachers.length}</p>
+          <p className="text-lg sm:text-xl font-bold text-blue-900">{teachers.length}</p>
         </div>
         <div className="bg-green-50 p-3 sm:p-4 rounded-xl border border-green-100">
           <div className="flex items-center gap-2 mb-1">
@@ -178,7 +181,7 @@ export default function TeacherAttendanceClient() {
             className="px-3 py-2 border border-zinc-200 rounded-lg text-xs sm:text-sm bg-white"
           >
             <option value="">All Teachers</option>
-            {mockTeachers.map((teacher) => (
+            {teachers.map((teacher) => (
               <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
             ))}
           </select>
@@ -189,7 +192,7 @@ export default function TeacherAttendanceClient() {
       <div className="space-y-4">
         {Array.from(recordsByTeacher.entries()).map(([teacherName, records]) => {
           const stats = getTeacherStats(teacherName);
-          const teacher = mockTeachers.find(t => t.name === teacherName);
+          const teacher = teachers.find(t => t.name === teacherName);
           
           return (
             <div key={teacherName} className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">

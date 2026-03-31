@@ -80,23 +80,16 @@ const EntryModal: React.FC<{
   teachers: Teacher[];
   classrooms: Classroom[];
 }> = ({ isOpen, onClose, onSave, entry, day, periodInfo, teachers, classrooms }) => {
-  const [formData, setFormData] = useState({
-    subject: '',
-    teacherId: '',
-    classroomId: '',
-  });
+  const [subject, setSubject] = useState('');
+  const [teacherId, setTeacherId] = useState('');
+  const [classroomId, setClassroomId] = useState('');
 
   useEffect(() => {
-    if (entry) {
-      setFormData({
-        subject: entry.subject || '',
-        teacherId: entry.teacherId || '',
-        classroomId: entry.classroomId || '',
-      });
-    } else {
-      setFormData({ subject: '', teacherId: '', classroomId: '' });
-    }
-  }, [entry, isOpen]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSubject(entry?.subject ?? '');
+    setTeacherId(entry?.teacherId ?? '');
+    setClassroomId(entry?.classroomId ?? '');
+  }, [entry]);
 
   if (!isOpen) return null;
 
@@ -123,8 +116,8 @@ const EntryModal: React.FC<{
             </label>
             <input
               type="text"
-              value={formData.subject}
-              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
               placeholder="e.g., Mathematics, English, Physics"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
@@ -135,8 +128,8 @@ const EntryModal: React.FC<{
               Teacher *
             </label>
             <select
-              value={formData.teacherId}
-              onChange={(e) => setFormData({ ...formData, teacherId: e.target.value })}
+              value={teacherId}
+              onChange={(e) => setTeacherId(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select a teacher</option>
@@ -153,8 +146,8 @@ const EntryModal: React.FC<{
               Classroom *
             </label>
             <select
-              value={formData.classroomId}
-              onChange={(e) => setFormData({ ...formData, classroomId: e.target.value })}
+              value={classroomId}
+              onChange={(e) => setClassroomId(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select a classroom</option>
@@ -177,13 +170,15 @@ const EntryModal: React.FC<{
           <button
             onClick={() => {
               onSave({
-                ...formData,
+                subject,
+                teacherId,
+                classroomId,
                 startTime: periodInfo.startTime,
                 endTime: periodInfo.endTime,
               });
               onClose();
             }}
-            disabled={!formData.subject || !formData.teacherId || !formData.classroomId}
+            disabled={!subject || !teacherId || !classroomId}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Save Entry

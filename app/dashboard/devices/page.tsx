@@ -1,7 +1,6 @@
 'use client';
 
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   Cpu, 
@@ -15,7 +14,8 @@ import {
   Battery,
   BatteryLow,
   BatteryMedium,
-  BatteryFull
+  BatteryFull,
+  Loader2
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,11 +27,15 @@ const deviceSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
-const mockDevices = [
-  { id: 'd1', name: 'Main Entrance Scanner', device_id: 'ESP32_FRONT_01', is_active: true, secret_key: 'a1b2c3d4e5f678901234567890123456', battery_level: 85, last_seen: '2 min ago' },
-  { id: 'd2', name: 'Back Gate Reader', device_id: 'ESP32_BACK_01', is_active: true, secret_key: 'b2c3d4e5f6789012345678901234567', battery_level: 23, last_seen: '5 min ago' },
-  { id: 'd3', name: 'Library Exit Scanner', device_id: 'ESP32_LIB_01', is_active: false, secret_key: 'c3d4e5f6789012345678901234567890', battery_level: 67, last_seen: '1 hour ago' },
-];
+interface Device {
+  id: string;
+  name: string;
+  device_id: string;
+  is_active: boolean;
+  secret_key: string;
+  battery_level: number;
+  last_seen: string;
+}
 
 const BatteryIndicator = ({ level }: { level: number }) => {
   const getBatteryIcon = () => {
@@ -58,9 +62,29 @@ let deviceCounter = 10;
 const nextDeviceId = () => `d${++deviceCounter}`;
 
 export default function DevicesPage() {
-  const [devices, setDevices] = useState(mockDevices);
+  const [devices, setDevices] = useState<Device[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDevices = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/devices');
+      if (response.ok) {
+        const data = await response.json();
+        setDevices(data.devices || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch devices:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<z.infer<typeof deviceSchema>>({
     resolver: zodResolver(deviceSchema),
@@ -123,7 +147,20 @@ export default function DevicesPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {devices.map((device) => (
+        {loading ? (
+          <div className="col-span-full py-16 flex flex-col items-center justify-center text-zinc-400 space-y-4">
+            <Loader2 size={40} className="animate-spin" />
+            <p className="text-sm">Loading devices...</p>
+          </div>
+        ) : devices.length === 0 ? (
+          <div className="col-span-full py-16 md:py-20 bg-white rounded-2xl border border-dashed border-zinc-300 flex flex-col items-center justify-center text-zinc-400 space-y-4">
+            <Cpu size={40} className="md:w-12 md:h-12" strokeWidth={1} />
+            <div className="text-center">
+              <p className="font-bold text-zinc-900">No devices registered</p>
+              <p className="text-sm">Register your first ESP32 device to start scanning.</p>
+            </div>
+          </div>
+        ) : devices.map((device) => (
           <div key={device.id} className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden group hover:shadow-md transition-all duration-300">
             <div className="p-4 md:p-6 border-b border-zinc-100">
               <div className="flex justify-between items-start mb-3 md:mb-4">

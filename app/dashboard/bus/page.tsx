@@ -1,7 +1,6 @@
 'use client';
 
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Bus, 
   MapPin, 
@@ -12,7 +11,8 @@ import {
   ChevronRight,
   Plus,
   X,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
 
 type BusStatus = 'waiting_home' | 'on_bus_to_school' | 'at_school' | 'on_bus_to_home' | 'home';
@@ -36,20 +36,6 @@ interface BusRoute {
   status: 'morning' | 'evening' | 'completed';
 }
 
-const mockRoutes: BusRoute[] = [
-  { id: '1', name: 'Route A - Ikeja', code: 'RTA-001', studentCount: 24, status: 'morning' },
-  { id: '2', name: 'Route B - Victoria Island', code: 'RTB-002', studentCount: 18, status: 'morning' },
-  { id: '3', name: 'Route C - Lekki', code: 'RTC-003', studentCount: 15, status: 'evening' },
-];
-
-const mockBusStudents: BusStudent[] = [
-  { id: '1', name: 'John Doe', grade: 'Grade 5', route: 'Route A', status: 'at_school', pickupTime: '07:30', eta: '15:30' },
-  { id: '2', name: 'Jane Smith', grade: 'Grade 3', route: 'Route A', status: 'on_bus_to_school', pickupTime: '07:45', eta: '08:15' },
-  { id: '3', name: 'Michael Johnson', grade: 'Grade 4', route: 'Route B', status: 'home', pickupTime: '07:00', dropoffTime: '15:45' },
-  { id: '4', name: 'Emily Davis', grade: 'Grade 6', route: 'Route C', status: 'waiting_home', eta: '07:30' },
-  { id: '5', name: 'Robert Wilson', grade: 'Grade 2', route: 'Route A', status: 'on_bus_to_home', pickupTime: '07:30', eta: '16:00' },
-];
-
 const getStatusInfo = (status: BusStatus) => {
   const statusMap: Record<BusStatus, { label: string; color: string; bg: string; icon: any }> = {
     waiting_home: { label: 'Waiting at Home', color: 'text-amber-600', bg: 'bg-amber-100', icon: Clock },
@@ -64,8 +50,29 @@ const getStatusInfo = (status: BusStatus) => {
 export default function BusTrackingPage() {
   const [selectedRoute, setSelectedRoute] = useState<BusRoute | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [students] = useState<BusStudent[]>(mockBusStudents);
-  const [routes] = useState<BusRoute[]>(mockRoutes);
+  const [students, setStudents] = useState<BusStudent[]>([]);
+  const [routes, setRoutes] = useState<BusRoute[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/bus');
+      if (response.ok) {
+        const data = await response.json();
+        setStudents(data.students || []);
+        setRoutes(data.routes || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch bus data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const morningStudents = students.filter(s => s.status === 'waiting_home' || s.status === 'on_bus_to_school');
   const atSchool = students.filter(s => s.status === 'at_school');

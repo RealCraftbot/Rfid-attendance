@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   BookOpen, 
@@ -10,13 +10,12 @@ import {
   Calendar,
   GraduationCap,
   Baby,
-  AlertCircle
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useRBAC } from '@/hooks/use-rbac';
 import { useSession } from 'next-auth/react';
 
-// Types
 interface Classroom {
   id: string;
   name: string;
@@ -26,23 +25,14 @@ interface Classroom {
   studentCount: number;
 }
 
-// Mock classrooms data
-const mockClassrooms: Classroom[] = [
-  { id: '1', name: 'Primary 1', grade: 'Primary', section: 'A', teacherName: 'Mrs. Sarah Johnson', studentCount: 28 },
-  { id: '2', name: 'Primary 2', grade: 'Primary', section: 'A', teacherName: 'Mr. Michael Brown', studentCount: 32 },
-  { id: '3', name: 'Primary 3', grade: 'Primary', section: 'B', teacherName: 'Mrs. Emily Davis', studentCount: 30 },
-  { id: '4', name: 'Primary 4', grade: 'Primary', section: 'A', teacherName: 'Mr. James Wilson', studentCount: 25 },
-  { id: '5', name: 'Primary 5', grade: 'Primary', section: 'A', teacherName: 'Mrs. Patricia Moore', studentCount: 35 },
-  { id: '6', name: 'Primary 6', grade: 'Primary', section: 'B', teacherName: 'Mr. Robert Taylor', studentCount: 29 },
-  { id: '7', name: 'JSS 1', grade: 'Junior Secondary', section: 'Science', teacherName: 'Mrs. Linda Anderson', studentCount: 22 },
-  { id: '8', name: 'JSS 2', grade: 'Junior Secondary', section: 'Science', teacherName: 'Mr. David Thomas', studentCount: 24 },
-  { id: '9', name: 'JSS 3', grade: 'Junior Secondary', section: 'Art', teacherName: 'Mrs. Susan Jackson', studentCount: 26 },
-  { id: '10', name: 'SS 1', grade: 'Senior Secondary', section: 'Science', teacherName: 'Mr. Charles White', studentCount: 20 },
-  { id: '11', name: 'SS 2', grade: 'Senior Secondary', section: 'Commercial', teacherName: 'Mrs. Margaret Harris', studentCount: 23 },
-  { id: '12', name: 'SS 3', grade: 'Senior Secondary', section: 'Art', teacherName: 'Mr. Christopher Martin', studentCount: 21 },
-];
+interface ParentChild {
+  id: string;
+  name: string;
+  classId: string;
+  className: string;
+  grade: string;
+}
 
-// Group classrooms by grade
 const groupByGrade = (classrooms: Classroom[]) => {
   const grouped = new Map<string, Classroom[]>();
   classrooms.forEach((classroom) => {
@@ -55,37 +45,61 @@ const groupByGrade = (classrooms: Classroom[]) => {
   return grouped;
 };
 
-// Mock parent's children - in production, fetch from API
-const mockParentChildren = [
-  { id: 's1', name: 'Chukwuemeka Okafor', classId: '5', className: 'Primary 5', grade: 'Primary' },
-];
-
-// Mock teacher assignments - in production, fetch from API
-const mockTeacherAssignments = ['1', '2', '3']; // Classroom IDs
-
 export default function AttendanceClassesClient() {
   const router = useRouter();
   const { role, isParent, isTeacher, isAdmin } = useRBAC();
   const { data: session } = useSession();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [parentChildren, setParentChildren] = useState<ParentChild[]>([]);
+  const [teacherAssignments, setTeacherAssignments] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filter classrooms based on role and search
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [classroomsRes, parentRes] = await Promise.all([
+        fetch('/api/classrooms'),
+        isParent ? fetch('/api/parents/children') : Promise.resolve(null),
+      ]);
+
+      if (classroomsRes.ok) {
+        const data = await classroomsRes.json();
+        setClassrooms(data.classrooms || []);
+      }
+
+      if (parentRes?.ok) {
+        const data = await parentRes.json();
+        setParentChildren(data.children || []);
+      } else if (isTeacher && session?.user?.id) {
+        const teacherRes = await fetch(`/api/teachers/${session.user.id}/classrooms`);
+        if (teacherRes.ok) {
+          const data = await teacherRes.json();
+          setTeacherAssignments(data.classroomIds || []);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [isParent, isTeacher, session?.user?.id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   const getFilteredClassrooms = () => {
-    let accessibleClassrooms = mockClassrooms;
+    let accessibleClassrooms = classrooms;
 
-    // If parent, only show their children's classrooms
     if (isParent) {
-      const childClassIds = mockParentChildren.map(child => child.classId);
-      accessibleClassrooms = mockClassrooms.filter(c => childClassIds.includes(c.id));
+      const childClassIds = parentChildren.map(child => child.classId);
+      accessibleClassrooms = classrooms.filter(c => childClassIds.includes(c.id));
+    } else if (isTeacher) {
+      accessibleClassrooms = classrooms.filter(c => teacherAssignments.includes(c.id));
     }
-    // If teacher, only show their assigned classrooms
-    else if (isTeacher) {
-      accessibleClassrooms = mockClassrooms.filter(c => mockTeacherAssignments.includes(c.id));
-    }
-    // Admin sees all classrooms
 
-    // Apply search filter
     return accessibleClassrooms.filter(
       (classroom) =>
         classroom.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -154,7 +168,7 @@ export default function AttendanceClassesClient() {
             </span>
           </div>
           <p className="text-xl sm:text-2xl font-bold text-green-900">
-            {isParent ? mockParentChildren.length : mockClassrooms.reduce((sum, c) => sum + c.studentCount, 0)}
+            {isParent ? parentChildren.length : classrooms.reduce((sum, c) => sum + c.studentCount, 0)}
           </p>
         </div>
         {!isParent && (
@@ -186,7 +200,7 @@ export default function AttendanceClassesClient() {
               <span className="text-xs text-amber-600 font-medium">Viewing attendance for</span>
             </div>
             <p className="text-sm font-bold text-amber-900">
-              {mockParentChildren.map(c => c.name).join(', ')}
+              {parentChildren.map(c => c.name).join(', ')}
             </p>
           </div>
         )}
@@ -240,12 +254,17 @@ export default function AttendanceClassesClient() {
         ))}
       </div>
 
-      {filteredClassrooms.length === 0 && (
+      {loading ? (
+        <div className="text-center py-8 sm:py-12 bg-white rounded-xl border border-zinc-200">
+          <Loader2 size={40} className="mx-auto mb-3 text-zinc-300 animate-spin" />
+          <p className="text-zinc-500 text-sm">Loading classes...</p>
+        </div>
+      ) : filteredClassrooms.length === 0 ? (
         <div className="text-center py-8 sm:py-12 bg-white rounded-xl border border-zinc-200">
           <BookOpen size={40} className="mx-auto mb-3 text-zinc-300" />
           <p className="text-zinc-500 text-sm">No classes found</p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

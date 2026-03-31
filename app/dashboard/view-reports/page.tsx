@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { RoleGuard } from '@/components/RoleGuard';
 import { 
   FileText,
@@ -12,10 +12,10 @@ import {
   Calendar,
   TrendingUp,
   Wallet,
-  Lock
+  Lock,
+  Loader2
 } from 'lucide-react';
 
-// Types
 interface ChildReport {
   id: string;
   studentId: string;
@@ -31,73 +31,22 @@ interface ChildReport {
   teacherName: string;
 }
 
-// Mock data - parent's children
-const myChildren = [
-  { 
-    id: 's1', 
-    name: 'Chukwuemeka Okafor', 
-    class: 'Primary 5', 
-    admissionNo: 'GA/2023/001',
-    imageUrl: null as string | null,
-  },
-  { 
-    id: 's2', 
-    name: 'Adaeze Nwosu', 
-    class: 'Primary 3', 
-    admissionNo: 'GA/2023/002',
-    imageUrl: null as string | null,
-  },
-];
+interface Child {
+  id: string;
+  name: string;
+  class: string;
+  admissionNo: string;
+  imageUrl: string | null;
+}
 
-// Mock reports
-const mockReports: ChildReport[] = [
-  {
-    id: 'r1',
-    studentId: 's1',
-    studentName: 'Chukwuemeka Okafor',
-    studentClass: 'Primary 5',
-    term: 1,
-    session: '2025/2026',
-    average: 88,
-    grade: 'A',
-    attendance: 93,
-    createdAt: '2025-12-15',
-    teacherName: 'Mrs. Adeyemi',
-  },
-  {
-    id: 'r2',
-    studentId: 's1',
-    studentName: 'Chukwuemeka Okafor',
-    studentClass: 'Primary 5',
-    term: 2,
-    session: '2024/2025',
-    average: 85,
-    grade: 'A',
-    attendance: 95,
-    createdAt: '2025-04-15',
-    teacherName: 'Mrs. Adeyemi',
-  },
-  {
-    id: 'r3',
-    studentId: 's2',
-    studentName: 'Adaeze Nwosu',
-    studentClass: 'Primary 3',
-    term: 1,
-    session: '2025/2026',
-    average: 92,
-    grade: 'A',
-    attendance: 98,
-    createdAt: '2025-12-15',
-    teacherName: 'Mr. Okonkwo',
-  },
-];
-
-// Mock fees for children
-const mockFees = [
-  { childId: 's1', term: 'First Term', amount: 55000, paid: 55000, status: 'PAID', dueDate: '2025-09-15' },
-  { childId: 's1', term: 'Second Term', amount: 55000, paid: 30000, status: 'PARTIAL', dueDate: '2026-01-15' },
-  { childId: 's2', term: 'First Term', amount: 50000, paid: 50000, status: 'PAID', dueDate: '2025-09-15' },
-];
+interface FeeRecord {
+  childId: string;
+  term: string;
+  amount: number;
+  paid: number;
+  status: 'PAID' | 'PARTIAL' | 'PENDING';
+  dueDate: string;
+}
 
 const schoolInfo = {
   name: 'Greenfield Academy',
@@ -111,14 +60,39 @@ function ParentViewReportsContent() {
   const [selectedReport, setSelectedReport] = useState<ChildReport | null>(null);
   const [activeTab, setActiveTab] = useState<'reports' | 'fees'>('reports');
   const [selectedChild, setSelectedChild] = useState<string>('all');
+  const [children, setChildren] = useState<Child[]>([]);
+  const [reports, setReports] = useState<ChildReport[]>([]);
+  const [fees, setFees] = useState<FeeRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/parents/reports');
+      if (response.ok) {
+        const data = await response.json();
+        setChildren(data.children || []);
+        setReports(data.reports || []);
+        setFees(data.fees || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const filteredReports = selectedChild === 'all' 
-    ? mockReports 
-    : mockReports.filter(r => r.studentId === selectedChild);
+    ? reports 
+    : reports.filter(r => r.studentId === selectedChild);
 
   const filteredFees = selectedChild === 'all'
-    ? mockFees
-    : mockFees.filter(f => f.childId === selectedChild);
+    ? fees
+    : fees.filter(f => f.childId === selectedChild);
 
   const getGradeColor = (grade: string) => {
     switch(grade) {
@@ -150,7 +124,7 @@ function ParentViewReportsContent() {
           className="w-full px-3 py-2 border border-zinc-200 rounded-lg text-sm"
         >
           <option value="all">All Children</option>
-          {myChildren.map(child => (
+          {children.map(child => (
             <option key={child.id} value={child.id}>{child.name} - {child.class}</option>
           ))}
         </select>
@@ -186,7 +160,12 @@ function ParentViewReportsContent() {
       {/* Reports Tab */}
       {activeTab === 'reports' && (
         <div className="space-y-3 sm:space-y-4">
-          {filteredReports.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <Loader2 size={32} className="mx-auto mb-3 animate-spin text-zinc-400" />
+              <p className="text-zinc-500">Loading reports...</p>
+            </div>
+          ) : filteredReports.length === 0 ? (
             <div className="text-center py-8 sm:py-12 bg-white rounded-xl border border-zinc-200">
               <FileText size={48} className="mx-auto text-zinc-300 mb-4" />
               <p className="text-zinc-500 text-sm">No reports available</p>
@@ -257,7 +236,7 @@ function ParentViewReportsContent() {
                       <tr key={idx} className="hover:bg-zinc-50">
                         <td className="py-2 sm:py-3 px-3 sm:px-4">
                           <p className="font-medium text-zinc-900">
-                            {myChildren.find(c => c.id === fee.childId)?.name}
+                            {children.find(c => c.id === fee.childId)?.name}
                           </p>
                         </td>
                         <td className="py-2 sm:py-3 px-3 sm:px-4 text-zinc-600">{fee.term}</td>

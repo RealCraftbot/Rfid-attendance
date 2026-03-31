@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { 
@@ -15,11 +15,11 @@ import {
   Clock,
   UserCheck,
   UserX,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
-import { format, startOfDay, endOfDay, subDays } from 'date-fns';
+import { format } from 'date-fns';
 
-// Types
 interface AttendanceRecord {
   studentId: string;
   studentName: string;
@@ -41,92 +41,45 @@ interface AttendanceStats {
   checkedOut: number;
 }
 
-// Validation schema for search
 const searchSchema = z.object({
   query: z.string().min(1).max(100),
 });
-
-// Mock data - would be fetched from API
-const mockAttendanceData: AttendanceRecord[] = [
-  {
-    studentId: 's1',
-    studentName: 'Chukwuemeka Okafor',
-    className: 'Primary 5',
-    status: 'checked-out',
-    checkInTime: '2025-12-15T07:45:00Z',
-    checkOutTime: '2025-12-15T14:30:00Z',
-    deviceId: 'main-gate',
-    durationOnSite: 405,
-    totalScans: 2,
-  },
-  {
-    studentId: 's2',
-    studentName: 'Adaeze Nwosu',
-    className: 'Primary 5',
-    status: 'on-site',
-    checkInTime: '2025-12-15T08:15:00Z',
-    checkOutTime: null,
-    deviceId: 'main-gate',
-    durationOnSite: null,
-    totalScans: 1,
-  },
-  {
-    studentId: 's3',
-    studentName: 'Oluwaseun Adebayo',
-    className: 'JSS 2',
-    status: 'late',
-    checkInTime: '2025-12-15T08:45:00Z',
-    checkOutTime: null,
-    deviceId: 'side-entrance',
-    durationOnSite: null,
-    totalScans: 1,
-  },
-  {
-    studentId: 's4',
-    studentName: 'Fatima Ibrahim',
-    className: 'Primary 3',
-    status: 'absent',
-    checkInTime: null,
-    checkOutTime: null,
-    deviceId: null,
-    durationOnSite: null,
-    totalScans: 0,
-  },
-  {
-    studentId: 's5',
-    studentName: 'Emmanuel Chidi',
-    className: 'JSS 1',
-    status: 'checked-out',
-    checkInTime: '2025-12-15T07:30:00Z',
-    checkOutTime: '2025-12-15T13:45:00Z',
-    deviceId: 'main-gate',
-    durationOnSite: 375,
-    totalScans: 2,
-  },
-];
-
-const mockStats: AttendanceStats = {
-  total: 45,
-  present: 42,
-  absent: 2,
-  late: 1,
-  onSite: 15,
-  checkedOut: 26,
-};
 
 export default function AttendancePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // State
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchError, setSearchError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'present' | 'absent' | 'late' | 'on-site' | 'checked-out'>('all');
-  const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>(mockAttendanceData);
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+  const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>([]);
+  const [stats, setStats] = useState<AttendanceStats>({ total: 0, present: 0, absent: 0, late: 0, onSite: 0, checkedOut: 0 });
   const [isExporting, setIsExporting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Initialize from URL params
+  const fetchAttendanceData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const dateStr = selectedDate.toISOString();
+      const response = await fetch(`/api/attendance?date=${dateStr}`);
+      if (response.ok) {
+        const data = await response.json();
+        setAttendanceData(data.records || []);
+        setStats(data.stats || { total: 0, present: 0, absent: 0, late: 0, onSite: 0, checkedOut: 0 });
+      }
+    } catch (error) {
+      console.error('Failed to fetch attendance:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedDate]);
+
+  useEffect(() => {
+    fetchAttendanceData();
+  }, [fetchAttendanceData]);
+
   useEffect(() => {
     const dateParam = searchParams.get('date');
     const searchParam = searchParams.get('search');
@@ -143,16 +96,13 @@ export default function AttendancePage() {
     }
   }, [searchParams]);
 
-  // Filter records based on search and status
   useEffect(() => {
-    let filtered = mockAttendanceData;
+    let filtered = attendanceData;
 
-    // Apply status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter((record) => record.status === statusFilter);
     }
 
-    // Apply search filter with Zod validation
     if (searchQuery.trim()) {
       const validation = searchSchema.safeParse({ query: searchQuery.trim() });
       if (validation.success) {
@@ -172,7 +122,7 @@ export default function AttendancePage() {
     }
 
     setFilteredRecords(filtered);
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, attendanceData]);
 
   // Update URL params
   const updateUrlParams = (updates: Record<string, string | null>) => {
@@ -326,7 +276,7 @@ export default function AttendancePage() {
             </div>
             <span className="text-[10px] sm:text-xs text-zinc-500">Total</span>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-zinc-900">{mockStats.total}</p>
+          <p className="text-lg sm:text-xl font-bold text-zinc-900">{loading ? '-' : stats.total}</p>
         </div>
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
@@ -335,7 +285,7 @@ export default function AttendancePage() {
             </div>
             <span className="text-[10px] sm:text-xs text-zinc-500">Present</span>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-green-600">{mockStats.present}</p>
+          <p className="text-lg sm:text-xl font-bold text-green-600">{loading ? '-' : stats.present}</p>
         </div>
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
@@ -344,7 +294,7 @@ export default function AttendancePage() {
             </div>
             <span className="text-[10px] sm:text-xs text-zinc-500">On Site</span>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-emerald-600">{mockStats.onSite}</p>
+          <p className="text-lg sm:text-xl font-bold text-emerald-600">{loading ? '-' : stats.onSite}</p>
         </div>
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
@@ -353,7 +303,7 @@ export default function AttendancePage() {
             </div>
             <span className="text-[10px] sm:text-xs text-zinc-500">Checked Out</span>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-zinc-600">{mockStats.checkedOut}</p>
+          <p className="text-lg sm:text-xl font-bold text-zinc-600">{loading ? '-' : stats.checkedOut}</p>
         </div>
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
@@ -362,7 +312,7 @@ export default function AttendancePage() {
             </div>
             <span className="text-[10px] sm:text-xs text-zinc-500">Late</span>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-amber-600">{mockStats.late}</p>
+          <p className="text-lg sm:text-xl font-bold text-amber-600">{loading ? '-' : stats.late}</p>
         </div>
         <div className="bg-white p-3 sm:p-4 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
@@ -371,7 +321,7 @@ export default function AttendancePage() {
             </div>
             <span className="text-[10px] sm:text-xs text-zinc-500">Absent</span>
           </div>
-          <p className="text-lg sm:text-xl font-bold text-red-600">{mockStats.absent}</p>
+          <p className="text-lg sm:text-xl font-bold text-red-600">{loading ? '-' : stats.absent}</p>
         </div>
       </div>
 
@@ -466,7 +416,14 @@ export default function AttendancePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {filteredRecords.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-8 sm:py-12 text-center text-zinc-500">
+                    <Loader2 size={32} className="mx-auto mb-3 text-zinc-300 animate-spin" />
+                    <p className="text-xs sm:text-sm">Loading attendance records...</p>
+                  </td>
+                </tr>
+              ) : filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 sm:py-12 text-center text-zinc-500">
                     <Clock size={32} className="mx-auto mb-3 text-zinc-300" />

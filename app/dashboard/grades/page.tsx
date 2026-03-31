@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   Search, 
@@ -20,12 +20,12 @@ import {
   Eye,
   History,
   Wallet,
-  ShieldAlert
+  ShieldAlert,
+  Loader2
 } from 'lucide-react';
 import { RoleGuard } from '@/components/RoleGuard';
 import { useRBAC } from '@/hooks/use-rbac';
 
-// Types
 interface SubjectGrade {
   subject: string;
   firstCA: number;
@@ -83,7 +83,17 @@ interface ReportCard {
   lastModifiedAt?: string;
 }
 
-// School info from database
+interface Student {
+  id: string;
+  name: string;
+  class: string;
+  admissionNo: string;
+  gender: string;
+  dob: string;
+  imageUrl: string | null;
+  rfidAttendance: { total: number; absent: number; percentage: number };
+}
+
 const schoolInfo = {
   name: 'Greenfield Academy',
   address: '123 Education Street, Lagos, Nigeria',
@@ -93,7 +103,6 @@ const schoolInfo = {
   logo: null as string | null,
 };
 
-// Nigerian subjects
 const NIGERIAN_SUBJECTS = [
   'Mathematics', 'English Language', 'Igbo/Yoruba/Hausa Language',
   'Social Studies', 'Basic Science', 'Civic Education',
@@ -102,14 +111,12 @@ const NIGERIAN_SUBJECTS = [
   'Music', 'Writing', 'Verbal Reasoning', 'Quantitative Reasoning',
 ];
 
-// Affective domains
 const AFFECTIVE_DOMAINS = [
   'Punctuality', 'Attendance', 'Self-Control', 'Neatness',
   'Responsibility', 'Diligence', 'Attentiveness', 'Leadership',
   'Accuracy', 'Sports & Games',
 ];
 
-// Grading scale
 const GRADES = [
   { min: 70, max: 100, grade: 'A', remark: 'Excellent' },
   { min: 60, max: 69, grade: 'B', remark: 'Very Good' },
@@ -119,7 +126,6 @@ const GRADES = [
   { min: 0, max: 39, grade: 'F', remark: 'Fail' },
 ];
 
-// Ratings
 const RATINGS = [
   { value: 5, label: 'Excellent' },
   { value: 4, label: 'Very Good' },
@@ -127,55 +133,6 @@ const RATINGS = [
   { value: 2, label: 'Poor' },
   { value: 1, label: 'Very Poor' },
 ];
-
-// Mock students with RFID attendance data
-const mockStudents = [
-  { 
-    id: 's1', 
-    name: 'Chukwuemeka Okafor', 
-    class: 'Primary 5', 
-    admissionNo: 'GA/2023/001', 
-    gender: 'Male', 
-    dob: '2015-03-12',
-    imageUrl: null as string | null,
-    rfidAttendance: { total: 112, absent: 8, percentage: 93 }
-  },
-  { 
-    id: 's2', 
-    name: 'Adaeze Nwosu', 
-    class: 'Primary 5', 
-    admissionNo: 'GA/2023/002', 
-    gender: 'Female', 
-    dob: '2014-11-08',
-    imageUrl: null as string | null,
-    rfidAttendance: { total: 115, absent: 5, percentage: 96 }
-  },
-  { 
-    id: 's3', 
-    name: 'Oluwaseun Adebayo', 
-    class: 'JSS 2', 
-    admissionNo: 'GA/2022/015', 
-    gender: 'Male', 
-    dob: '2012-07-22',
-    imageUrl: null as string | null,
-    rfidAttendance: { total: 108, absent: 12, percentage: 90 }
-  },
-];
-
-// Mock audit logs
-const mockAuditLogs: AuditLog[] = [
-  { id: '1', action: 'Created', user: 'Mrs. Adeyemi', userRole: 'Teacher', timestamp: '2025-12-15 10:30', changes: 'Initial report creation' },
-  { id: '2', action: 'Modified', user: 'Mr. Okonkwo', userRole: 'Teacher', timestamp: '2025-12-16 14:20', changes: 'Updated Mathematics grade' },
-];
-
-// Mock fee structure from school
-const mockFeeStructure = {
-  tuition: 50000,
-  exam: 1000,
-  sport: 500,
-  lesson: 2000,
-  other: 1500,
-};
 
 const calculateGrade = (firstCA: number, secondCA: number, exam: number) => {
   const total = firstCA + secondCA + exam;
@@ -188,14 +145,35 @@ function GradesContent() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState<typeof mockStudents[0] | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'academic' | 'affective' | 'remarks'>('academic');
   const [schoolLogo, setSchoolLogo] = useState<string | null>(schoolInfo.logo);
   const [currentUser] = useState({ name: 'Mrs. Adeyemi', role: 'Teacher' });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/students');
+      if (response.ok) {
+        const data = await response.json();
+        setStudents(data.students || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch students:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
   
-  // Initialize form with school fees
   const [formData, setFormData] = useState<Partial<ReportCard>>({
     term: 1,
     session: '2025/2026',
@@ -207,19 +185,22 @@ function GradesContent() {
     classTeacherRemark: '',
     headTeacherRemark: '',
     fees: {
-      ...mockFeeStructure,
+      tuition: 50000,
+      exam: 1000,
+      sport: 500,
+      lesson: 2000,
+      other: 1500,
       outstanding: 0,
-      total: Object.values(mockFeeStructure).reduce((a, b) => a + b, 0),
+      total: 58500,
     },
   });
 
-  const filteredStudents = mockStudents.filter(s => 
+  const filteredStudents = students.filter(s => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCreateReport = (student: typeof mockStudents[0]) => {
+  const handleCreateReport = (student: Student) => {
     setSelectedStudent(student);
-    // Auto-fill from RFID attendance data
     setFormData({
       ...formData,
       studentId: student.id,
@@ -403,7 +384,16 @@ function GradesContent() {
           <h3 className="font-bold text-zinc-900 text-sm sm:text-base">Students</h3>
         </div>
         <div className="divide-y divide-zinc-100">
-          {filteredStudents.map((student) => (
+          {loading ? (
+            <div className="p-8 text-center">
+              <Loader2 size={32} className="mx-auto mb-3 text-zinc-300 animate-spin" />
+              <p className="text-zinc-500 text-sm">Loading students...</p>
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-zinc-500 text-sm">No students found</p>
+            </div>
+          ) : filteredStudents.map((student) => (
             <div key={student.id} className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-zinc-50">
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -833,7 +823,7 @@ function GradesContent() {
             </div>
             <div className="overflow-y-auto p-4 max-h-[60vh]">
               <div className="space-y-3">
-                {mockAuditLogs.map((log) => (
+                {auditLogs.length > 0 ? auditLogs.map((log) => (
                   <div key={log.id} className="p-3 bg-zinc-50 rounded-lg border border-zinc-200">
                     <div className="flex justify-between items-start mb-1">
                       <span className={`px-2 py-0.5 rounded text-xs font-bold ${ log.action === 'Created' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700' }`}>
@@ -844,7 +834,9 @@ function GradesContent() {
                     <p className="text-sm font-medium text-zinc-900">{log.user} ({log.userRole})</p>
                     <p className="text-xs text-zinc-600 mt-1">{log.changes}</p>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-zinc-500 text-center py-4">No audit logs available</p>
+                )}
               </div>
             </div>
           </div>

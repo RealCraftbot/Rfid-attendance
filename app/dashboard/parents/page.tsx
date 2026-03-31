@@ -1,7 +1,6 @@
 'use client';
 
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   Search, 
@@ -12,7 +11,8 @@ import {
   Mail,
   ChevronLeft,
   ChevronRight,
-  XCircle
+  XCircle,
+  Loader2
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,32 +39,56 @@ const studentSchema = z.object({
   studentIdNumber: z.string().optional(),
 });
 
-const mockParents = [
-  { id: 'p1', name: 'Mrs. Adebayo', email: 'adebayo@email.com', phone: '+2348012345678', address: '15 Lagos Street, Ikeja' },
-  { id: 'p2', name: 'Mr. Okonkwo', email: 'okonkwo@email.com', phone: '+2348098765432', address: '42 Abuja Road, Victoria Island' },
-  { id: 'p3', name: 'Mrs. Nnamdi', email: 'nnamdi@email.com', phone: '+2348055551234', address: '78 Port Harcourt Ave, Lekki' },
-];
-
 let parentCounter = 10;
 const nextParentId = () => `p${++parentCounter}`;
 
-const mockStudents = [
-  { id: 's1', name: 'Adebayo Oluwaseun', rfid_uid: '1A2B3C4D', class: 'Primary 1', parent_id: 'p1' },
-  { id: 's2', name: 'Chukwu Adaobi', rfid_uid: '5E6F7G8H', class: 'Primary 1', parent_id: 'p1' },
-  { id: 's3', name: 'Okonkwo Chibueze', rfid_uid: '9I0J1K2L', class: 'Primary 2', parent_id: 'p2' },
-  { id: 's4', name: 'Nnamdi Somtochi', rfid_uid: '3M4N5O6P', class: 'JSS 1', parent_id: 'p3' },
-  { id: 's5', name: 'Eze Ifeoma', rfid_uid: '7Q8R9S0T', class: 'SSS 2', parent_id: 'p3' },
-];
+interface Parent {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+}
+
+interface Student {
+  id: string;
+  name: string;
+  rfid_uid: string;
+  class: string;
+  parent_id: string;
+}
 
 export default function ParentRegistrationPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [parents, setParents] = useState(mockParents);
-  const [selectedParent, setSelectedParent] = useState<any>(null);
+  const [parents, setParents] = useState<Parent[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [calendarStudent, setCalendarStudent] = useState<any>(null);
+  const [calendarStudent, setCalendarStudent] = useState<Student | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [attendanceData] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/parents');
+      if (response.ok) {
+        const data = await response.json();
+        setParents(data.parents || []);
+        setStudents(data.students || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const parentForm = useForm<z.infer<typeof parentSchema>>({
     resolver: zodResolver(parentSchema),
@@ -92,8 +116,8 @@ export default function ParentRegistrationPage() {
     }
   });
 
-  const students = selectedParent 
-    ? mockStudents.filter(s => s.parent_id === selectedParent.id)
+  const filteredStudents = selectedParent 
+    ? students.filter(s => s.parent_id === selectedParent.id)
     : [];
 
   const onParentSubmit = (data: z.infer<typeof parentSchema>) => {
