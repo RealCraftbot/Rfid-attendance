@@ -59,10 +59,10 @@ interface TimetableProps {
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   const json = await res.json();
-  if (!res.ok || !json.success) {
-    throw new Error(json.error?.message || json.error || 'Failed to fetch');
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to fetch');
   }
-  return json.data;
+  return json.data || [];
 };
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

@@ -51,14 +51,16 @@ const requireAuth = async (request: NextRequest) => {
 // GET /api/timetable - Retrieve all timetables for an organization
 export async function GET(request: NextRequest) {
   try {
-    const result = await requireAuth(request);
-    if (result instanceof NextResponse) {
-      return result;
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
-    const { orgId } = result;
+    
+    const orgId = session.user.orgId;
     
     if (!orgId) {
-      return forbidden('Organization ID is required');
+      return NextResponse.json({ success: true, data: [] });
     }
     
     const timetables = await prisma.timetable.findMany({
