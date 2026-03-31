@@ -99,10 +99,18 @@ export async function POST(request: Request) {
 
     const student = await prisma.student.create({
       data: {
-        ...parsed.data,
-        orgId,
-        admissionNumber,
+        name: parsed.data.name,
+        rfidUid: parsed.data.rfidUid,
+        grade: parsed.data.grade || null,
+        classroomId: parsed.data.classroomId || null,
+        guardianName: parsed.data.guardianName || null,
+        guardianPhone: parsed.data.guardianPhone || null,
+        guardianEmail: parsed.data.guardianEmail || null,
         dateOfBirth: parsed.data.dateOfBirth ? new Date(parsed.data.dateOfBirth) : null,
+        admissionNumber,
+        isActive: parsed.data.isActive ?? true,
+        usesSchoolBus: parsed.data.usesSchoolBus ?? false,
+        orgId,
       },
       include: {
         classroom: {

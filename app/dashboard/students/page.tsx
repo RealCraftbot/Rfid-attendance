@@ -22,13 +22,12 @@ import { useToast } from '@/hooks/use-toast';
 
 const studentSchema = z.object({
   name: z.string().min(2, 'Name is required'),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
   rfidUid: z.string().min(4, 'RFID UID is required'),
   grade: z.string().optional(),
   classroomId: z.string().optional(),
   guardianName: z.string().optional(),
   guardianPhone: z.string().optional(),
-  guardianEmail: z.string().email('Invalid email').optional().or(z.literal('')),
+  guardianEmail: z.string().email('Invalid email').optional().nullable(),
   dateOfBirth: z.string().optional(),
   isActive: z.boolean().default(true),
   usesSchoolBus: z.boolean().default(false),
@@ -87,7 +86,6 @@ export default function StudentsPage() {
     resolver: zodResolver(studentSchema),
     defaultValues: {
       name: '',
-      email: '',
       rfidUid: '',
       grade: '',
       classroomId: '',
@@ -507,28 +505,17 @@ export default function StudentsPage() {
                 {errors.name && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.name.message}</p>}
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Email</label>
-                  <input 
-                    {...register('email')}
-                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
-                    placeholder="student@school.com"
-                  />
-                  {errors.email && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.email.message}</p>}
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Class</label>
-                  <select 
-                    {...register('grade')}
-                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
-                  >
-                    <option value="">Select Class</option>
-                    {NIGERIAN_CLASSES.map((cls) => (
-                      <option key={cls} value={cls}>{cls}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Class</label>
+                <select 
+                  {...register('grade')}
+                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                >
+                  <option value="">Select Class</option>
+                  {NIGERIAN_CLASSES.map((cls) => (
+                    <option key={cls} value={cls}>{cls}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
