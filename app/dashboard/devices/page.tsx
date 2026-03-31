@@ -23,37 +23,44 @@ import * as z from 'zod';
 
 const deviceSchema = z.object({
   name: z.string().min(2, 'Name is required'),
-  device_id: z.string().min(4, 'Device ID is required'),
-  is_active: z.boolean().default(true),
+  deviceId: z.string().min(4, 'Device ID is required'),
+  isActive: z.boolean().default(true),
 });
 
 interface Device {
   id: string;
   name: string;
-  device_id: string;
-  is_active: boolean;
-  secret_key: string;
-  battery_level: number;
-  last_seen: string;
+  deviceId: string;
+  secretKey: string;
+  orgId: string;
+  location?: string;
+  locationType?: string;
+  isActive: boolean;
+  batteryLevel?: number;
+  lastSeen?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-const BatteryIndicator = ({ level }: { level: number }) => {
+const BatteryIndicator = ({ level }: { level?: number }) => {
+  const safeLevel = level ?? 100;
+  
   const getBatteryIcon = () => {
-    if (level <= 20) return <BatteryLow size={16} />;
-    if (level <= 50) return <BatteryMedium size={16} />;
+    if (safeLevel <= 20) return <BatteryLow size={16} />;
+    if (safeLevel <= 50) return <BatteryMedium size={16} />;
     return <BatteryFull size={16} />;
   };
   
   const getColor = () => {
-    if (level <= 20) return 'text-red-500';
-    if (level <= 50) return 'text-amber-500';
+    if (safeLevel <= 20) return 'text-red-500';
+    if (safeLevel <= 50) return 'text-amber-500';
     return 'text-emerald-500';
   };
 
   return (
     <div className="flex items-center gap-1.5">
       {getBatteryIcon()}
-      <span className={`text-xs font-bold ${getColor()}`}>{level}%</span>
+      <span className={`text-xs font-bold ${getColor()}`}>{safeLevel}%</span>
     </div>
   );
 };
@@ -72,8 +79,8 @@ export default function DevicesPage() {
       setLoading(true);
       const response = await fetch('/api/devices');
       if (response.ok) {
-        const data = await response.json();
-        setDevices(data.devices || []);
+        const json = await response.json();
+        setDevices(json.data || []);
       }
     } catch (error) {
       console.error('Failed to fetch devices:', error);
@@ -90,8 +97,8 @@ export default function DevicesPage() {
     resolver: zodResolver(deviceSchema),
     defaultValues: {
       name: '',
-      device_id: '',
-      is_active: true
+      deviceId: '',
+      isActive: true
     }
   });
 
@@ -105,7 +112,7 @@ export default function DevicesPage() {
     const newDevice = {
       ...data,
       id: nextDeviceId(),
-      secret_key: generateSecret()
+      secretKey: generateSecret()
     };
     setDevices([...devices, newDevice]);
     setIsModalOpen(false);
@@ -114,7 +121,7 @@ export default function DevicesPage() {
 
   const toggleStatus = (deviceId: string) => {
     setDevices(devices.map(d => 
-      d.id === deviceId ? { ...d, is_active: !d.is_active } : d
+      d.id === deviceId ? { ...d, isActive: !d.isActive } : d
     ));
   };
 
@@ -165,7 +172,7 @@ export default function DevicesPage() {
             <div className="p-4 md:p-6 border-b border-zinc-100">
               <div className="flex justify-between items-start mb-3 md:mb-4">
                 <div className={`p-2 md:p-3 rounded-xl border ${
-                  device.is_active ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-zinc-50 border-zinc-200 text-zinc-400'
+                  device.isActive ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-zinc-50 border-zinc-200 text-zinc-400'
                 }`}>
                   <Cpu size={20} className="md:w-6 md:h-6" />
                 </div>
@@ -173,10 +180,10 @@ export default function DevicesPage() {
                   <button 
                     onClick={() => toggleStatus(device.id)}
                     className={`p-1.5 md:p-2 rounded-lg transition-colors ${
-                      device.is_active ? 'text-emerald-600 hover:bg-emerald-50' : 'text-zinc-400 hover:bg-zinc-100'
+                      device.isActive ? 'text-emerald-600 hover:bg-emerald-50' : 'text-zinc-400 hover:bg-zinc-100'
                     }`}
                   >
-                    {device.is_active ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
+                    {device.isActive ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
                   </button>
                   <button 
                     onClick={() => deleteDevice(device.id)}
@@ -187,7 +194,7 @@ export default function DevicesPage() {
                 </div>
               </div>
               <h3 className="text-base md:text-lg font-bold text-zinc-900">{device.name}</h3>
-              <p className="text-[10px] md:text-xs text-zinc-500 font-mono mt-1 uppercase tracking-wider">{device.device_id}</p>
+              <p className="text-[10px] md:text-xs text-zinc-500 font-mono mt-1 uppercase tracking-wider">{device.deviceId}</p>
             </div>
             
             <div className="p-4 md:p-6 bg-zinc-50/50 space-y-3 md:space-y-4">
@@ -199,7 +206,7 @@ export default function DevicesPage() {
                     ••••••••••••••••
                   </code>
                   <button 
-                    onClick={() => copyToClipboard(device.secret_key, device.id + 'key')}
+                    onClick={() => copyToClipboard(device.secretKey, device.id + 'key')}
                     className="text-zinc-400 hover:text-zinc-900 transition-colors"
                   >
                     {copiedId === device.id + 'key' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
@@ -209,33 +216,23 @@ export default function DevicesPage() {
               
               <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                 <span>Status</span>
-                <span className={device.is_active ? 'text-emerald-600' : 'text-red-500'}>
-                  {device.is_active ? 'Active' : 'Disabled'}
+                <span className={device.isActive ? 'text-emerald-600' : 'text-red-500'}>
+                  {device.isActive ? 'Active' : 'Disabled'}
                 </span>
               </div>
 
               <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                 <span>Battery</span>
-                <BatteryIndicator level={device.battery_level} />
+                <BatteryIndicator level={device.batteryLevel} />
               </div>
 
               <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                 <span>Last Seen</span>
-                <span className="text-zinc-500 normal-case tracking-normal">{device.last_seen}</span>
+                <span className="text-zinc-500 normal-case tracking-normal">{device.lastSeen}</span>
               </div>
             </div>
           </div>
         ))}
-
-        {devices.length === 0 && (
-          <div className="col-span-full py-16 md:py-20 bg-white rounded-2xl border border-dashed border-zinc-300 flex flex-col items-center justify-center text-zinc-400 space-y-4">
-            <Cpu size={40} className="md:w-12 md:h-12" strokeWidth={1} />
-            <div className="text-center">
-              <p className="font-bold text-zinc-900">No devices registered</p>
-              <p className="text-sm">Register your first ESP32 device to start scanning.</p>
-            </div>
-          </div>
-        )}
       </div>
 
       {isModalOpen && (
@@ -260,11 +257,11 @@ export default function DevicesPage() {
               <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Device ID (Hardware ID)</label>
                 <input 
-                  {...register('device_id')}
+                  {...register('deviceId')}
                   className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm font-mono"
                   placeholder="e.g. ESP32_FRONT_01"
                 />
-                {errors.device_id && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.device_id.message}</p>}
+                {errors.deviceId && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.deviceId.message}</p>}
               </div>
               
               <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex gap-3">
