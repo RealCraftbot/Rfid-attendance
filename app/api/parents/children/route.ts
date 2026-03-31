@@ -11,20 +11,25 @@ export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.orgId) {
-      return forbidden('Organization ID required');
+    if (!session?.user?.email) {
+      return forbidden('Authentication required');
     }
 
+    const userEmail = session.user.email;
     const orgId = session.user.orgId;
-    const userId = session.user.id;
 
-    // Find students associated with this parent's user ID
-    // This assumes students have guardianEmail or guardianPhone matching parent's contact
+    // Find students associated with this parent's email
+    // If parent has orgId, filter by it; otherwise search all orgs
+    const whereClause: any = {
+      guardianEmail: userEmail
+    };
+    
+    if (orgId) {
+      whereClause.orgId = orgId;
+    }
+
     const students = await prisma.student.findMany({
-      where: { 
-        orgId,
-        guardianEmail: session.user.email
-      },
+      where: whereClause,
       include: {
         classroom: {
           select: {
@@ -45,14 +50,20 @@ export async function GET(request: Request) {
     const dayEnd = endOfDay(today);
 
     // Get today's attendance for these students
+    const attendanceWhere: any = {
+      studentId: { in: studentIds },
+      scanTime: {
+        gte: dayStart,
+        lte: dayEnd
+      }
+    };
+    
+    if (orgId) {
+      attendanceWhere.orgId = orgId;
+    }
+
     const attendance = await prisma.attendanceRecord.findMany({
-      where: {
-        studentId: { in: studentIds },
-        scanTime: {
-          gte: dayStart,
-          lte: dayEnd
-        }
-      },
+      where: attendanceWhere,
       orderBy: { scanTime: 'desc' }
     });
 

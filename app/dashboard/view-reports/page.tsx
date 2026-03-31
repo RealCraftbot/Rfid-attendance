@@ -70,10 +70,12 @@ function ParentViewReportsContent() {
       setLoading(true);
       const response = await fetch('/api/parents/reports');
       if (response.ok) {
-        const data = await response.json();
-        setChildren(data.children || []);
-        setReports(data.reports || []);
-        setFees(data.fees || []);
+        const json = await response.json();
+        if (json.success) {
+          setChildren(json.data.children || []);
+          setReports(json.data.reports || []);
+          setFees(json.data.fees || []);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch reports:', error);

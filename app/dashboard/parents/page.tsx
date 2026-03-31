@@ -73,11 +73,17 @@ export default function ParentRegistrationPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/parents');
+      const response = await fetch('/api/parents/manage');
       if (response.ok) {
-        const data = await response.json();
-        setParents(data.parents || []);
-        setStudents(data.students || []);
+        const json = await response.json();
+        if (json.success) {
+          setParents(json.data || []);
+          // Flatten students from all parents
+          const allStudents = (json.data || []).flatMap((p: any) => 
+            (p.students || []).map((s: any) => ({ ...s, parent_id: p.id }))
+          );
+          setStudents(allStudents);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);

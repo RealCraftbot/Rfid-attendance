@@ -31,9 +31,11 @@ export default function ParentDashboard() {
       setLoading(true);
       const response = await fetch('/api/parents/children');
       if (response.ok) {
-        const data = await response.json();
-        setChildren(data.children || []);
-        setAttendance(data.attendance || []);
+        const json = await response.json();
+        if (json.success) {
+          setChildren(json.data.children || []);
+          setAttendance(json.data.attendance || []);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);

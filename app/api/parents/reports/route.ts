@@ -10,18 +10,24 @@ export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.orgId) {
-      return forbidden('Organization ID required');
+    if (!session?.user?.email) {
+      return forbidden('Authentication required');
     }
 
+    const userEmail = session.user.email;
     const orgId = session.user.orgId;
 
     // Find students associated with this parent's email
+    const whereClause: any = {
+      guardianEmail: userEmail
+    };
+    
+    if (orgId) {
+      whereClause.orgId = orgId;
+    }
+
     const students = await prisma.student.findMany({
-      where: { 
-        orgId,
-        guardianEmail: session.user.email
-      },
+      where: whereClause,
       include: {
         classroom: {
           select: {
@@ -32,11 +38,6 @@ export async function GET(request: Request) {
         grades: {
           orderBy: { createdAt: 'desc' },
           take: 10
-        },
-        invoices: {
-          where: {
-            academicYear: new Date().getFullYear().toString()
-          }
         }
       }
     });
@@ -44,6 +45,21 @@ export async function GET(request: Request) {
     if (students.length === 0) {
       return success({ children: [], reports: [], fees: [] });
     }
+
+    // Get invoices for these students
+    const studentIds = students.map(s => s.id);
+    const invoicesWhere: any = {
+      studentId: { in: studentIds }
+    };
+    
+    if (orgId) {
+      invoicesWhere.orgId = orgId;
+    }
+
+    const invoices = await prisma.invoice.findMany({
+      where: invoicesWhere,
+      orderBy: { createdAt: 'desc' }
+    });
 
     // Format children
     const children = students.map(student => ({
@@ -66,23 +82,24 @@ export async function GET(request: Request) {
         session: grade.academicYear,
         average: grade.totalScore || 0,
         grade: grade.grade || 'N/A',
-        attendance: 85, // Placeholder
+        attendance: 85,
         createdAt: grade.createdAt.toISOString(),
         teacherName: 'N/A'
       }))
     );
 
     // Format fees (from invoices)
-    const fees = students.flatMap(student =>
-      student.invoices.map(invoice => ({
-        childId: student.id,
+    const fees = invoices.map(invoice => {
+      const student = students.find(s => s.id === invoice.studentId);
+      return {
+        childId: invoice.studentId,
         term: `Term ${invoice.term}`,
         amount: invoice.amount,
         paid: invoice.paidAmount,
         status: invoice.status,
         dueDate: invoice.dueDate.toISOString()
-      }))
-    );
+      };
+    });
 
     return success({
       children,
