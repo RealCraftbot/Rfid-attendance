@@ -23,7 +23,6 @@ const staffSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Invalid email'),
   role: z.enum(['teacher', 'admin']),
-  is_active: z.boolean().default(true),
 });
 
 interface StaffMember {
@@ -31,7 +30,7 @@ interface StaffMember {
   name: string;
   email: string;
   role: string;
-  is_active: boolean;
+  isActive?: boolean;
 }
 
 export default function StaffPage() {
@@ -47,8 +46,7 @@ export default function StaffPage() {
     defaultValues: {
       name: '',
       email: '',
-      role: 'teacher',
-      is_active: true
+      role: 'teacher'
     }
   });
 
@@ -75,14 +73,22 @@ export default function StaffPage() {
 
   const onSubmit = async (data: z.infer<typeof staffSchema>) => {
     try {
+      const payload = {
+        name: data.name,
+        email: data.email,
+        role: data.role === 'teacher' ? 'TEACHER' : 'ADMIN',
+      };
+      
       const response = await fetch('/api/staff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to create staff member');
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error?.message || result.error || 'Failed to create staff member');
       }
       
       await fetchStaff();
@@ -103,7 +109,7 @@ export default function StaffPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id,
-          is_active: !member.is_active
+          isActive: !member.isActive
         }),
       });
       
@@ -245,13 +251,13 @@ export default function StaffPage() {
                       <button 
                         onClick={() => toggleStatus(member.id)}
                         className={`inline-flex items-center gap-1 px-2 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider border ${
-                          member.is_active 
+                          member.isActive 
                             ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
                             : 'bg-red-50 text-red-600 border-red-100'
                         }`}
                       >
-                        {member.is_active ? <CheckCircle2 size={10} className="md:w-3 md:h-3" /> : <XCircle size={10} className="md:w-3 md:h-3" />}
-                        {member.is_active ? 'Active' : 'Inactive'}
+                        {member.isActive ? <CheckCircle2 size={10} className="md:w-3 md:h-3" /> : <XCircle size={10} className="md:w-3 md:h-3" />}
+                        {member.isActive ? 'Active' : 'Inactive'}
                       </button>
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-right hidden sm:table-cell">
