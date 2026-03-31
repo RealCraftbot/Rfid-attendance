@@ -310,17 +310,6 @@ function GradesContent() {
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-zinc-900">Report Cards</h1>
           <p className="text-zinc-500 mt-1 text-xs sm:text-sm">Create and manage student terminal reports</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <button 
-            onClick={() => logoInputRef.current?.click()}
-            className="flex items-center gap-1.5 sm:gap-2 bg-white text-zinc-700 border border-zinc-200 px-2 sm:px-4 py-2 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm hover:bg-zinc-50"
-          >
-            <Upload size={14} className="sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Upload Logo</span>
-            <span className="sm:hidden">Logo</span>
-          </button>
-          <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-        </div>
       </div>
 
       {/* Stats - Responsive Grid */}

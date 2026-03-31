@@ -62,18 +62,18 @@ const SidebarItem = ({ icon: Icon, label, href, active, onClick }: SidebarItemPr
 // Navigation items configuration with role-based access
 const getNavItems = (role: string) => {
   const adminItems = [
-    { icon: LayoutDashboard, label: '1. Overview', href: '/dashboard' },
-    { icon: UserCog, label: '2. Staff', href: '/dashboard/staff' },
-    { icon: BookOpen, label: '3. Classrooms', href: '/dashboard/classrooms' },
-    { icon: Users, label: '4. Students', href: '/dashboard/students' },
-    { icon: UserPlus, label: '5. Parents', href: '/dashboard/parents' },
-    { icon: Cpu, label: '6. Devices', href: '/dashboard/devices' },
-    { icon: Bus, label: '7. Bus Tracking', href: '/dashboard/bus' },
-    { icon: Calendar, label: '8. Timetable', href: '/dashboard/timetable' },
-    { icon: UserCheck, label: '9. Teacher Schedule', href: '/dashboard/teacher-schedule' },
-    { icon: History, label: '10. Attendance', href: '/dashboard/attendance' },
-    { icon: Wallet, label: '11. Fees & Payments', href: '/dashboard/admin/fees' },
-    { icon: GraduationCap, label: '12. Grades', href: '/dashboard/grades' },
+    { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
+    { icon: UserCog, label: 'Staff', href: '/dashboard/staff' },
+    { icon: BookOpen, label: 'Classrooms', href: '/dashboard/classrooms' },
+    { icon: Users, label: 'Students', href: '/dashboard/students' },
+    { icon: UserPlus, label: 'Parents', href: '/dashboard/parents' },
+    { icon: Cpu, label: 'Devices', href: '/dashboard/devices' },
+    { icon: Bus, label: 'Bus Tracking', href: '/dashboard/bus' },
+    { icon: Calendar, label: 'Timetable', href: '/dashboard/timetable' },
+    { icon: UserCheck, label: 'Teacher Schedule', href: '/dashboard/teacher-schedule' },
+    { icon: History, label: 'Attendance', href: '/dashboard/attendance' },
+    { icon: Wallet, label: 'Fees & Payments', href: '/dashboard/admin/fees' },
+    { icon: GraduationCap, label: 'Grades', href: '/dashboard/grades' },
   ];
 
   const teacherItems = [
@@ -222,10 +222,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Menu size={24} />
         </button>
         <Logo textColor="text-zinc-900" subtextColor="text-zinc-400" />
-        <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded-lg relative">
-          <Bell size={24} />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center overflow-hidden text-sm">
+            {userData?.imageUrl ? (
+              <img src={userData.imageUrl} alt={userData?.name || 'User'} className="w-full h-full object-cover" />
+            ) : (
+              <span>{userData?.name?.charAt(0) || 'U'}</span>
+            )}
+          </div>
+        </div>
       </header>
 
       {/* Mobile Sidebar Overlay */}
@@ -253,29 +258,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
           </div>
 
-          {/* User Info */}
-          <div className="p-4 border-b border-zinc-800">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center overflow-hidden">
-                {userData?.imageUrl ? (
-                  <img 
-                    src={userData.imageUrl} 
-                    alt={userData?.name || 'User'} 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span>{userData?.name?.charAt(0) || 'U'}</span>
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">{userData?.name}</p>
-                <p className="text-xs text-zinc-400 capitalize">{userRole?.toLowerCase().replace('_', ' ')}</p>
-              </div>
-            </div>
-            {organization && (
-              <p className="text-xs text-zinc-500 mt-2 truncate">{organization.name}</p>
-            )}
-          </div>
+
 
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             {navItems.map((item) => (
