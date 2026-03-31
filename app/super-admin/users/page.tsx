@@ -1,24 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Users, Search, Shield, ShieldCheck, ShieldAlert, UserPlus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, Search, Shield, ShieldCheck, ShieldAlert, UserPlus, Loader2 } from 'lucide-react';
 
-const mockUsers = [
-  { id: '1', name: 'John Admin', email: 'john@admin.com', role: 'SUPER_ADMIN', org: 'Platform', status: 'active' },
-  { id: '2', name: 'Jane Smith', email: 'jane@greenwood.edu', role: 'ADMIN', org: 'Greenwood Academy', status: 'active' },
-  { id: '3', name: 'Bob Teacher', email: 'bob@sunrise.edu', role: 'TEACHER', org: 'Sunrise School', status: 'active' },
-  { id: '4', name: 'Alice Parent', email: 'alice@email.com', role: 'PARENT', org: 'Greenwood Academy', status: 'active' },
-];
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  org: string;
+  status: string;
+}
 
 const RoleBadge = ({ role }: { role: string }) => {
-  const colors = {
+  const colors: Record<string, string> = {
     SUPER_ADMIN: 'bg-red-100 text-red-700',
     ADMIN: 'bg-purple-100 text-purple-700',
     TEACHER: 'bg-blue-100 text-blue-700',
     PARENT: 'bg-green-100 text-green-700',
+    BURSAR: 'bg-orange-100 text-orange-700',
   };
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${colors[role as keyof typeof colors]}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${colors[role] || 'bg-gray-100 text-gray-700'}`}>
       <ShieldCheck size={12} />
       {role.replace('_', ' ')}
     </span>
@@ -27,12 +30,41 @@ const RoleBadge = ({ role }: { role: string }) => {
 
 export default function SuperAdminUsers() {
   const [searchTerm, setSearchTerm] = useState('');
-  const users = mockUsers;
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/super-admin/users');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setUsers(data.data);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -99,6 +131,13 @@ export default function SuperAdminUsers() {
                   </td>
                 </tr>
               ))}
+              {filteredUsers.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-3 md:px-6 py-8 text-center text-zinc-500">
+                    {searchTerm ? 'No users match your search' : 'No users found'}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -1,24 +1,56 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Building2, Search, Download, CheckCircle2, XCircle, Mail, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Building2, Search, Download, CheckCircle2, XCircle, Mail, Calendar, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
-const mockOrgs = [
-  { id: '1', name: 'Greenwood Academy', email: 'admin@greenwood.edu', status: 'ACTIVE', createdAt: '2024-01-15', users: 245, students: 1200 },
-  { id: '2', name: 'Sunrise School', email: 'admin@sunrise.edu', status: 'ACTIVE', createdAt: '2024-02-20', users: 89, students: 450 },
-  { id: '3', name: 'Tech Valley High', email: 'admin@techvalley.edu', status: 'TRIAL', createdAt: '2024-03-10', users: 12, students: 85 },
-  { id: '4', name: 'Northside Academy', email: 'admin@northside.edu', status: 'SUSPENDED', createdAt: '2023-11-05', users: 156, students: 780 },
-];
+interface Organization {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  createdAt: string;
+  users: number;
+  students: number;
+}
 
 export default function SuperAdminOrganizations() {
   const [searchTerm, setSearchTerm] = useState('');
-  const organizations = mockOrgs;
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/super-admin/organizations');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setOrganizations(data.data);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch organizations:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const filteredOrgs = organizations.filter(org =>
     org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     org.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -91,6 +123,13 @@ export default function SuperAdminOrganizations() {
                   <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-zinc-600 hidden md:table-cell">{org.students}</td>
                 </tr>
               ))}
+              {filteredOrgs.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-3 md:px-6 py-8 text-center text-zinc-500">
+                    {searchTerm ? 'No organizations match your search' : 'No organizations found'}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

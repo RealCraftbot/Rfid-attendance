@@ -1,23 +1,79 @@
 'use client';
 
-import React from 'react';
-import { Building2, Users, Cpu, Activity, TrendingUp, ArrowUpRight, ArrowDownRight, Globe } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Building2, Users, Cpu, Activity, TrendingUp, ArrowUpRight, ArrowDownRight, Globe, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { format } from 'date-fns';
 
-const mockStats = [
-  { title: 'Total Organizations', value: '24', change: '12', icon: Building2, trend: 'up', color: 'bg-blue-100 text-blue-600' },
-  { title: 'Active Users', value: '1,847', change: '8', icon: Users, trend: 'up', color: 'bg-green-100 text-green-600' },
-  { title: 'RFID Devices', value: '156', change: '3', icon: Cpu, trend: 'up', color: 'bg-purple-100 text-purple-600' },
-  { title: 'Attendance Today', value: '12,458', change: '5', icon: Activity, trend: 'up', color: 'bg-orange-100 text-orange-600' },
-];
+interface Stat {
+  title: string;
+  value: number;
+  change: number;
+  icon: string;
+  trend: string;
+  color: string;
+}
 
-const mockOrgs = [
-  { id: '1', name: 'Greenwood Academy', slug: 'greenwood-academy', status: 'ACTIVE', users: 245, students: 1200 },
-  { id: '2', name: 'Sunrise School', slug: 'sunrise-school', status: 'ACTIVE', users: 89, students: 450 },
-  { id: '3', name: 'Tech Valley High', slug: 'tech-valley-high', status: 'TRIAL', users: 12, students: 85 },
-];
+interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  users: number;
+  students: number;
+}
 
 export default function SuperAdminDashboard() {
+  const [stats, setStats] = useState<Stat[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsRes, orgsRes] = await Promise.all([
+          fetch('/api/super-admin/stats'),
+          fetch('/api/super-admin/organizations')
+        ]);
+
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          if (statsData.success) {
+            setStats(statsData.data);
+          }
+        }
+
+        if (orgsRes.ok) {
+          const orgsData = await orgsRes.json();
+          if (orgsData.success) {
+            setOrganizations(orgsData.data.slice(0, 5));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+    Building2,
+    Users,
+    Cpu,
+    Activity,
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div>
@@ -26,21 +82,24 @@ export default function SuperAdminDashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-        {mockStats.map((stat, i) => (
-          <div key={i} className="bg-white p-4 md:p-6 rounded-xl border border-zinc-200 shadow-sm">
-            <div className="flex justify-between items-start mb-3 md:mb-4">
-              <div className={`p-2 md:p-3 rounded-xl ${stat.color}`}>
-                <stat.icon size={18} className="md:w-6 md:h-6" />
+        {stats.map((stat, i) => {
+          const Icon = iconMap[stat.icon] || Activity;
+          return (
+            <div key={i} className="bg-white p-4 md:p-6 rounded-xl border border-zinc-200 shadow-sm">
+              <div className="flex justify-between items-start mb-3 md:mb-4">
+                <div className={`p-2 md:p-3 rounded-xl ${stat.color}`}>
+                  <Icon size={18} className="md:w-6 md:h-6" />
+                </div>
+                <div className={`flex items-center gap-1 text-[10px] md:text-xs font-bold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full ${stat.trend === 'up' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                  {stat.trend === 'up' ? <ArrowUpRight size={10} className="md:w-3 md:h-3" /> : <ArrowDownRight size={10} className="md:w-3 md:h-3" />}
+                  {stat.change}%
+                </div>
               </div>
-              <div className={`flex items-center gap-1 text-[10px] md:text-xs font-bold px-1.5 md:px-2 py-0.5 md:py-1 rounded-full ${stat.trend === 'up' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                {stat.trend === 'up' ? <ArrowUpRight size={10} className="md:w-3 md:h-3" /> : <ArrowDownRight size={10} className="md:w-3 md:h-3" />}
-                {stat.change}%
-              </div>
+              <p className="text-zinc-500 text-[10px] md:text-sm font-medium mb-1">{stat.title}</p>
+              <h3 className="text-xl md:text-3xl font-bold text-zinc-900">{stat.value.toLocaleString()}</h3>
             </div>
-            <p className="text-zinc-500 text-[10px] md:text-sm font-medium mb-1">{stat.title}</p>
-            <h3 className="text-xl md:text-3xl font-bold text-zinc-900">{stat.value}</h3>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm">
@@ -58,7 +117,7 @@ export default function SuperAdminDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200">
-              {mockOrgs.map((org) => (
+              {organizations.map((org) => (
                 <tr key={org.id} className="hover:bg-zinc-50">
                   <td className="px-3 md:px-6 py-3 md:py-4">
                     <div className="flex items-center gap-2 md:gap-3">
@@ -79,6 +138,13 @@ export default function SuperAdminDashboard() {
                   <td className="px-3 md:px-6 py-3 md:py-4 text-zinc-600 hidden sm:table-cell">{org.students}</td>
                 </tr>
               ))}
+              {organizations.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-3 md:px-6 py-8 text-center text-zinc-500">
+                    No organizations found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
