@@ -94,14 +94,13 @@ interface Student {
   rfidAttendance: { total: number; absent: number; percentage: number };
 }
 
-const schoolInfo = {
-  name: '',
-  address: '',
-  email: '',
-  phone: '',
-  motto: '',
-  logo: null as string | null,
-};
+interface SchoolInfoData {
+  name: string;
+  address: string;
+  email: string;
+  phone: string;
+  motto?: string;
+}
 
 const NIGERIAN_SUBJECTS = [
   'Mathematics', 'English Language', 'Igbo/Yoruba/Hausa Language',
@@ -151,15 +150,21 @@ function GradesContent() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'academic' | 'affective' | 'remarks'>('academic');
   const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
+  const [schoolInfo, setSchoolInfo] = useState<SchoolInfoData>({ name: '', address: '', email: '', phone: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/students');
-      if (response.ok) {
-        const json = await response.json();
+      
+      const [studentsRes, orgRes] = await Promise.all([
+        fetch('/api/students'),
+        fetch('/api/organization').catch(() => null)
+      ]);
+      
+      if (studentsRes.ok) {
+        const json = await studentsRes.json();
         if (json.success) {
           const mappedStudents = (json.data || []).map((s: any) => ({
             id: s.id,
@@ -174,8 +179,21 @@ function GradesContent() {
           setStudents(mappedStudents);
         }
       }
+      
+      if (orgRes?.ok) {
+        const orgJson = await orgRes.json();
+        if (orgJson.success) {
+          setSchoolLogo(orgJson.data.logoUrl || null);
+          setSchoolInfo({
+            name: orgJson.data.name || '',
+            address: orgJson.data.address || '',
+            email: orgJson.data.email || '',
+            phone: orgJson.data.phone || '',
+          });
+        }
+      }
     } catch (error) {
-      console.error('Failed to fetch students:', error);
+      console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
     }
