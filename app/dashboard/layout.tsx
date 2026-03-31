@@ -45,10 +45,12 @@ interface SidebarItemProps {
 }
 
 const SidebarItem = ({ icon: Icon, label, href, active, onClick }: SidebarItemProps) => (
-  <Link 
-    href={href}
-    onClick={onClick}
-    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+  <button 
+    onClick={() => {
+      if (onClick) onClick();
+      window.location.href = href;
+    }}
+    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
       active 
         ? 'bg-blue-600 text-white shadow-lg' 
         : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
@@ -56,7 +58,7 @@ const SidebarItem = ({ icon: Icon, label, href, active, onClick }: SidebarItemPr
   >
     <Icon size={20} />
     <span className="font-medium text-sm">{label}</span>
-  </Link>
+  </button>
 );
 
 // Navigation items configuration with role-based access
