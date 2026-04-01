@@ -128,7 +128,8 @@ export const authOptions: NextAuthOptions = {
             orgId: user.orgId,
             imageUrl: user.imageUrl,
             emailVerified: user.emailVerified?.toISOString() || null,
-            passwordSet: (user as any).passwordSet || false,
+            // Treat null/undefined passwordSet as true (user has a password)
+            passwordSet: (user as any).passwordSet !== false,
             organization: user.org ? {
               id: user.org.id,
               name: user.org.name,
@@ -157,7 +158,8 @@ export const authOptions: NextAuthOptions = {
         token.orgId = u.orgId;
         token.imageUrl = u.imageUrl;
         token.emailVerified = u.emailVerified;
-        token.passwordSet = u.passwordSet;
+        // Default to true if not present
+        token.passwordSet = u.passwordSet !== false;
         token.organization = u.organization;
         token.name = u.name;
         token.email = u.email;
@@ -170,6 +172,7 @@ export const authOptions: NextAuthOptions = {
         if (session.email) token.email = session.email;
         if (session.imageUrl !== undefined) token.imageUrl = session.imageUrl;
         if (session.emailVerified !== undefined) token.emailVerified = session.emailVerified;
+        if (session.passwordSet !== undefined) token.passwordSet = session.passwordSet;
         if (session.organization) token.organization = session.organization;
       }
       

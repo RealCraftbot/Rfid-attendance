@@ -78,6 +78,7 @@ export async function middleware(request: NextRequest) {
   const passwordSet = token.passwordSet as boolean | null;
 
   // Check if password has been set (skip for super-admin and certain routes)
+  // Only redirect if passwordSet is explicitly false (newly invited users who haven't set password)
   if (passwordSet === false && 
       userRole !== 'SUPER_ADMIN' && 
       !pathname.startsWith('/verify-email') &&
