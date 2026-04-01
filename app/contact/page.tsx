@@ -44,13 +44,13 @@ export default function ContactPage() {
               <ContactItem 
                 icon={Phone}
                 title="Call Us"
-                value="+234 800 CRAFT"
+                value="+234 800 ATTEND"
                 description="Mon-Fri, 9am - 5pm WAT"
               />
               <ContactItem 
                 icon={MapPin}
                 title="Visit Us"
-                value="Lagos, Nigeria"
+                value="6 Bintu Bolajoko Street, Hotel Busstop, LASU Road, Igando, Lagos"
                 description="Headquarters & Innovation Lab"
               />
             </div>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Mail, Phone, MapPin, Twitter, Linkedin, Github } from 'lucide-react';
+import { Mail, Phone, MapPin, Twitter, Linkedin, Github, Globe } from 'lucide-react';
 import Logo from '@/components/Logo';
 
 export default function Footer() {
@@ -57,7 +57,11 @@ export default function Footer() {
           <ul className="space-y-4">
             <li className="flex items-start gap-3 text-sm text-brand-purple/60">
               <MapPin size={18} className="text-brand-blue shrink-0" />
-              <span>Lagos, Nigeria</span>
+              <span>6 Bintu Bolajoko Street, Hotel Busstop, LASU Road, Igando, Lagos</span>
+            </li>
+            <li className="flex items-center gap-3 text-sm text-brand-purple/60">
+              <Globe size={18} className="text-brand-blue shrink-0" />
+              <a href="https://rfid.craftinnovations.ng" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">rfid.craftinnovations.ng</a>
             </li>
             <li className="flex items-center gap-3 text-sm text-brand-purple/60">
               <Mail size={18} className="text-brand-blue shrink-0" />
