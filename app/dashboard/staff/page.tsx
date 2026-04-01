@@ -12,7 +12,9 @@ import {
   Shield,
   User,
   XCircle as XCircleIcon,
-  Loader2
+  Loader2,
+  Mail,
+  Send
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,7 +24,7 @@ import { useSession } from 'next-auth/react';
 const staffSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Invalid email'),
-  role: z.enum(['teacher', 'admin']),
+  role: z.enum(['teacher', 'admin', 'bursar']),
 });
 
 interface StaffMember {
@@ -31,6 +33,8 @@ interface StaffMember {
   email: string;
   role: string;
   isActive?: boolean;
+  passwordSet?: boolean;
+  invitationSentAt?: string | null;
 }
 
 export default function StaffPage() {
@@ -41,6 +45,9 @@ export default function StaffPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [invitingStaff, setInvitingStaff] = useState<StaffMember | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<z.infer<typeof staffSchema>>({
     resolver: zodResolver(staffSchema),
@@ -90,10 +97,16 @@ export default function StaffPage() {
 
   const onSubmit = async (data: z.infer<typeof staffSchema>) => {
     try {
+      const roleMap: Record<string, string> = {
+        teacher: 'TEACHER',
+        admin: 'ADMIN',
+        bursar: 'BURSAR',
+      };
+      
       const payload = {
         name: data.name,
         email: data.email,
-        role: data.role === 'teacher' ? 'TEACHER' : 'ADMIN',
+        role: roleMap[data.role] || 'TEACHER',
       };
       
       const url = editingStaff ? '/api/staff' : '/api/staff';
@@ -109,7 +122,8 @@ export default function StaffPage() {
       const result = await response.json();
       
       if (!response.ok || !result.success) {
-        throw new Error(result.error?.message || result.error || 'Failed to save staff member');
+        console.error('Staff API error:', result);
+        throw new Error(result.error || result.error?.message || 'Failed to save staff member');
       }
       
       await fetchStaff();
@@ -167,6 +181,39 @@ export default function StaffPage() {
     s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleInvite = async () => {
+    if (!invitingStaff) return;
+    
+    try {
+      setInviteLoading(true);
+      const response = await fetch('/api/staff/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: invitingStaff.email }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to send invitation');
+      }
+      
+      await fetchStaff();
+      setIsInviteModalOpen(false);
+      setInvitingStaff(null);
+      alert('Invitation sent successfully!');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send invitation');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const openInviteModal = (member: StaffMember) => {
+    setInvitingStaff(member);
+    setIsInviteModalOpen(true);
+  };
 
   const currentUserRole = session?.user?.role;
 
@@ -228,6 +275,7 @@ export default function StaffPage() {
                 <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest">Staff Member</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest hidden sm:table-cell">Role</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest">Status</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest hidden sm:table-cell">Invite</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest text-right hidden sm:table-cell">Actions</th>
               </tr>
             </thead>
@@ -281,6 +329,22 @@ export default function StaffPage() {
                         {member.isActive ? <CheckCircle2 size={10} className="md:w-3 md:h-3" /> : <XCircle size={10} className="md:w-3 md:h-3" />}
                         {member.isActive ? 'Active' : 'Inactive'}
                       </button>
+                    </td>
+                    <td className="px-3 md:px-6 py-3 md:py-4 hidden sm:table-cell">
+                      {(member as any).passwordSet ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                          <CheckCircle2 size={10} className="md:w-3 md:h-3" />
+                          Set
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => openInviteModal(member)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-colors"
+                        >
+                          <Send size={10} className="md:w-3 md:h-3" />
+                          Send Invite
+                        </button>
+                      )}
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4">
                       <div className="flex items-center justify-end gap-1 md:gap-2">
@@ -374,6 +438,51 @@ export default function StaffPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isInviteModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-zinc-900">Send Invitation</h3>
+              <button onClick={() => { setIsInviteModalOpen(false); setInvitingStaff(null); }} className="text-zinc-400 hover:text-zinc-900">
+                <XCircleIcon size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3 p-4 bg-zinc-50 rounded-xl">
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
+                  {invitingStaff?.name?.charAt(0) || 'U'}
+                </div>
+                <div>
+                  <p className="font-bold text-zinc-900">{invitingStaff?.name}</p>
+                  <p className="text-sm text-zinc-500">{invitingStaff?.email}</p>
+                </div>
+              </div>
+              <p className="text-sm text-zinc-600">
+                An invitation email will be sent with a link to set their password and access their dashboard.
+              </p>
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => { setIsInviteModalOpen(false); setInvitingStaff(null); }}
+                  className="flex-1 py-3 bg-zinc-50 text-zinc-600 font-bold rounded-xl hover:bg-zinc-100 transition-colors border border-zinc-200"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleInvite}
+                  disabled={inviteLoading}
+                  className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {inviteLoading ? 'Sending...' : 'Send Invitation'}
+                  {!inviteLoading && <Send size={18} />}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

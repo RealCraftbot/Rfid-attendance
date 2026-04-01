@@ -150,12 +150,6 @@ export async function PUT(request: Request) {
       } as any);
     }
 
-    const parsed = studentSchema.safeParse(data);
-    
-    if (!parsed.success) {
-      return validationError(parsed.error);
-    }
-
     // Check if student exists
     const existing = await prisma.student.findFirst({
       where: { id, orgId }
@@ -165,12 +159,41 @@ export async function PUT(request: Request) {
       return notFound('Student');
     }
 
+    // Build update data - only include fields that are provided
+    const updateData: any = {};
+    
+    if (data.name !== undefined) {
+      if (data.name === null || data.name === '') {
+        return validationError({
+          issues: [{ path: ['name'], message: 'Name is required' }],
+          name: 'ZodError',
+        } as any);
+      }
+      updateData.name = data.name;
+    }
+    if (data.rfidUid !== undefined) {
+      if (data.rfidUid === null || data.rfidUid === '') {
+        return validationError({
+          issues: [{ path: ['rfidUid'], message: 'RFID UID is required' }],
+          name: 'ZodError',
+        } as any);
+      }
+      updateData.rfidUid = data.rfidUid;
+    }
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.grade !== undefined) updateData.grade = data.grade;
+    if (data.classroomId !== undefined) updateData.classroomId = data.classroomId || null;
+    if (data.guardianName !== undefined) updateData.guardianName = data.guardianName;
+    if (data.guardianPhone !== undefined) updateData.guardianPhone = data.guardianPhone;
+    if (data.guardianEmail !== undefined) updateData.guardianEmail = data.guardianEmail;
+    if (data.dateOfBirth !== undefined) updateData.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
+    if (data.admissionNumber !== undefined) updateData.admissionNumber = data.admissionNumber;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    if (data.usesSchoolBus !== undefined) updateData.usesSchoolBus = data.usesSchoolBus;
+
     const student = await prisma.student.update({
       where: { id },
-      data: {
-        ...parsed.data,
-        dateOfBirth: parsed.data.dateOfBirth ? new Date(parsed.data.dateOfBirth) : null,
-      },
+      data: updateData,
       include: {
         classroom: {
           select: {

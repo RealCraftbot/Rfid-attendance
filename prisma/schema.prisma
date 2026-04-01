@@ -121,16 +121,19 @@ model AcademicSession {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password      String
-  name          String
-  role          Role      @default(TEACHER)
-  orgId         String?
-  imageUrl      String?
-  emailVerified DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  name            String
+  role            Role      @default(TEACHER)
+  orgId           String?
+  imageUrl        String?
+  emailVerified   DateTime?
+  passwordSet     Boolean   @default(false)  // Whether user has set their own password
+  invitationToken String?  // Token sent to user for password setup
+  invitationSentAt DateTime?  // When invitation was sent
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   org       Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
   sessions  Session[]
@@ -139,6 +142,7 @@ model User {
   @@index([orgId])
   @@index([email])
   @@index([role])
+  @@index([invitationToken])
 }
 
 model Teacher {

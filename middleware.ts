@@ -44,6 +44,8 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
+    pathname.startsWith('/parent-signup') ||
+    pathname.startsWith('/invite') ||
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
@@ -69,13 +71,14 @@ export async function middleware(request: NextRequest) {
   }
 
   const userRole = token.role as string;
-  const emailVerified = token.emailVerified as string | null;
+  const passwordSet = token.passwordSet as boolean | null;
 
-  // Check if email is verified (skip for super-admin and certain routes)
-  if (!emailVerified && 
+  // Check if password has been set (skip for super-admin and certain routes)
+  if (passwordSet === false && 
       userRole !== 'SUPER_ADMIN' && 
       !pathname.startsWith('/verify-email') &&
-      !pathname.startsWith('/api/otp')) {
+      !pathname.startsWith('/api/otp') &&
+      !pathname.startsWith('/invite')) {
     return NextResponse.redirect(new URL('/verify-email', request.url));
   }
 

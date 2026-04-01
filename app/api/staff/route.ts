@@ -11,7 +11,7 @@ import bcrypt from 'bcryptjs';
 const staffSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Invalid email'),
-  role: z.enum(['TEACHER', 'ADMIN']),
+  role: z.enum(['TEACHER', 'ADMIN', 'BURSAR']),
   password: z.string().min(8, 'Password must be at least 8 characters').optional(),
 });
 
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       where: { 
         orgId,
         role: {
-          in: ['TEACHER', 'ADMIN']
+          in: ['TEACHER', 'ADMIN', 'BURSAR']
         }
       },
       select: {
@@ -40,6 +40,7 @@ export async function GET(request: Request) {
         role: true,
         imageUrl: true,
         createdAt: true,
+        // passwordSet and invitationSentAt will be available after DB migration
       },
       orderBy: {
         name: 'asc',
@@ -77,16 +78,21 @@ export async function POST(request: Request) {
     });
 
     if (existingUser) {
-      return validationError({
-        issues: [{ path: ['email'], message: 'Email already registered' }],
-        name: 'ZodError',
-      } as any);
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'DUPLICATE_EMAIL',
+            message: 'Email already registered',
+          },
+        },
+        { status: 400 }
+      );
     }
 
-    // Hash password
-    const hashedPassword = parsed.data.password 
-      ? await bcrypt.hash(parsed.data.password, 10)
-      : await bcrypt.hash('Staff123!', 10);
+    // Hash password - use a temporary password that requires reset
+    // User will need to use the invite feature to set their password
+    const hashedPassword = await bcrypt.hash('TempPass123!', 10);
 
     // Create user and teacher/parent record in transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -97,6 +103,7 @@ export async function POST(request: Request) {
           password: hashedPassword,
           role: parsed.data.role,
           orgId,
+          // passwordSet: false, // Will be available after DB migration
         },
         select: {
           id: true,
@@ -125,7 +132,33 @@ export async function POST(request: Request) {
     return success(result, 201);
   } catch (error) {
     console.error('[Staff API Error]', error);
-    return serverError('Failed to create staff member');
+    console.error('[Staff API Error] Stack:', error instanceof Error ? error.stack : 'Unknown');
+    
+    // Check if it's a Prisma error
+    if ((error as any).code === 'P2002') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'DUPLICATE_EMAIL',
+            message: 'Email already registered',
+          },
+        },
+        { status: 400 }
+      );
+    }
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: 'CREATE_FAILED',
+          message: 'Failed to create staff member: ' + errorMessage,
+        },
+      },
+      { status: 500 }
+    );
   }
 }
 

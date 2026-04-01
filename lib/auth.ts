@@ -15,6 +15,7 @@ declare module 'next-auth' {
       orgId: string | null;
       imageUrl?: string | null;
       emailVerified?: string | null;
+      passwordSet?: boolean;
       organization?: {
         id: string;
         name: string;
@@ -32,6 +33,7 @@ declare module 'next-auth/jwt' {
     orgId: string | null;
     imageUrl?: string | null;
     emailVerified?: string | null;
+    passwordSet?: boolean;
     organization?: {
       id: string;
       name: string;
@@ -113,6 +115,7 @@ export const authOptions: NextAuthOptions = {
             orgId: user.orgId,
             imageUrl: user.imageUrl,
             emailVerified: user.emailVerified?.toISOString() || null,
+            passwordSet: (user as any).passwordSet || false,
             organization: user.org ? {
               id: user.org.id,
               name: user.org.name,
@@ -141,6 +144,7 @@ export const authOptions: NextAuthOptions = {
         token.orgId = u.orgId;
         token.imageUrl = u.imageUrl;
         token.emailVerified = u.emailVerified;
+        token.passwordSet = u.passwordSet;
         token.organization = u.organization;
         token.name = u.name;
         token.email = u.email;
@@ -164,6 +168,7 @@ export const authOptions: NextAuthOptions = {
       session.user.orgId = token.orgId;
       session.user.imageUrl = token.imageUrl;
       session.user.emailVerified = token.emailVerified;
+      session.user.passwordSet = token.passwordSet;
       session.user.organization = token.organization;
       session.user.name = token.name || session.user.name;
       session.user.email = token.email || session.user.email;
