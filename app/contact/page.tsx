@@ -38,7 +38,7 @@ export default function ContactPage() {
               <ContactItem 
                 icon={Mail}
                 title="Email Us"
-                value="hello@craftinnovations.com"
+                value="rfid@craftinnovations.com"
                 description="Our team responds within 24 hours."
               />
               <ContactItem 
