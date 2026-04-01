@@ -18,7 +18,7 @@ export default async function RootLayout({children}: {children: React.ReactNode}
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Clash+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://api.fontshare.com/v2/css?f[]=clash-grotesk@400,500,600,700&display=swap" rel="stylesheet" />
       </head>
       <body suppressHydrationWarning className="font-sans">
         <ClientSessionProvider session={session}>
