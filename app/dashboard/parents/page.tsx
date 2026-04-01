@@ -165,8 +165,9 @@ export default function ParentRegistrationPage() {
         setIsModalOpen(false);
         parentForm.reset();
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to add parent');
+        const result = await response.json();
+        const errorMsg = result?.error?.message || result?.error || 'Failed to add parent';
+        alert(errorMsg);
       }
     } catch (error) {
       console.error('Failed to add parent:', error);
@@ -177,6 +178,11 @@ export default function ParentRegistrationPage() {
   };
 
   const onStudentSubmit = async (data: z.infer<typeof studentSchema>) => {
+    if (!selectedParent) {
+      alert('Please select a parent first');
+      return;
+    }
+    
     try {
       setSubmitting(true);
       const response = await fetch('/api/students', {
@@ -199,8 +205,14 @@ export default function ParentRegistrationPage() {
         await fetchData();
         studentForm.reset();
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to add student');
+        const result = await response.json();
+        if (result?.error?.details) {
+          const messages = result.error.details.map((d: any) => d.message).join(', ');
+          alert(messages);
+        } else {
+          const errorMsg = result?.error?.message || result?.error || 'Failed to add student';
+          alert(errorMsg);
+        }
       }
     } catch (error) {
       console.error('Failed to add student:', error);
@@ -231,8 +243,9 @@ export default function ParentRegistrationPage() {
         setIsLinkStudentOpen(false);
         setLinkSearchTerm('');
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to link student');
+        const result = await response.json();
+        const errorMsg = result?.error?.message || result?.error || 'Failed to link student';
+        alert(errorMsg);
       }
     } catch (error) {
       console.error('Failed to link student:', error);
@@ -243,6 +256,10 @@ export default function ParentRegistrationPage() {
   };
 
   const handleUnlinkStudent = async (studentId: string) => {
+    if (!confirm('Are you sure you want to unlink this student from the parent?')) {
+      return;
+    }
+    
     try {
       setSubmitting(true);
       const response = await fetch('/api/students', {
@@ -260,8 +277,9 @@ export default function ParentRegistrationPage() {
         await fetchData();
         await fetchUnlinkedStudents();
       } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to unlink student');
+        const result = await response.json();
+        const errorMsg = result?.error?.message || result?.error || 'Failed to unlink student';
+        alert(errorMsg);
       }
     } catch (error) {
       console.error('Failed to unlink student:', error);

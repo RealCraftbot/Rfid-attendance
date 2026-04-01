@@ -52,14 +52,29 @@ export async function GET(request: Request) {
           lte: dateRange.end
         }
       },
+      include: {
+        teacher: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
+        classroom: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
+      },
       orderBy: { scanTime: 'desc' }
     });
 
     const formattedRecords = records.map(record => ({
       id: record.id,
       teacherId: record.teacherId,
-      teacherName: record.teacherName,
+      teacherName: record.teacher?.name || 'Unknown',
       classroomId: record.classroomId,
+      classroomName: record.classroom?.name || 'Unknown',
       checkType: record.checkType,
       scanTime: record.scanTime.toISOString()
     }));

@@ -15,6 +15,13 @@ enum Role {
   PARENT
 }
 
+enum ParentRelationship {
+  FATHER
+  MOTHER
+  GUARDIAN
+  OTHER
+}
+
 enum CheckType {
   check_in
   check_out
@@ -79,6 +86,8 @@ model Organization {
   bankAccounts      BankAccount[]
   paymentTransactions PaymentTransaction[]
   timetables        Timetable[]
+  parents           Parent[]
+  teachers          Teacher[]
 
   @@index([slug])
   @@index([status])
@@ -98,11 +107,74 @@ model User {
 
   org       Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
   sessions  Session[]
-  timetables Timetable[]
+  parentProfile Parent?
 
   @@index([orgId])
   @@index([email])
   @@index([role])
+}
+
+model Teacher {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  phone         String?
+  employeeId    String?  // Staff ID
+  subject       String?  // Main subject
+  qualification String?  // Highest qualification
+  address       String?
+  orgId         String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  org          Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  classrooms   Classroom[]
+  timetables   Timetable[]
+  attendance   TeacherAttendance[]
+  grades       Grade[]
+
+  @@index([orgId])
+  @@index([email])
+}
+
+model Parent {
+  id            String   @id @default(cuid())
+  userId       String   @unique
+  name         String
+  email        String
+  phone        String?
+  relationship ParentRelationship @default(GUARDIAN)
+  address      String?
+  idNumber     String?  // NIN, Voter's Card, etc.
+  orgId        String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org       Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  students  StudentParent[]
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([email])
+}
+
+model StudentParent {
+  id            String   @id @default(cuid())
+  studentId     String
+  parentId      String
+  relationship  ParentRelationship @default(GUARDIAN)
+  isPrimary     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  parent  Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, parentId])
+  @@index([studentId])
+  @@index([parentId])
 }
 
 model Student {
@@ -133,6 +205,7 @@ model Student {
   attendance  AttendanceRecord[]
   invoices    Invoice[]
   grades      Grade[]
+  parents     StudentParent[]
 
   @@unique([orgId, rfidUid])
   @@index([orgId])
@@ -152,18 +225,19 @@ model Classroom {
   updatedAt DateTime @updatedAt
 
   org               Organization         @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  teacher          Teacher?            @relation(fields: [teacherId], references: [id])
   students          Student[]
   teacherAttendance TeacherAttendance[]
   timetables       Timetable[]
 
   @@unique([orgId, name])
   @@index([orgId])
+  @@index([teacherId])
 }
 
 model TeacherAttendance {
   id          String    @id @default(cuid())
   teacherId   String
-  teacherName String
   classroomId String
   orgId       String
   deviceId    String
@@ -172,8 +246,9 @@ model TeacherAttendance {
   idempotencyKey String  @unique @default(cuid())
   createdAt   DateTime  @default(now())
 
-  classroom Classroom      @relation(fields: [classroomId], references: [id], onDelete: Cascade)
-  org       Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  teacher   Teacher      @relation(fields: [teacherId], references: [id])
+  classroom Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
   @@index([teacherId])
   @@index([classroomId])
@@ -394,9 +469,11 @@ model Grade {
   updatedAt       DateTime @updatedAt
 
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher Teacher? @relation(fields: [teacherId], references: [id])
 
   @@unique([studentId, subject, academicYear, term])
   @@index([studentId])
+  @@index([teacherId])
   @@index([academicYear, term])
 }
 
@@ -442,11 +519,12 @@ model Timetable {
 
   org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   classroom Classroom?    @relation(fields: [classroomId], references: [id])
-  teacher  User?         @relation(fields: [teacherId], references: [id])
+  teacher  Teacher?     @relation(fields: [teacherId], references: [id])
 
   @@unique([orgId, day, period])
   @@index([orgId])
-  @@index([orgId, teacherId])
+  @@index([teacherId])
+  @@index([classroomId])
   @@index([orgId, classroomId])
   @@index([orgId, subject])
 }

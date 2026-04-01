@@ -12,6 +12,33 @@ export default function VerifyEmailPage() {
   const [loading, setLoading] = useState(true);
   const [verified, setVerified] = useState(false);
   const [email, setEmail] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const sendOTP = async () => {
+    if (!email || sending) return;
+    
+    try {
+      setSending(true);
+      const response = await fetch('/api/otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (response.ok) {
+        setOtpSent(true);
+      } else {
+        const result = await response.json();
+        alert(result.error || 'Failed to send OTP');
+      }
+    } catch (error) {
+      console.error('Failed to send OTP:', error);
+      alert('Failed to send OTP. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   useEffect(() => {
     // Check if user is authenticated
@@ -53,6 +80,12 @@ export default function VerifyEmailPage() {
       }
     }
   }, [status, session, router]);
+
+  useEffect(() => {
+    if (email && !otpSent && !loading) {
+      sendOTP();
+    }
+  }, [email, loading]);
 
   const handleVerified = async () => {
     try {
@@ -98,6 +131,11 @@ export default function VerifyEmailPage() {
       console.error('Verification error:', error);
       alert('Failed to verify email. Please try again.');
     }
+  };
+
+  const handleResend = () => {
+    setOtpSent(false);
+    sendOTP();
   };
 
   const handleCancel = () => {
@@ -148,6 +186,7 @@ export default function VerifyEmailPage() {
           email={email}
           onVerified={handleVerified}
           onCancel={handleCancel}
+          onResend={handleResend}
         />
 
         <div className="mt-6 text-center">

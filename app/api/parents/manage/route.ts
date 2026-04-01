@@ -6,11 +6,17 @@ import { authOptions } from '@/lib/auth';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 
-const parentSchema = z.object({
+const createParentSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Invalid email'),
+  phone: z.string().optional(),
+  relationship: z.enum(['FATHER', 'MOTHER', 'GUARDIAN', 'OTHER']).default('GUARDIAN'),
+  address: z.string().optional(),
+  idNumber: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters').optional(),
 });
+
+const updateParentSchema = createParentSchema.partial();
 
 // GET /api/parents/manage - Get all parents for organization (admin endpoint)
 export async function GET(request: Request) {
@@ -23,48 +29,63 @@ export async function GET(request: Request) {
 
     const orgId = session.user.orgId;
     
-    const parents = await prisma.user.findMany({
-      where: { 
-        orgId,
-        role: 'PARENT'
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        imageUrl: true,
-        createdAt: true,
+    const parents = await prisma.parent.findMany({
+      where: { orgId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            imageUrl: true,
+            createdAt: true,
+          }
+        },
+        students: {
+          include: {
+            student: {
+              select: {
+                id: true,
+                name: true,
+                rfidUid: true,
+                grade: true,
+                isActive: true,
+                classroom: {
+                  select: {
+                    id: true,
+                    name: true,
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: {
         name: 'asc',
       },
     });
 
-    // Get students for each parent
-    const parentsWithStudents = await Promise.all(
-      parents.map(async (parent) => {
-        const students = await prisma.student.findMany({
-          where: {
-            guardianEmail: parent.email
-          },
-          select: {
-            id: true,
-            name: true,
-            grade: true,
-            rfidUid: true,
-            isActive: true,
-          }
-        });
-        
-        return {
-          ...parent,
-          students,
-          studentCount: students.length
-        };
-      })
-    );
+    const formattedParents = parents.map(parent => ({
+      id: parent.id,
+      userId: parent.userId,
+      name: parent.name,
+      email: parent.email,
+      phone: parent.phone,
+      relationship: parent.relationship,
+      address: parent.address,
+      idNumber: parent.idNumber,
+      imageUrl: parent.user.imageUrl,
+      createdAt: parent.user.createdAt,
+      students: parent.students.map(sp => ({
+        ...sp.student,
+        relationship: sp.relationship,
+        isPrimary: sp.isPrimary,
+        studentParentId: sp.id,
+      })),
+      studentCount: parent.students.length
+    }));
 
-    return success(parentsWithStudents);
+    return success(formattedParents);
   } catch (error) {
     console.error('[Parents API Error]', error);
     return serverError('Failed to fetch parents');
@@ -83,18 +104,18 @@ export async function POST(request: Request) {
     const orgId = session.user.orgId;
     const body = await request.json();
     
-    const parsed = parentSchema.safeParse(body);
+    const parsed = createParentSchema.safeParse(body);
     
     if (!parsed.success) {
       return validationError(parsed.error);
     }
 
-    // Check if email already exists
-    const existing = await prisma.user.findUnique({
+    // Check if email already exists as user
+    const existingUser = await prisma.user.findUnique({
       where: { email: parsed.data.email }
     });
 
-    if (existing) {
+    if (existingUser) {
       return validationError({
         issues: [{ path: ['email'], message: 'Email already registered' }],
         name: 'ZodError',
@@ -104,26 +125,53 @@ export async function POST(request: Request) {
     // Hash password if provided
     const hashedPassword = parsed.data.password 
       ? await bcrypt.hash(parsed.data.password, 10)
-      : await bcrypt.hash('Parent123!', 10); // Default password
+      : await bcrypt.hash('Parent123!', 10);
 
-    const parent = await prisma.user.create({
-      data: {
-        name: parsed.data.name,
-        email: parsed.data.email,
-        password: hashedPassword,
-        role: 'PARENT',
-        orgId,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        imageUrl: true,
-        createdAt: true,
-      }
+    // Create user and parent in transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name: parsed.data.name,
+          email: parsed.data.email,
+          password: hashedPassword,
+          role: 'PARENT',
+          orgId,
+        },
+      });
+
+      const parent = await tx.parent.create({
+        data: {
+          userId: user.id,
+          name: parsed.data.name,
+          email: parsed.data.email,
+          phone: parsed.data.phone,
+          relationship: parsed.data.relationship,
+          address: parsed.data.address,
+          idNumber: parsed.data.idNumber,
+          orgId,
+        },
+        include: {
+          students: {
+            include: {
+              student: true
+            }
+          }
+        }
+      });
+
+      return parent;
     });
 
-    return success(parent, 201);
+    return success({
+      id: result.id,
+      userId: result.userId,
+      name: result.name,
+      email: result.email,
+      phone: result.phone,
+      relationship: result.relationship,
+      students: [],
+      studentCount: 0
+    }, 201);
   } catch (error) {
     console.error('[Parents API Error]', error);
     return serverError('Failed to create parent');
@@ -150,46 +198,65 @@ export async function PUT(request: Request) {
       } as any);
     }
 
-    const parsed = parentSchema.partial().safeParse(data);
+    const parsed = updateParentSchema.safeParse(data);
     
     if (!parsed.success) {
       return validationError(parsed.error);
     }
 
     // Check if parent exists and belongs to org
-    const existing = await prisma.user.findFirst({
-      where: { 
-        id, 
-        orgId,
-        role: 'PARENT'
-      }
+    const existing = await prisma.parent.findFirst({
+      where: { id, orgId }
     });
 
     if (!existing) {
       return notFound('Parent');
     }
 
-    // Hash password if provided
-    const updateData: any = {};
-    if (parsed.data.name) updateData.name = parsed.data.name;
-    if (parsed.data.email) updateData.email = parsed.data.email;
-    if (parsed.data.password) {
-      updateData.password = await bcrypt.hash(parsed.data.password, 10);
-    }
+    // Update both user and parent
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: existing.userId },
+        data: {
+          name: parsed.data.name,
+          email: parsed.data.email,
+        },
+      });
 
-    const parent = await prisma.user.update({
+      await tx.parent.update({
+        where: { id },
+        data: {
+          name: parsed.data.name,
+          email: parsed.data.email,
+          phone: parsed.data.phone,
+          relationship: parsed.data.relationship,
+          address: parsed.data.address,
+          idNumber: parsed.data.idNumber,
+        },
+      });
+    });
+
+    const updated = await prisma.parent.findUnique({
       where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        imageUrl: true,
-        createdAt: true,
+      include: {
+        students: {
+          include: {
+            student: true
+          }
+        }
       }
     });
 
-    return success(parent);
+    return success({
+      id: updated!.id,
+      userId: updated!.userId,
+      name: updated!.name,
+      email: updated!.email,
+      phone: updated!.phone,
+      relationship: updated!.relationship,
+      students: updated!.students.map(sp => sp.student),
+      studentCount: updated!.students.length
+    });
   } catch (error) {
     console.error('[Parents API Error]', error);
     return serverError('Failed to update parent');
@@ -217,20 +284,18 @@ export async function DELETE(request: Request) {
     }
 
     // Check if parent exists and belongs to org
-    const existing = await prisma.user.findFirst({
-      where: { 
-        id, 
-        orgId,
-        role: 'PARENT'
-      }
+    const existing = await prisma.parent.findFirst({
+      where: { id, orgId }
     });
 
     if (!existing) {
       return notFound('Parent');
     }
 
-    await prisma.user.delete({
-      where: { id }
+    // Delete parent and user (user deletion cascades)
+    await prisma.$transaction(async (tx) => {
+      await tx.parent.delete({ where: { id } });
+      await tx.user.delete({ where: { id: existing.userId } });
     });
 
     return success({ deleted: true });

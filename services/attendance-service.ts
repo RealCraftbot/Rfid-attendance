@@ -615,7 +615,6 @@ export class AttendanceService {
     const record = await prisma.teacherAttendance.create({
       data: {
         teacherId: teacher.id,
-        teacherName: teacher.name,
         classroomId,
         orgId,
         deviceId,
