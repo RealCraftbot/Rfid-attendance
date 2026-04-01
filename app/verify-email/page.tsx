@@ -20,11 +20,13 @@ export default function VerifyEmailPage() {
       return;
     }
 
-    // Check if already verified
+    // Check if user has passwordSet (they've set their own password via invite)
+    // In that case, skip email verification
     if (status === 'authenticated') {
-      if (session?.user?.emailVerified) {
-        // Already verified, redirect to dashboard
-        const role = session.user.role;
+      const role = session?.user?.role;
+      
+      // For admins, bursars, and users with passwordSet - skip verification
+      if (session?.user?.emailVerified || (session?.user as any)?.passwordSet) {
         switch (role) {
           case 'SUPER_ADMIN':
             router.push('/super-admin');

@@ -75,17 +75,9 @@ export async function middleware(request: NextRequest) {
   }
 
   const userRole = token.role as string;
-  const passwordSet = token.passwordSet as boolean | null;
 
-  // Check if password has been set (skip for super-admin and certain routes)
-  // Only redirect if passwordSet is explicitly false (newly invited users who haven't set password)
-  if (passwordSet === false && 
-      userRole !== 'SUPER_ADMIN' && 
-      !pathname.startsWith('/verify-email') &&
-      !pathname.startsWith('/api/otp') &&
-      !pathname.startsWith('/invite')) {
-    return NextResponse.redirect(new URL('/verify-email', request.url));
-  }
+  // Note: passwordSet check temporarily disabled - can re-enable for invite flow later
+  // Currently all users with passwords can access their dashboard
 
   // Check route permissions
   const allowedRoles = Object.entries(routePermissions).find(([route]) => 
