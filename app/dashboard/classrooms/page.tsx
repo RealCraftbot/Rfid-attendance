@@ -14,7 +14,8 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
-  Loader2
+  Loader2,
+  Edit2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -52,8 +53,15 @@ export default function ClassroomsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<Classroom | null>(null);
+  const [editingClass, setEditingClass] = useState<Classroom | null>(null);
   const [formData, setFormData] = useState({
+    name: '',
+    teacherId: '',
+    grade: ''
+  });
+  const [editFormData, setEditFormData] = useState({
     name: '',
     teacherId: '',
     grade: ''
@@ -180,6 +188,50 @@ export default function ClassroomsPage() {
     }
   };
 
+  const handleUpdateClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingClass) return;
+    
+    try {
+      const response = await fetch('/api/classrooms', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingClass.id,
+          name: editFormData.name,
+          grade: editFormData.grade,
+          teacherId: editFormData.teacherId || null,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: 'Classroom updated successfully',
+        });
+        setIsEditModalOpen(false);
+        setEditingClass(null);
+        setEditFormData({ name: '', teacherId: '', grade: '' });
+        await fetchData();
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to update classroom',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update classroom',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this classroom?')) return;
 
@@ -285,9 +337,22 @@ export default function ClassroomsPage() {
                   <BookOpen size={20} className="md:w-6 md:h-6" />
                 </div>
                 {role === 'admin' && (
-                  <button onClick={() => handleDelete(classroom.id)} className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                    <Trash2 size={18} />
-                  </button>
+                  <div className="flex gap-1">
+                    <button onClick={() => { 
+                      setEditingClass(classroom); 
+                      setEditFormData({
+                        name: classroom.name,
+                        teacherId: classroom.teacherId || '',
+                        grade: classroom.grade || ''
+                      });
+                      setIsEditModalOpen(true); 
+                    }} className="p-2 text-zinc-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+                      <Edit2 size={18} />
+                    </button>
+                    <button onClick={() => handleDelete(classroom.id)} className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 )}
               </div>
               
@@ -523,6 +588,75 @@ export default function ClassroomsPage() {
                 </div>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Classroom Modal */}
+      {isEditModalOpen && editingClass && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-zinc-900">Edit Classroom</h3>
+              <button onClick={() => { setIsEditModalOpen(false); setEditingClass(null); }} className="text-zinc-400 hover:text-zinc-900">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateClass} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Class Name</label>
+                <input 
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                  placeholder="e.g., JSS 1A"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Grade/Level</label>
+                <input 
+                  type="text"
+                  value={editFormData.grade}
+                  onChange={(e) => setEditFormData({...editFormData, grade: e.target.value})}
+                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                  placeholder="e.g., JSS1"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Assign Teacher</label>
+                <select 
+                  value={editFormData.teacherId}
+                  onChange={(e) => setEditFormData({...editFormData, teacherId: e.target.value})}
+                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
+                >
+                  <option value="">Select a teacher</option>
+                  {teachers.length === 0 ? (
+                    <option value="" disabled>No teachers available</option>
+                  ) : (
+                    teachers.map(t => (
+                      <option key={t.id} value={t.id}>{t.name || t.email}</option>
+                    ))
+                  )}
+                </select>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button 
+                  type="button"
+                  onClick={() => { setIsEditModalOpen(false); setEditingClass(null); }}
+                  className="flex-1 py-3 bg-zinc-100 text-zinc-600 font-bold rounded-xl hover:bg-zinc-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 py-3 bg-brand-blue text-white font-bold rounded-xl hover:bg-brand-blue/90 transition-all shadow-lg shadow-brand-blue/20"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
