@@ -17,7 +17,6 @@ export default function OTPVerification({ email, onVerified, onCancel, onResend 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [countdown, setCountdown] = useState(60);
-  const [initialOtpSent, setInitialOtpSent] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Countdown timer for resend
@@ -32,31 +31,6 @@ export default function OTPVerification({ email, onVerified, onCancel, onResend 
   useEffect(() => {
     inputRefs.current[0]?.focus();
   }, []);
-
-  // Send initial OTP on mount
-  useEffect(() => {
-    if (email && !initialOtpSent && !loading) {
-      setSending(true);
-      fetch('/api/otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (!data.success && data.error) {
-            setError(data.error);
-          }
-        })
-        .catch(() => {
-          setError('Failed to send OTP. Please try again.');
-        })
-        .finally(() => {
-          setSending(false);
-          setInitialOtpSent(true);
-        });
-    }
-  }, [email, initialOtpSent, loading]);
 
   const handleChange = (index: number, value: string) => {
     // Only allow numbers
