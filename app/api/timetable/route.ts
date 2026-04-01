@@ -20,14 +20,14 @@ const timetableSchema = z.object({
     'Sunday'
   ], { message: 'Invalid day of week' }),
   period: z.number().positive('Period must be a positive number'),
-  periodLabel: z.string().optional(),
-  subject: z.string().optional(),
-  teacherId: z.string().optional(),
-  classroomId: z.string().optional(),
+  periodLabel: z.string().nullable().optional(),
+  subject: z.string().nullable().optional(),
+  teacherId: z.string().nullable().optional(),
+  classroomId: z.string().nullable().optional(),
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)'),
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (HH:MM)'),
   isBreak: z.boolean().optional().default(false),
-  breakType: z.enum(['short', 'long', 'lunch']).optional().nullable(),
+  breakType: z.enum(['short', 'long', 'lunch']).nullable().optional(),
 });
 
 // Validate time order
@@ -65,16 +65,19 @@ export async function GET(request: NextRequest) {
     
     const timetables = await prisma.timetable.findMany({
       where: { orgId },
-      orderBy: {
-        day: 'asc',
-        period: 'asc'
-      }
+      orderBy: [
+        { day: 'asc' },
+        { period: 'asc' }
+      ]
     });
     
     return success(timetables);
   } catch (error) {
     console.error('[Timetable API Error]', error);
-    return serverError('Failed to retrieve timetables');
+    return NextResponse.json(
+      { success: false, error: 'Failed to retrieve timetables', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }
 
@@ -128,14 +131,14 @@ export async function POST(request: NextRequest) {
       data: {
         day: parsed.data.day,
         period: parsed.data.period,
-        subject: parsed.data.subject,
-        teacherId: parsed.data.teacherId,
-        classroomId: parsed.data.classroomId,
+        subject: parsed.data.subject ?? undefined,
+        teacherId: parsed.data.teacherId ?? undefined,
+        classroomId: parsed.data.classroomId ?? undefined,
         startTime: parsed.data.startTime,
         endTime: parsed.data.endTime,
         isBreak: parsed.data.isBreak ?? false,
-        breakType: parsed.data.breakType,
-        periodLabel: parsed.data.periodLabel,
+        breakType: parsed.data.breakType ?? undefined,
+        periodLabel: parsed.data.periodLabel ?? undefined,
         orgId
       }
     });
