@@ -119,10 +119,11 @@ model Teacher {
   name          String
   email         String   @unique
   phone         String?
-  employeeId    String?  // Staff ID
-  subject       String?  // Main subject
-  qualification String?  // Highest qualification
+  employeeId    String?
+  subject       String?
+  qualification String?
   address       String?
+  rfidUid      String?
   orgId         String
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
@@ -134,8 +135,10 @@ model Teacher {
   attendance   TeacherAttendance[]
   grades       Grade[]
 
+  @@unique([orgId, rfidUid])
   @@index([orgId])
   @@index([email])
+  @@index([rfidUid])
 }
 
 model Parent {

@@ -71,12 +71,12 @@ export async function POST(request: Request) {
       return validationError(parsed.error);
     }
 
-    // Check if email already exists
-    const existing = await prisma.user.findUnique({
+    // Check if email already exists in User table
+    const existingUser = await prisma.user.findUnique({
       where: { email: parsed.data.email }
     });
 
-    if (existing) {
+    if (existingUser) {
       return validationError({
         issues: [{ path: ['email'], message: 'Email already registered' }],
         name: 'ZodError',
@@ -86,27 +86,43 @@ export async function POST(request: Request) {
     // Hash password
     const hashedPassword = parsed.data.password 
       ? await bcrypt.hash(parsed.data.password, 10)
-      : await bcrypt.hash('Staff123!', 10); // Default password
+      : await bcrypt.hash('Staff123!', 10);
 
-    const staff = await prisma.user.create({
-      data: {
-        name: parsed.data.name,
-        email: parsed.data.email,
-        password: hashedPassword,
-        role: parsed.data.role,
-        orgId,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        imageUrl: true,
-        createdAt: true,
+    // Create user and teacher/parent record in transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name: parsed.data.name,
+          email: parsed.data.email,
+          password: hashedPassword,
+          role: parsed.data.role,
+          orgId,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          imageUrl: true,
+          createdAt: true,
+        }
+      });
+
+      // If role is TEACHER, also create a Teacher record
+      if (parsed.data.role === 'TEACHER') {
+        await tx.teacher.create({
+          data: {
+            name: parsed.data.name,
+            email: parsed.data.email,
+            orgId,
+          },
+        });
       }
+
+      return user;
     });
 
-    return success(staff, 201);
+    return success(result, 201);
   } catch (error) {
     console.error('[Staff API Error]', error);
     return serverError('Failed to create staff member');

@@ -545,13 +545,12 @@ export class AttendanceService {
     classroomId: string,
     batteryLevel?: number
   ) {
-    // Find teacher by RFID (stored in User model for teachers)
-    const teacher = await prisma.user.findFirst({
+    // Find teacher by RFID in Teacher model
+    const teacher = await prisma.teacher.findFirst({
       where: {
+        rfidUid,
         orgId,
-        role: 'TEACHER',
-        // In real implementation, would need to link RFID to teacher
-        // For now, we'll search by a custom field or use the teacher's ID
+        isActive: true,
       },
     });
 
