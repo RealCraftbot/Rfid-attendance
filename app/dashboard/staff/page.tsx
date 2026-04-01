@@ -14,7 +14,8 @@ import {
   XCircle as XCircleIcon,
   Loader2,
   Mail,
-  Send
+  Send,
+  Wallet
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -305,16 +306,19 @@ export default function StaffPage() {
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 hidden sm:table-cell">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold border ${
-                        member.role === 'admin' 
+                        member.role === 'admin' || member.role === 'ADMIN'
                           ? 'bg-brand-blue/5 text-brand-blue border-brand-blue/10' 
-                          : member.role === 'parent'
+                          : member.role === 'parent' || member.role === 'PARENT'
                           ? 'bg-emerald-500/5 text-emerald-600 border-emerald-500/10'
+                          : member.role === 'bursar' || member.role === 'BURSAR'
+                          ? 'bg-amber-500/5 text-amber-600 border-amber-500/10'
                           : 'bg-brand-purple/5 text-brand-purple border-brand-purple/10'
                       }`}>
-                        {member.role === 'admin' && <Shield size={10} className="md:w-3 md:h-3" />}
-                        {member.role === 'teacher' && <UserCog size={10} className="md:w-3 md:h-3" />}
-                        {member.role === 'parent' && <User size={10} className="md:w-3 md:h-3" />}
-                        {member.role === 'admin' ? 'Admin' : member.role === 'parent' ? 'Parent' : 'Teacher'}
+                        {(member.role === 'admin' || member.role === 'ADMIN') && <Shield size={10} className="md:w-3 md:h-3" />}
+                        {(member.role === 'teacher' || member.role === 'TEACHER') && <UserCog size={10} className="md:w-3 md:h-3" />}
+                        {(member.role === 'parent' || member.role === 'PARENT') && <User size={10} className="md:w-3 md:h-3" />}
+                        {(member.role === 'bursar' || member.role === 'BURSAR') && <Wallet size={10} className="md:w-3 md:h-3" />}
+                        {member.role === 'admin' || member.role === 'ADMIN' ? 'Admin' : member.role === 'parent' || member.role === 'PARENT' ? 'Parent' : member.role === 'bursar' || member.role === 'BURSAR' ? 'Bursar' : 'Teacher'}
                       </span>
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4">
