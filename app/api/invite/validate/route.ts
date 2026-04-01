@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
         id: true,
         email: true,
         name: true,
+        role: true,
         invitationSentAt: true,
         createdAt: true,
       },
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
     return success({
       email: user.email,
       name: user.name,
+      role: user.role,
     });
   } catch (error) {
     console.error('[Invite Validate API Error]', error);

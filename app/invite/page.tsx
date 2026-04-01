@@ -28,6 +28,7 @@ export default function AcceptInvitePage() {
   const [success, setSuccess] = useState(false);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [role, setRole] = useState('');
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
@@ -60,6 +61,7 @@ export default function AcceptInvitePage() {
 
       setEmail(data.data.email);
       setName(data.data.name);
+      setRole(data.data.role || '');
     } catch (err) {
       setError('Failed to validate invitation');
     } finally {
@@ -88,7 +90,16 @@ export default function AcceptInvitePage() {
 
       setSuccess(true);
       setTimeout(() => {
-        router.push('/login');
+        // Redirect to the appropriate login page based on role
+        if (role === 'TEACHER') {
+          router.push('/login/teacher');
+        } else if (role === 'BURSAR') {
+          router.push('/login/bursar');
+        } else if (role === 'PARENT') {
+          router.push('/login/parent');
+        } else {
+          router.push('/login');
+        }
       }, 2000);
     } catch (err: any) {
       setError(err.message || 'Failed to set password');
