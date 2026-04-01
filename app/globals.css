@@ -7,7 +7,7 @@
   --color-brand-purple: #C6CCFF;
   --color-brand-lime: #DBE70C;
 
-  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Clash Grotesk', ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {

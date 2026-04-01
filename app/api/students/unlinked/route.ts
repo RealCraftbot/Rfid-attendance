@@ -12,6 +12,12 @@ const linkStudentSchema = z.object({
   isPrimary: z.boolean().default(false),
 });
 
+const legacyLinkSchema = z.object({
+  studentId: z.string().min(1, 'Student ID required'),
+  guardianEmail: z.string().email().optional(),
+  guardianName: z.string().optional(),
+});
+
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -69,13 +75,43 @@ export async function POST(request: Request) {
     const orgId = session.user.orgId;
     const body = await request.json();
     
-    const parsed = linkStudentSchema.safeParse(body);
+    // Try new format first (with parentId)
+    let parsed = linkStudentSchema.safeParse(body);
+    let parentId: string;
+    let studentId: string;
+    let relationship: 'FATHER' | 'MOTHER' | 'GUARDIAN' | 'OTHER' = 'GUARDIAN';
+    let isPrimary = false;
     
-    if (!parsed.success) {
-      return validationError(parsed.error);
+    if (parsed.success) {
+      parentId = parsed.data.parentId;
+      studentId = parsed.data.studentId;
+      relationship = parsed.data.relationship;
+      isPrimary = parsed.data.isPrimary;
+    } else {
+      // Try legacy format (with guardianEmail)
+      const legacyParsed = legacyLinkSchema.safeParse(body);
+      if (!legacyParsed.success) {
+        return validationError(parsed.error);
+      }
+      
+      // Find parent by guardianEmail
+      const parentByEmail = await prisma.parent.findFirst({
+        where: { 
+          email: legacyParsed.data.guardianEmail,
+          orgId 
+        }
+      });
+      
+      if (!parentByEmail) {
+        return NextResponse.json(
+          { success: false, error: 'Parent not found with this email. Please add the parent first.' },
+          { status: 404 }
+        );
+      }
+      
+      parentId = parentByEmail.id;
+      studentId = legacyParsed.data.studentId;
     }
-
-    const { studentId, parentId, relationship, isPrimary } = parsed.data;
 
     const parent = await prisma.parent.findFirst({
       where: { id: parentId, orgId }
