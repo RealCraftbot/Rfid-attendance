@@ -415,7 +415,7 @@ export default function StaffPage() {
                 />
                 {errors.email && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.email.message}</p>}
               </div>
-              <div>
+                <div>
                 <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Role</label>
                 <select 
                   {...register('role')}
@@ -423,6 +423,7 @@ export default function StaffPage() {
                 >
                   <option value="teacher">Teacher</option>
                   <option value="admin">Administrator</option>
+                  <option value="bursar">Bursar</option>
                 </select>
                 {errors.role && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.role.message}</p>}
               </div>
