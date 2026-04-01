@@ -129,6 +129,7 @@ model User {
   orgId           String?
   imageUrl        String?
   emailVerified   DateTime?
+  isActive        Boolean   @default(true)  // Whether user account is active
   passwordSet     Boolean   @default(false)  // Whether user has set their own password
   invitationToken String?  // Token sent to user for password setup
   invitationSentAt DateTime?  // When invitation was sent
@@ -143,6 +144,7 @@ model User {
   @@index([email])
   @@index([role])
   @@index([invitationToken])
+  @@index([isActive])
 }
 
 model Teacher {

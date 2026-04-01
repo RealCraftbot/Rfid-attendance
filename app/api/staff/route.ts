@@ -40,7 +40,7 @@ export async function GET(request: Request) {
         role: true,
         imageUrl: true,
         createdAt: true,
-        // passwordSet and invitationSentAt will be available after DB migration
+        isActive: true,
       },
       orderBy: {
         name: 'asc',
@@ -188,7 +188,7 @@ export async function PUT(request: Request) {
         id, 
         orgId,
         role: {
-          in: ['TEACHER', 'ADMIN']
+          in: ['TEACHER', 'ADMIN', 'BURSAR']
         }
       }
     });
@@ -201,6 +201,7 @@ export async function PUT(request: Request) {
     if (data.name) updateData.name = data.name;
     if (data.email) updateData.email = data.email;
     if (data.role) updateData.role = data.role;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 10);
     }
