@@ -4,7 +4,8 @@ import {
   sendWelcomeEmail as resendSendWelcomeEmail,
   sendPasswordResetEmail as resendSendPasswordResetEmail,
   sendAttendanceNotification as resendSendAttendanceNotification,
-  verifyResend
+  verifyResend,
+  getEmailTemplate
 } from './resend-service';
 
 // Use Resend API instead of SMTP for Railway compatibility
@@ -105,3 +106,4 @@ export async function sendAttendanceNotification(
 }
 
 export default resendSendEmail;
+export { getEmailTemplate };

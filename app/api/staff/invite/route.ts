@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { success, validationError, forbidden, serverError, notFound } from '@/lib/api-response';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { sendEmail } from '@/services/email-service';
+import { sendEmail, getEmailTemplate } from '@/services/email-service';
 
 function generateInvitationToken(): string {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -65,32 +65,31 @@ export async function POST(request: Request) {
       select: { name: true }
     });
 
-    const inviteUrl = `${process.env.APP_URL}/invite?token=${invitationToken}`;
+    const inviteUrl = `${process.env.APP_URL || 'https://rfid.craftinnovations.ng'}/invite?token=${invitationToken}`;
+    const schoolName = process.env.SCHOOL_NAME || 'RFID Attendance';
     
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #2563eb;">You're invited to join ${org?.name || 'RFID Attendance'}</h2>
-        <p>Hello ${staffMember.name},</p>
-        <p>You have been invited to join ${org?.name || 'the school'} as a ${staffMember.role.toLowerCase()}.</p>
-        
-        <div style="margin: 30px 0;">
-          <a href="${inviteUrl}" 
-             style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            Accept Invitation & Set Password
-          </a>
-        </div>
-        
-        <p>This invitation will expire in 7 days.</p>
-        <p style="color: #6b7280; font-size: 12px;">
-          If you didn't expect this invitation, please ignore this email.
-        </p>
+    const content = `
+      <p style="color: #374151; font-size: 16px; margin-bottom: 20px;">Hello ${staffMember.name},</p>
+      <p style="color: #374151; font-size: 16px; margin-bottom: 20px;">You have been invited to join <strong>${org?.name || 'the school'}</strong> as a <strong style="color: #2563eb;">${staffMember.role.toLowerCase()}</strong>.</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${inviteUrl}" 
+           style="background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">
+          Accept Invitation & Set Password
+        </a>
       </div>
+      
+      <p style="color: #6b7280; font-size: 14px;">This invitation will expire in 7 days.</p>
+      <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">If you didn't expect this invitation, please ignore this email.</p>
     `;
 
+    // Import the email template
+    const emailHtml = getEmailTemplate(content, 'You\'re Invited!');
+    
     const emailResult = await sendEmail({
       to: email,
       subject: `Invitation to join ${org?.name || 'RFID Attendance'}`,
-      html,
+      html: emailHtml,
     });
 
     if (!emailResult.success) {
