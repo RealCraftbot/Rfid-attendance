@@ -33,12 +33,6 @@ const studentSchema = z.object({
   usesSchoolBus: z.boolean().default(false),
 });
 
-const NIGERIAN_CLASSES = [
-  'Nursery 1', 'Nursery 2', 'Primary 1', 'Primary 2', 'Primary 3', 'Primary 4', 'Primary 5', 'Primary 6',
-  'JSS 1', 'JSS 2', 'JSS 3',
-  'SS 1', 'SS 2', 'SS 3'
-];
-
 type Student = {
   id: string;
   name: string;
@@ -77,12 +71,13 @@ export default function StudentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<z.infer<typeof studentSchema>>({
+  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<z.infer<typeof studentSchema>>({
     resolver: zodResolver(studentSchema),
     defaultValues: {
       name: '',
@@ -141,8 +136,11 @@ export default function StudentsPage() {
 
   const onSubmit = async (data: z.infer<typeof studentSchema>) => {
     try {
-      const response = await fetch('/api/students', {
-        method: 'POST',
+      const url = isEditMode && selectedStudent ? `/api/students?id=${selectedStudent.id}` : '/api/students';
+      const method = isEditMode ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
@@ -152,22 +150,28 @@ export default function StudentsPage() {
       if (result.success) {
         toast({
           title: 'Success',
-          description: 'Student added successfully',
+          description: isEditMode ? 'Student updated successfully' : 'Student added successfully',
         });
-        setStudents([...students, result.data]);
+        if (isEditMode) {
+          setStudents(students.map(s => s.id === selectedStudent?.id ? result.data : s));
+        } else {
+          setStudents([...students, result.data]);
+        }
         setIsModalOpen(false);
+        setIsEditMode(false);
+        setSelectedStudent(null);
         reset();
       } else {
         toast({
           title: 'Error',
-          description: result.error || 'Failed to add student',
+          description: result.error || `Failed to ${isEditMode ? 'update' : 'add'} student`,
           variant: 'destructive',
         });
       }
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to add student',
+        description: `Failed to ${isEditMode ? 'update' : 'add'} student`,
         variant: 'destructive',
       });
     }
@@ -289,11 +293,27 @@ export default function StudentsPage() {
     setIsLinkModalOpen(true);
   };
 
+  const openEditModal = (student: Student) => {
+    setSelectedStudent(student);
+    setIsEditMode(true);
+    setValue('name', student.name);
+    setValue('rfidUid', student.rfidUid);
+    setValue('grade', student.grade || '');
+    setValue('classroomId', student.classroomId || '');
+    setValue('guardianName', student.guardianName || '');
+    setValue('guardianPhone', student.guardianPhone || '');
+    setValue('guardianEmail', student.guardianEmail || '');
+    setValue('dateOfBirth', student.dateOfBirth || '');
+    setValue('isActive', student.isActive);
+    setValue('usesSchoolBus', student.usesSchoolBus);
+    setIsModalOpen(true);
+  };
+
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          s.rfidUid.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          s.admissionNumber?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = selectedClass === 'all' || s.classroom?.name === selectedClass || s.grade === selectedClass;
+    const matchesClass = selectedClass === 'all' || s.classroomId === selectedClass;
     return matchesSearch && matchesClass;
   });
 
@@ -341,9 +361,9 @@ export default function StudentsPage() {
             onChange={(e) => setSelectedClass(e.target.value)}
             className="px-3 md:px-4 py-2 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-600 outline-none focus:ring-2 ring-zinc-100"
           >
-            <option value="all">All Classes</option>
-            {NIGERIAN_CLASSES.map((cls) => (
-              <option key={cls} value={cls}>{cls}</option>
+            <option value="all">All Classrooms</option>
+            {classrooms.map((cls) => (
+              <option key={cls.id} value={cls.id}>{cls.name}</option>
             ))}
           </select>
         </div>
@@ -456,7 +476,10 @@ export default function StudentsPage() {
                           <Camera size={14} className="md:w-4 md:h-4" />
                         )}
                       </label>
-                      <button className="p-1.5 md:p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => openEditModal(student)}
+                        className="p-1.5 md:p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
+                      >
                         <Edit2 size={14} className="md:w-4 md:h-4" />
                       </button>
                       <button 
@@ -489,8 +512,8 @@ export default function StudentsPage() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-zinc-900">Add New Student</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
+              <h3 className="text-xl font-bold text-zinc-900">{isEditMode ? 'Edit Student' : 'Add New Student'}</h3>
+              <button onClick={() => { setIsModalOpen(false); setIsEditMode(false); setSelectedStudent(null); }} className="text-zinc-400 hover:text-zinc-900">
                 <XCircleIcon size={24} />
               </button>
             </div>
@@ -506,14 +529,14 @@ export default function StudentsPage() {
               </div>
               
               <div>
-                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Class</label>
+                <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Classroom</label>
                 <select 
-                  {...register('grade')}
+                  {...register('classroomId')}
                   className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:ring-2 ring-zinc-100 text-sm"
                 >
-                  <option value="">Select Class</option>
-                  {NIGERIAN_CLASSES.map((cls) => (
-                    <option key={cls} value={cls}>{cls}</option>
+                  <option value="">Select Classroom</option>
+                  {classrooms.map((cls) => (
+                    <option key={cls.id} value={cls.id}>{cls.name}</option>
                   ))}
                 </select>
               </div>
@@ -577,7 +600,7 @@ export default function StudentsPage() {
               <div className="pt-4 flex gap-3">
                 <button 
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => { setIsModalOpen(false); setIsEditMode(false); setSelectedStudent(null); }}
                   className="flex-1 py-3 bg-zinc-50 text-zinc-600 font-bold rounded-xl hover:bg-zinc-100 transition-colors border border-zinc-200"
                 >
                   Cancel
@@ -587,7 +610,7 @@ export default function StudentsPage() {
                   disabled={isSubmitting}
                   className="flex-1 py-3 bg-zinc-900 text-white font-bold rounded-xl hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-900/20 disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Saving...' : 'Save Student'}
+                  {isSubmitting ? 'Saving...' : isEditMode ? 'Update Student' : 'Save Student'}
                 </button>
               </div>
             </form>
