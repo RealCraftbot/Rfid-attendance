@@ -2,6 +2,7 @@ import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from './prisma';
 import bcrypt from 'bcryptjs';
+import { getRedirectPath } from './role-utils';
 
 type Role = 'SUPER_ADMIN' | 'ADMIN' | 'TEACHER' | 'PARENT' | 'BURSAR';
 
@@ -83,6 +84,7 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        role: { label: 'Role', type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -106,6 +108,17 @@ export const authOptions: NextAuthOptions = {
           }
 
           console.log('Login successful for:', credentials.email);
+
+          const role = user.role as Role;
+          
+          // Validate that the provided role matches the user's actual role
+          const requestedRole = credentials.role?.toUpperCase();
+          const userRole = role.toUpperCase();
+          
+          if (requestedRole && requestedRole !== userRole) {
+            console.log(`Role mismatch: requested ${requestedRole}, user has ${userRole}`);
+            throw new Error(`Invalid role. Please login from the ${userRole === 'PARENT' ? 'parent' : userRole === 'TEACHER' ? 'teacher' : userRole === 'BURSAR' ? 'bursar' : 'admin'} login page.`);
+          }
 
           return {
             id: user.id,

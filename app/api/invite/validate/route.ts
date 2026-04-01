@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         email: true,
         name: true,
         invitationSentAt: true,
+        createdAt: true,
       },
     });
 
@@ -30,7 +31,9 @@ export async function GET(request: NextRequest) {
       return notFound('Invitation not found or expired');
     }
 
-    const invitationExpiry = new Date(user.invitationSentAt);
+    // Check invitation expiry - use createdAt as fallback if invitationSentAt is null
+    const invitationDate = user.invitationSentAt || user.createdAt;
+    const invitationExpiry = new Date(invitationDate);
     invitationExpiry.setDate(invitationExpiry.getDate() + 7);
 
     if (new Date() > invitationExpiry) {

@@ -17,6 +17,10 @@ export default async function DashboardPage() {
     redirect('/dashboard/parent');
   }
 
+  if (user.role === 'BURSAR') {
+    redirect('/dashboard/bursar');
+  }
+
   const orgId = user.orgId || user.organization?.id;
 
   if (!orgId) {

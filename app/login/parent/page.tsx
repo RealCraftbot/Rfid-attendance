@@ -23,11 +23,12 @@ export default function ParentLoginPage() {
       const result = await signIn('credentials', {
         email,
         password,
+        role: 'PARENT',
         redirect: false,
       });
 
       if (result?.error) {
-        setError('Invalid email or password');
+        setError(result.error);
       } else {
         router.push('/dashboard/parent');
       }

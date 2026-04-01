@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import { 
   Building2, 
   Lock, 
@@ -29,18 +30,20 @@ export default function BursarLoginPage() {
     setError('');
 
     try {
-      // In production, this would call your auth API
-      // const response = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password, role: 'BURSAR' }),
-      // });
+      const result = await signIn('credentials', {
+        email,
+        password,
+        role: 'BURSAR',
+        redirect: false,
+      });
 
-      // Mock successful login
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      router.push('/dashboard/bursar');
+      if (result?.error) {
+        setError(result.error);
+      } else {
+        router.push('/dashboard/bursar');
+      }
     } catch (err) {
-      setError('Invalid email or password. Please try again.');
+      setError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -147,12 +150,17 @@ export default function BursarLoginPage() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-zinc-100">
-            <p className="text-center text-sm text-zinc-600">
-              Are you an administrator?{' '}
-              <Link href="/login" className="text-blue-600 hover:text-blue-700 font-bold">
-                Admin Login
+            <div className="flex flex-wrap justify-center gap-3 text-sm text-zinc-600">
+              <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+                Admin
               </Link>
-            </p>
+              <Link href="/login/teacher" className="text-blue-600 hover:text-blue-700 font-medium">
+                Teacher
+              </Link>
+              <Link href="/login/parent" className="text-blue-600 hover:text-blue-700 font-medium">
+                Parent
+              </Link>
+            </div>
           </div>
         </div>
 

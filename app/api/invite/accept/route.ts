@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
       return notFound('Invitation not found or expired');
     }
 
-    const invitationExpiry = new Date(user.invitationSentAt);
+    // Check invitation expiry - use createdAt as fallback if invitationSentAt is null
+    const invitationDate = user.invitationSentAt || user.createdAt;
+    const invitationExpiry = new Date(invitationDate);
     invitationExpiry.setDate(invitationExpiry.getDate() + 7);
 
     if (new Date() > invitationExpiry) {

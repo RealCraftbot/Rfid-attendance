@@ -23,11 +23,12 @@ export default function TeacherLoginPage() {
       const result = await signIn('credentials', {
         email,
         password,
+        role: 'TEACHER',
         redirect: false,
       });
 
       if (result?.error) {
-        setError('Invalid email or password');
+        setError(result.error);
       } else {
         router.push('/dashboard');
       }
