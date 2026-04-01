@@ -20,7 +20,7 @@ export default function Footer() {
             />
           </Link>
           <p className="text-brand-purple/60 text-sm leading-relaxed max-w-xs">
-            Enterprise-grade RFID attendance solutions designed for the next generation of educational and organizational management.
+            <strong>AttendIQ</strong> by Craftinnovations Nigeria Ltd. Complete RFID-based attendance management for Nigerian schools.
           </p>
           <div className="flex gap-4">
             <SocialLink icon={Twitter} href="#" />
@@ -31,12 +31,12 @@ export default function Footer() {
 
         {/* Product Column */}
         <div className="space-y-6">
-          <h4 className="text-sm font-bold uppercase tracking-widest text-brand-green">Product</h4>
+          <h4 className="text-sm font-bold uppercase tracking-widest text-brand-green">AttendIQ</h4>
           <ul className="space-y-4">
             <FooterLink href="/#features">Features</FooterLink>
-            <FooterLink href="/#pricing">Pricing</FooterLink>
-            <FooterLink href="/#security">Security</FooterLink>
+            <FooterLink href="/#how-it-works">How It Works</FooterLink>
             <FooterLink href="/support">Support</FooterLink>
+            <FooterLink href="/contact">Contact</FooterLink>
           </ul>
         </div>
 
@@ -45,9 +45,9 @@ export default function Footer() {
           <h4 className="text-sm font-bold uppercase tracking-widest text-brand-green">Company</h4>
           <ul className="space-y-4">
             <FooterLink href="/about">About Us</FooterLink>
-            <FooterLink href="/contact">Contact</FooterLink>
             <FooterLink href="/privacy">Privacy Policy</FooterLink>
             <FooterLink href="/terms">Terms of Service</FooterLink>
+            <FooterLink href="/cookies">Cookie Policy</FooterLink>
           </ul>
         </div>
 
@@ -65,7 +65,7 @@ export default function Footer() {
             </li>
             <li className="flex items-center gap-3 text-sm text-brand-purple/60">
               <Phone size={18} className="text-brand-blue shrink-0" />
-              <span>+234 800 CRAFT</span>
+              <span>+234 800 ATTEND</span>
             </li>
           </ul>
         </div>
@@ -73,7 +73,7 @@ export default function Footer() {
 
       <div className="max-w-7xl mx-auto px-6 pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
         <p className="text-brand-purple/40 text-xs font-medium">
-          © {currentYear} Craft Innovations Nigeria Limited. All rights reserved.
+          © {currentYear} Craftinnovations Nigeria Ltd. All rights reserved.
         </p>
         <div className="flex gap-8 text-xs font-medium text-brand-purple/40">
           <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
