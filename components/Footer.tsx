@@ -65,7 +65,7 @@ export default function Footer() {
             </li>
             <li className="flex items-center gap-3 text-sm text-brand-purple/60">
               <Mail size={18} className="text-brand-blue shrink-0" />
-              <span>rfid@craftinnovations.com</span>
+              <span>rfid@craftinnovations.ng</span>
             </li>
             <li className="flex items-center gap-3 text-sm text-brand-purple/60">
               <Phone size={18} className="text-brand-blue shrink-0" />

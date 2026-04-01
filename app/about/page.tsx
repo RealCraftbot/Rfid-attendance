@@ -109,7 +109,7 @@ export default function AboutPage() {
               </div>
               <div>
                 <h4 className="font-bold text-brand-navy mb-2">Email</h4>
-                <p className="text-zinc-600">rfid@craftinnovations.com</p>
+                <p className="text-zinc-600">rfid@craftinnovations.ng</p>
               </div>
             </div>
           </div>
