@@ -46,6 +46,12 @@ enum BusStatus {
   HOME
 }
 
+enum AcademicTerm {
+  FIRST
+  SECOND
+  THIRD
+}
+
 enum PaymentStatus {
   PENDING
   PARTIAL
@@ -88,9 +94,30 @@ model Organization {
   timetables        Timetable[]
   parents           Parent[]
   teachers          Teacher[]
+  academicSessions  AcademicSession[]
 
   @@index([slug])
   @@index([status])
+}
+
+model AcademicSession {
+  id            String   @id @default(cuid())
+  orgId         String
+  name          String   // e.g., "2024/2025"
+  term          AcademicTerm @default(FIRST)
+  startDate     DateTime
+  endDate       DateTime
+  schoolOpenTime String   @default("07:30") // HH:MM format
+  schoolCloseTime String  @default("15:00") // HH:MM format
+  isActive      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, name, term])
+  @@index([orgId])
+  @@index([isActive])
 }
 
 model User {

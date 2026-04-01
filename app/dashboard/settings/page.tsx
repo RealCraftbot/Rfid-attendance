@@ -17,7 +17,12 @@ import {
   User,
   Lock,
   Bell,
-  Loader2
+  Loader2,
+  Calendar,
+  Plus,
+  Trash2,
+  Check,
+  Edit2
 } from 'lucide-react';
 
 // Role-based settings sections
@@ -74,6 +79,20 @@ export default function SettingsPage() {
     attendanceAlerts: true,
   });
   
+  // Academic Sessions (Admin only)
+  const [academicSessions, setAcademicSessions] = useState<any[]>([]);
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [editingSession, setEditingSession] = useState<any>(null);
+  const [sessionForm, setSessionForm] = useState({
+    name: '',
+    term: 'FIRST',
+    startDate: '',
+    endDate: '',
+    schoolOpenTime: '07:30',
+    schoolCloseTime: '15:00',
+    isActive: false,
+  });
+  
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,6 +122,15 @@ export default function SettingsPage() {
           setOrgAddress(data.organization.address || '');
           setOrgPhone(data.organization.phone || '');
           setOrgLogo(data.organization.logoUrl || null);
+        }
+      }
+      
+      // Fetch academic sessions
+      if (isAdmin) {
+        const sessionsRes = await fetch('/api/academic-sessions');
+        const sessionsData = await sessionsRes.json();
+        if (sessionsData.success) {
+          setAcademicSessions(sessionsData.data || []);
         }
       }
     } catch (error) {
@@ -242,6 +270,83 @@ export default function SettingsPage() {
       setMessage({ type: 'error', text: 'Failed to change password' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openAddSessionModal = () => {
+    setEditingSession(null);
+    setSessionForm({
+      name: '',
+      term: 'FIRST',
+      startDate: '',
+      endDate: '',
+      schoolOpenTime: '07:30',
+      schoolCloseTime: '15:00',
+      isActive: false,
+    });
+    setShowSessionModal(true);
+  };
+
+  const openEditSessionModal = (session: any) => {
+    setEditingSession(session);
+    setSessionForm({
+      name: session.name,
+      term: session.term,
+      startDate: session.startDate.split('T')[0],
+      endDate: session.endDate.split('T')[0],
+      schoolOpenTime: session.schoolOpenTime,
+      schoolCloseTime: session.schoolCloseTime,
+      isActive: session.isActive,
+    });
+    setShowSessionModal(true);
+  };
+
+  const handleSaveSession = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    
+    try {
+      const url = editingSession ? '/api/academic-sessions' : '/api/academic-sessions';
+      const method = editingSession ? 'PUT' : 'POST';
+      const body = editingSession ? { ...sessionForm, id: editingSession.id } : sessionForm;
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setMessage({ type: 'success', text: editingSession ? 'Academic session updated!' : 'Academic session created!' });
+        setShowSessionModal(false);
+        await fetchSettings();
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to save academic session' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to save academic session' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteSession = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this academic session?')) return;
+    
+    try {
+      const response = await fetch(`/api/academic-sessions?id=${id}`, { method: 'DELETE' });
+      const data = await response.json();
+      
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Academic session deleted!' });
+        await fetchSettings();
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to delete session' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to delete session' });
     }
   };
 
@@ -687,6 +792,77 @@ export default function SettingsPage() {
               </form>
             </section>
 
+            {/* Academic Sessions */}
+            <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+              <div className="p-4 md:p-6 border-b border-zinc-100 bg-green-50/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-lg border border-green-200 text-green-600">
+                    <Calendar size={18} className="md:w-5 md:h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-zinc-900 text-sm md:text-base">Academic Calendar</h3>
+                    <p className="text-xs text-zinc-500">Set your session dates and school hours</p>
+                  </div>
+                </div>
+                <button
+                  onClick={openAddSessionModal}
+                  className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-green-700 transition-colors"
+                >
+                  <Plus size={16} />
+                  Add Session
+                </button>
+              </div>
+              <div className="p-4 md:p-6">
+                {academicSessions.length === 0 ? (
+                  <div className="text-center py-8 text-zinc-400">
+                    <Calendar size={40} className="mx-auto mb-3 opacity-50" />
+                    <p className="font-medium">No academic sessions configured</p>
+                    <p className="text-sm">Add your session dates to track attendance properly</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {academicSessions.map((session) => (
+                      <div key={session.id} className={`p-4 rounded-xl border ${session.isActive ? 'bg-green-50 border-green-200' : 'bg-zinc-50 border-zinc-200'}`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-bold text-zinc-900">{session.name}</h4>
+                              {session.isActive && (
+                                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">Active</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-zinc-600 mb-2">
+                              {session.term === 'FIRST' ? '1st Term' : session.term === 'SECOND' ? '2nd Term' : '3rd Term'}
+                            </p>
+                            <p className="text-xs text-zinc-500">
+                              {new Date(session.startDate).toLocaleDateString()} - {new Date(session.endDate).toLocaleDateString()}
+                            </p>
+                            <p className="text-xs text-zinc-500 mt-1">
+                              School Hours: {session.schoolOpenTime} - {session.schoolCloseTime}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openEditSessionModal(session)}
+                              className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSession(session.id)}
+                              className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+
             {/* API & Security */}
             <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
               <div className="p-4 md:p-6 border-b border-zinc-100 bg-zinc-50/50 flex items-center gap-3">
@@ -732,6 +908,124 @@ export default function SettingsPage() {
           </>
         )}
       </div>
+
+      {/* Academic Session Modal */}
+      {showSessionModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-zinc-100 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-zinc-900">
+                {editingSession ? 'Edit Academic Session' : 'Add Academic Session'}
+              </h3>
+              <button onClick={() => setShowSessionModal(false)} className="text-zinc-400 hover:text-zinc-900">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveSession} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Session Name</label>
+                  <input
+                    type="text"
+                    value={sessionForm.name}
+                    onChange={(e) => setSessionForm({ ...sessionForm, name: e.target.value })}
+                    placeholder="e.g. 2024/2025"
+                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Term</label>
+                  <select
+                    value={sessionForm.term}
+                    onChange={(e) => setSessionForm({ ...sessionForm, term: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm"
+                  >
+                    <option value="FIRST">1st Term</option>
+                    <option value="SECOND">2nd Term</option>
+                    <option value="THIRD">3rd Term</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">Start Date</label>
+                  <input
+                    type="date"
+                    value={sessionForm.startDate}
+                    onChange={(e) => setSessionForm({ ...sessionForm, startDate: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">End Date</label>
+                  <input
+                    type="date"
+                    value={sessionForm.endDate}
+                    onChange={(e) => setSessionForm({ ...sessionForm, endDate: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">School Opens</label>
+                  <input
+                    type="time"
+                    value={sessionForm.schoolOpenTime}
+                    onChange={(e) => setSessionForm({ ...sessionForm, schoolOpenTime: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1.5">School Closes</label>
+                  <input
+                    type="time"
+                    value={sessionForm.schoolCloseTime}
+                    onChange={(e) => setSessionForm({ ...sessionForm, schoolCloseTime: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm"
+                  />
+                </div>
+              </div>
+              
+              <label className="flex items-center gap-3 cursor-pointer p-3 bg-zinc-50 rounded-xl">
+                <input
+                  type="checkbox"
+                  checked={sessionForm.isActive}
+                  onChange={(e) => setSessionForm({ ...sessionForm, isActive: e.target.checked })}
+                  className="w-5 h-5 rounded border-zinc-300 text-green-600"
+                />
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">Set as Current Session</p>
+                  <p className="text-xs text-zinc-500">This will deactivate all other sessions</p>
+                </div>
+              </label>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowSessionModal(false)}
+                  className="flex-1 py-3 bg-zinc-100 text-zinc-600 font-bold rounded-xl hover:bg-zinc-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {saving && <Loader2 size={18} className="animate-spin" />}
+                  {editingSession ? 'Update' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
