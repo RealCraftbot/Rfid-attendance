@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { rateLimits, getClientIp, checkRateLimit, createRateLimitResponse } from '@/lib/rate-limit';
+import { rateLimitMiddleware, rateLimits, getClientIp } from '@/lib/rate-limit';
 
 // Define role-based route access
 const routePermissions: Record<string, string[]> = {
@@ -45,17 +45,17 @@ const allowedOrigins = [
 ].filter(Boolean) as string[];
 
 // Rate limited API routes configuration
-const rateLimitConfig: Record<string, { limiter: any; identifier?: (req: NextRequest) => string }> = {
-  '/api/auth': { limiter: rateLimits.login },
-  '/api/login': { limiter: rateLimits.login },
-  '/api/signup': { limiter: rateLimits.signup },
-  '/api/forgot-password': { limiter: rateLimits.passwordReset },
-  '/api/reset-password': { limiter: rateLimits.passwordReset },
+const rateLimitConfig: Record<string, { limiterType: string; identifier?: (req: NextRequest) => string }> = {
+  '/api/auth': { limiterType: rateLimits.login },
+  '/api/login': { limiterType: rateLimits.login },
+  '/api/signup': { limiterType: rateLimits.signup },
+  '/api/forgot-password': { limiterType: rateLimits.passwordReset },
+  '/api/reset-password': { limiterType: rateLimits.passwordReset },
   '/api/scanAttendance': { 
-    limiter: rateLimits.scan,
+    limiterType: rateLimits.scan,
     identifier: (req) => req.headers.get('x-device-id') || getClientIp(req)
   },
-  '/api/upload': { limiter: rateLimits.upload },
+  '/api/upload': { limiterType: rateLimits.upload },
 };
 
 export async function middleware(request: NextRequest) {
@@ -212,16 +212,7 @@ async function applyRateLimit(request: NextRequest, pathname: string): Promise<{
     ? config.identifier(request) 
     : getClientIp(request);
   
-  const result = await checkRateLimit(config.limiter, identifier);
-  
-  if (!result.success) {
-    return {
-      allowed: false,
-      response: createRateLimitResponse(result.limit, result.reset),
-    };
-  }
-  
-  return { allowed: true };
+  return await rateLimitMiddleware(request, config.limiterType, identifier);
 }
 
 export const config = {

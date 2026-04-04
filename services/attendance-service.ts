@@ -235,6 +235,125 @@ export class AttendanceService {
       busStatus: newBusStatus,
     };
   }
+
+  // Get attendance by classroom for export
+  async getAttendanceByClassroom(orgId: string, classroomId: string, date: Date) {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const classroom = await prisma.classroom.findFirst({
+      where: { id: classroomId, orgId },
+    });
+
+    const attendance = await prisma.attendanceRecord.findMany({
+      where: {
+        orgId,
+        student: { classroomId },
+        scanTime: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            admissionNumber: true,
+          },
+        },
+      },
+      orderBy: { scanTime: 'asc' },
+    });
+
+    // Calculate stats
+    const totalStudents = await prisma.student.count({
+      where: { orgId, classroomId, isActive: true },
+    });
+
+    const presentStudents = new Set(attendance.map(a => a.studentId)).size;
+
+    const stats = {
+      totalStudents,
+      presentStudents,
+      absentStudents: totalStudents - presentStudents,
+      attendanceRate: totalStudents > 0 ? (presentStudents / totalStudents) * 100 : 0,
+    };
+
+    return {
+      attendance,
+      stats,
+      classroom,
+    };
+  }
+
+  // Get grouped attendance for export
+  async getGroupedAttendance(orgId: string, date: Date) {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const attendance = await prisma.attendanceRecord.findMany({
+      where: {
+        orgId,
+        scanTime: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            admissionNumber: true,
+            classroom: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { scanTime: 'asc' },
+    });
+
+    // Group by classroom
+    const groupedByClassroom: Record<string, any[]> = {};
+    attendance.forEach(record => {
+      const classroomName = record.student.classroom?.name || 'No Classroom';
+      if (!groupedByClassroom[classroomName]) {
+        groupedByClassroom[classroomName] = [];
+      }
+      groupedByClassroom[classroomName].push(record);
+    });
+
+    // Calculate overall stats
+    const totalStudents = await prisma.student.count({
+      where: { orgId, isActive: true },
+    });
+
+    const presentStudents = new Set(attendance.map(a => a.studentId)).size;
+
+    const stats = {
+      totalStudents,
+      presentStudents,
+      absentStudents: totalStudents - presentStudents,
+      attendanceRate: totalStudents > 0 ? (presentStudents / totalStudents) * 100 : 0,
+    };
+
+    return {
+      attendance,
+      groupedByClassroom,
+      stats,
+    };
+  }
 }
 
 export const attendanceService = new AttendanceService();
