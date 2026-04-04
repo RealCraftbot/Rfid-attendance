@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendEmail } from '@/services/email-service';
+import { applyRateLimit, tooManyRequests } from '@/lib/railway-redis';
 
 function generateResetToken(): string {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -10,6 +11,11 @@ function generateResetToken(): string {
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 3 password reset attempts per hour per IP
+    const rateLimit = await applyRateLimit(request, 'passwordReset');
+    if (!rateLimit.allowed) {
+      return tooManyRequests('Too many password reset attempts. Please try again later.', Math.ceil((rateLimit.reset - Date.now()) / 1000));
+    }
     const { email } = await request.json();
 
     if (!email) {

@@ -5,9 +5,16 @@ import { signupSchema, sanitizeObject } from '@/lib/validation';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { AuditLogger } from '@/lib/audit-logger';
+import { applyRateLimit, tooManyRequests } from '@/lib/railway-redis';
 
 export async function POST(request: Request) {
   const startTime = Date.now();
+  
+  // Rate limiting: 3 signups per hour per IP
+  const rateLimit = await applyRateLimit(request, 'signup');
+  if (!rateLimit.allowed) {
+    return tooManyRequests('Too many signup attempts. Please try again later.', Math.ceil((rateLimit.reset - Date.now()) / 1000));
+  }
   
   try {
     const body = await request.json();
