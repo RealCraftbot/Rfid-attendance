@@ -354,6 +354,156 @@ export class AttendanceService {
       stats,
     };
   }
+
+  // Scan teacher RFID for attendance
+  async scanTeacher(
+    rfidUid: string,
+    deviceId: string,
+    orgId: string,
+    classroomId: string,
+    batteryLevel?: number
+  ): Promise<{
+    success: boolean;
+    teacherName: string;
+    checkType: CheckType;
+    recordId: string;
+    classroomName: string;
+    message: string;
+  }> {
+    // Find teacher by RFID
+    const teacher = await prisma.teacher.findFirst({
+      where: {
+        rfidUid,
+        orgId,
+        isActive: true,
+      },
+    });
+
+    if (!teacher) {
+      return {
+        success: false,
+        teacherName: '',
+        checkType: 'check_in',
+        recordId: '',
+        classroomName: '',
+        message: 'Teacher not found',
+      };
+    }
+
+    // Check idempotency
+    const isDuplicate = await this.checkIdempotency(rfidUid, deviceId);
+
+    if (isDuplicate) {
+      const lastAttendance = await prisma.teacherAttendance.findFirst({
+        where: { teacherId: teacher.id },
+        orderBy: { scanTime: 'desc' },
+      });
+      return {
+        success: true,
+        teacherName: teacher.name,
+        checkType: (lastAttendance?.checkType as CheckType) || 'check_in',
+        recordId: '',
+        classroomName: '',
+        message: 'Duplicate scan ignored',
+      };
+    }
+
+    // Determine check type based on last attendance
+    const lastAttendance = await prisma.teacherAttendance.findFirst({
+      where: { teacherId: teacher.id },
+      orderBy: { scanTime: 'desc' },
+    });
+    const newCheckType: CheckType = lastAttendance?.checkType === 'check_in' ? 'check_out' : 'check_in';
+
+    // Get classroom info
+    const classroom = await prisma.classroom.findFirst({
+      where: { id: classroomId, orgId },
+    });
+
+    // Create attendance record
+    const attendance = await prisma.teacherAttendance.create({
+      data: {
+        teacherId: teacher.id,
+        classroomId,
+        orgId,
+        deviceId,
+        checkType: newCheckType,
+        scanTime: new Date(),
+      },
+    });
+
+    // Update device battery level if provided
+    if (batteryLevel !== undefined) {
+      await prisma.device.updateMany({
+        where: { deviceId, orgId },
+        data: { 
+          batteryLevel,
+          lastSeen: new Date(),
+        },
+      });
+    }
+
+    return {
+      success: true,
+      teacherName: teacher.name,
+      checkType: newCheckType,
+      recordId: attendance.id,
+      classroomName: classroom?.name || 'Unknown Classroom',
+      message: `Successfully recorded ${newCheckType.replace('_', ' ')}`,
+    };
+  }
+
+  // Get teacher attendance history
+  async getTeacherAttendance(
+    orgId: string,
+    teacherId?: string,
+    classroomId?: string,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<any[]> {
+    const where: any = { orgId };
+
+    if (teacherId) {
+      where.teacherId = teacherId;
+    }
+
+    if (classroomId) {
+      where.classroomId = classroomId;
+    }
+
+    if (startDate && endDate) {
+      where.scanTime = {
+        gte: startDate,
+        lte: endDate,
+      };
+    } else if (startDate) {
+      where.scanTime = {
+        gte: startDate,
+      };
+    }
+
+    const attendance = await prisma.teacherAttendance.findMany({
+      where,
+      include: {
+        teacher: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        classroom: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { scanTime: 'desc' },
+    });
+
+    return attendance;
+  }
 }
 
 export const attendanceService = new AttendanceService();

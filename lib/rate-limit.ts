@@ -1,13 +1,21 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { NextResponse } from 'next/server';
 
-// Redis client - initialized lazily to avoid Edge Runtime issues
+// Check if we're in Edge Runtime
+const isEdgeRuntime = typeof process !== 'undefined' && process.env.NEXT_RUNTIME === 'edge';
+
+// Redis client - only initialize on server side
 let redis: any = null;
 let rateLimiters: any = null;
 
-// Initialize Redis client (only on server side)
+// Initialize Redis client (only on server side, not Edge)
 function getRedis() {
   if (redis) return redis;
+  
+  // Skip Redis initialization in Edge Runtime
+  if (isEdgeRuntime) {
+    return null;
+  }
   
   try {
     // Dynamic import to avoid Edge Runtime issues
@@ -47,7 +55,6 @@ function getRedis() {
     }
   } catch (error) {
     console.error('[Rate Limit] Failed to initialize Redis:', error);
-    // Return null to trigger fallback
     redis = null;
   }
   
@@ -61,60 +68,46 @@ function getRateLimiters() {
   const redisClient = getRedis();
   
   if (!redisClient) {
-    // Return null to indicate rate limiting is unavailable
     return null;
   }
   
   rateLimiters = {
-    // Authentication endpoints - strict limits
     auth: new Ratelimit({
       redis: redisClient,
       limiter: Ratelimit.slidingWindow(5, '15 m'),
       analytics: true,
       prefix: 'ratelimit:auth',
     }),
-    
-    // Login attempts - very strict
     login: new Ratelimit({
       redis: redisClient,
       limiter: Ratelimit.slidingWindow(10, '15 m'),
       analytics: true,
       prefix: 'ratelimit:login',
     }),
-    
-    // Password reset - strict
     passwordReset: new Ratelimit({
       redis: redisClient,
       limiter: Ratelimit.slidingWindow(3, '1 h'),
       analytics: true,
       prefix: 'ratelimit:passwordreset',
     }),
-    
-    // Signup - moderate
     signup: new Ratelimit({
       redis: redisClient,
       limiter: Ratelimit.slidingWindow(3, '1 h'),
       analytics: true,
       prefix: 'ratelimit:signup',
     }),
-    
-    // RFID scan endpoints - high volume
     scan: new Ratelimit({
       redis: redisClient,
       limiter: Ratelimit.slidingWindow(1000, '1 m'),
       analytics: true,
       prefix: 'ratelimit:scan',
     }),
-    
-    // General API
     api: new Ratelimit({
       redis: redisClient,
       limiter: Ratelimit.slidingWindow(100, '1 m'),
       analytics: true,
       prefix: 'ratelimit:api',
     }),
-    
-    // File uploads
     upload: new Ratelimit({
       redis: redisClient,
       limiter: Ratelimit.slidingWindow(10, '1 m'),
@@ -149,7 +142,6 @@ export async function checkRateLimit(
 ): Promise<{ success: boolean; limit: number; remaining: number; reset: number }> {
   try {
     if (!limiter) {
-      // No rate limiting available - allow request
       return { success: true, limit: 0, remaining: 0, reset: 0 };
     }
     
@@ -162,7 +154,6 @@ export async function checkRateLimit(
     };
   } catch (error) {
     console.error('Rate limit check failed:', error);
-    // Fail open
     return { success: true, limit: 0, remaining: 0, reset: 0 };
   }
 }
@@ -198,10 +189,15 @@ export async function rateLimitMiddleware(
   limiterType: string,
   identifier?: string
 ): Promise<{ allowed: boolean; response?: NextResponse }> {
+  // Skip rate limiting in Edge Runtime (middleware)
+  // Rate limiting will be applied in API routes instead
+  if (isEdgeRuntime) {
+    return { allowed: true };
+  }
+  
   const limiters = getRateLimiters();
   
   if (!limiters) {
-    // Rate limiting not available - allow request
     return { allowed: true };
   }
   
