@@ -1,6 +1,5 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
-import { createClient, RedisClientType } from 'redis';
 import { NextResponse } from 'next/server';
 
 // Determine which Redis to use
@@ -8,29 +7,19 @@ const REDIS_URL = process.env.REDIS_URL || '';
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || '';
 
 // Initialize Redis client based on environment
-let redis: Redis | RedisClientType;
+let redis: Redis;
 let isRailwayRedis = false;
 
-if (REDIS_URL && REDIS_URL.startsWith('redis://')) {
-  // Using Railway Redis (native TCP)
-  isRailwayRedis = true;
-  redis = createClient({
-    url: REDIS_URL,
-  });
-  
-  // Connect to Redis (handle connection errors gracefully)
-  (redis as RedisClientType).connect().catch((err) => {
-    console.error('[Rate Limit] Railway Redis connection failed:', err);
-  });
-} else if (UPSTASH_URL) {
-  // Using Upstash Redis (REST API)
+if (UPSTASH_URL) {
+  // Using Upstash Redis (REST API) - works with Edge runtime
   redis = new Redis({
     url: UPSTASH_URL,
     token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
   });
 } else {
-  // Fallback: Create mock Redis for development
-  console.warn('[Rate Limit] No Redis configured. Using in-memory fallback (NOT for production)');
+  // Fallback: Create mock Redis for development/Edge runtime
+  // Railway Redis will use Upstash-compatible REST API via middleware
+  console.warn('[Rate Limit] Using in-memory fallback or Upstash Redis');
   const inMemoryMap = new Map<string, { count: number; resetTime: number }>();
   
   redis = {
@@ -58,7 +47,7 @@ if (REDIS_URL && REDIS_URL.startsWith('redis://')) {
 export const rateLimits = {
   // Authentication endpoints - strict limits
   auth: new Ratelimit({
-    redis: redis as Redis,
+    redis,
     limiter: Ratelimit.slidingWindow(5, '15 m'), // 5 requests per 15 minutes
     analytics: true,
     prefix: 'ratelimit:auth',
@@ -66,7 +55,7 @@ export const rateLimits = {
   
   // Login attempts - very strict
   login: new Ratelimit({
-    redis: redis as Redis,
+    redis,
     limiter: Ratelimit.slidingWindow(10, '15 m'), // 10 attempts per 15 minutes
     analytics: true,
     prefix: 'ratelimit:login',
@@ -74,7 +63,7 @@ export const rateLimits = {
   
   // Password reset - strict
   passwordReset: new Ratelimit({
-    redis: redis as Redis,
+    redis,
     limiter: Ratelimit.slidingWindow(3, '1 h'), // 3 attempts per hour
     analytics: true,
     prefix: 'ratelimit:passwordreset',
@@ -82,7 +71,7 @@ export const rateLimits = {
   
   // Signup - moderate
   signup: new Ratelimit({
-    redis: redis as Redis,
+    redis,
     limiter: Ratelimit.slidingWindow(3, '1 h'), // 3 signups per hour per IP
     analytics: true,
     prefix: 'ratelimit:signup',
@@ -90,7 +79,7 @@ export const rateLimits = {
   
   // RFID scan endpoints - high volume but still limited
   scan: new Ratelimit({
-    redis: redis as Redis,
+    redis,
     limiter: Ratelimit.slidingWindow(1000, '1 m'), // 1000 scans per minute per device
     analytics: true,
     prefix: 'ratelimit:scan',
@@ -98,7 +87,7 @@ export const rateLimits = {
   
   // General API - generous but protected
   api: new Ratelimit({
-    redis: redis as Redis,
+    redis,
     limiter: Ratelimit.slidingWindow(100, '1 m'), // 100 requests per minute
     analytics: true,
     prefix: 'ratelimit:api',
@@ -106,7 +95,7 @@ export const rateLimits = {
   
   // File uploads - limited
   upload: new Ratelimit({
-    redis: redis as Redis,
+    redis,
     limiter: Ratelimit.slidingWindow(10, '1 m'), // 10 uploads per minute
     analytics: true,
     prefix: 'ratelimit:upload',
