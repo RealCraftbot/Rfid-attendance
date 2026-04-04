@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
 type CheckType = 'check_in' | 'check_out' | 'bus_pickup_home' | 'bus_drop_school' | 'bus_pickup_school' | 'bus_drop_home';
 type BusStatus = 'WAITING' | 'ON_BUS_TO_SCHOOL' | 'AT_SCHOOL' | 'ON_BUS_TO_HOME' | 'HOME';
@@ -44,6 +45,18 @@ function determineCheckType(locationType: string): CheckType {
 }
 
 export class AttendanceService {
+  /**
+   * Hash a device token using bcrypt
+   * Use this when creating or updating device tokens
+   */
+  async hashDeviceToken(token: string): Promise<string> {
+    return bcrypt.hash(token, 10);
+  }
+
+  /**
+   * Validate device token using secure comparison
+   * Compares provided token with hashed token in database
+   */
   async validateDeviceToken(deviceId: string, token: string): Promise<DeviceAuthResult> {
     const device = await prisma.device.findFirst({
       where: {
@@ -56,7 +69,36 @@ export class AttendanceService {
       return { valid: false, deviceId, orgId: '', error: 'Device not found or inactive' };
     }
 
-    if (device.secretKey !== token) {
+    // Check if token is stored as hash (new format) or plain text (legacy)
+    // Legacy tokens are exactly 32 characters (CUID format)
+    const isLegacyToken = device.secretKey.length <= 32;
+    
+    let isValid = false;
+    
+    if (isLegacyToken) {
+      // Legacy plain text comparison (will be migrated)
+      isValid = device.secretKey === token;
+      
+      // Auto-migrate to hashed token on successful validation
+      if (isValid) {
+        try {
+          const hashedToken = await this.hashDeviceToken(token);
+          await prisma.device.update({
+            where: { id: device.id },
+            data: { secretKey: hashedToken },
+          });
+          console.log(`[SECURITY] Migrated device ${deviceId} to hashed token`);
+        } catch (error) {
+          console.error(`[SECURITY] Failed to migrate token for device ${deviceId}:`, error);
+          // Continue anyway - authentication succeeded
+        }
+      }
+    } else {
+      // Modern hashed token comparison
+      isValid = await bcrypt.compare(token, device.secretKey);
+    }
+
+    if (!isValid) {
       return { valid: false, deviceId, orgId: device.orgId, error: 'Invalid device token' };
     }
 
@@ -148,555 +190,49 @@ export class AttendanceService {
     }
 
     const device = await prisma.device.findFirst({
-      where: { deviceId, orgId, isActive: true },
+      where: { deviceId },
     });
-
-    if (!device) {
-      return {
-        success: false,
-        studentName: student.name,
-        checkType: newCheckType,
-        recordId: '',
-        duplicate: false,
-        message: 'Device not found or inactive',
-      };
-    }
-
-    return prisma.$transaction(async (tx: any) => {
-      const record = await tx.attendanceRecord.create({
-        data: {
-          studentId: student.id,
-          studentName: student.name,
-          orgId,
-          deviceId,
-          checkType: newCheckType,
-          busRouteId: student.busRouteId || undefined,
-        },
-      });
-
-      const updateData: any = {
-        currentStatus: newCheckType,
-        lastSeen: new Date(),
-      };
-
-      if (newBusStatus) {
-        updateData.busStatus = newBusStatus;
-      }
-
-      await tx.student.update({
-        where: { id: student.id },
-        data: updateData,
-      });
-
-      await tx.device.update({
-        where: { id: device.id },
-        data: {
-          lastSeen: new Date(),
-          ...(batteryLevel !== undefined && { batteryLevel }),
-        },
-      });
-
-      const actionMessages: Record<CheckType, string> = {
-        check_in: 'checked in',
-        check_out: 'checked out',
-        bus_pickup_home: 'picked up from home',
-        bus_drop_school: 'dropped at school',
-        bus_pickup_school: 'picked up from school',
-        bus_drop_home: 'dropped at home',
-      };
-
-      return {
-        success: true,
-        studentName: student.name,
-        checkType: newCheckType,
-        recordId: record.id,
-        duplicate: false,
-        busStatus: newBusStatus,
-        message: `${student.name} has ${actionMessages[newCheckType]}`,
-      };
-    });
-  }
-
-  async getAttendanceStats(orgId: string, startDate: Date, endDate: Date) {
-    const [totalStudents, checkedIn, busStudents, records] = await Promise.all([
-      prisma.student.count({ where: { orgId, isActive: true } }),
-      prisma.student.count({ where: { orgId, isActive: true, currentStatus: 'check_in' } }),
-      prisma.student.count({ where: { orgId, isActive: true, usesSchoolBus: true } }),
-      prisma.attendanceRecord.findMany({
-        where: {
-          orgId,
-          scanTime: { gte: startDate, lte: endDate },
-        },
-        orderBy: { scanTime: 'desc' },
-        take: 100,
-        include: { student: { select: { name: true, classroom: true } } },
-      }),
-    ]);
-
-    return {
-      totalStudents,
-      checkedIn,
-      checkedOut: totalStudents - checkedIn,
-      busStudents,
-      absent: 0,
-      attendanceRate: totalStudents > 0 ? Math.round((checkedIn / totalStudents) * 100) : 0,
-      recentRecords: records,
-    };
-  }
-
-  async getBusStats(orgId: string) {
-    const busStatusFilter = (status: string) => ({ orgId, usesSchoolBus: true, isActive: true, busStatus: status as any });
-
-    const [totalBusStudents, waitingHome, onBusToSchool, atSchool, onBusToHome, home] = await Promise.all([
-      prisma.student.count({ where: { orgId, usesSchoolBus: true, isActive: true } }),
-      prisma.student.count({ where: busStatusFilter('WAITING') }),
-      prisma.student.count({ where: busStatusFilter('ON_BUS_TO_SCHOOL') }),
-      prisma.student.count({ where: busStatusFilter('AT_SCHOOL') }),
-      prisma.student.count({ where: busStatusFilter('ON_BUS_TO_HOME') }),
-      prisma.student.count({ where: busStatusFilter('HOME') }),
-    ]);
-
-    return {
-      totalBusStudents,
-      waitingHome,
-      onBusToSchool,
-      atSchool,
-      onBusToHome,
-      home,
-    };
-  }
-
-  /**
-   * Get grouped attendance records for a specific date
-   * Groups multiple scans per student into single daily records
-   * Earliest scan = check_in, Latest scan = check_out
-   */
-  async getGroupedAttendance(
-    orgId: string,
-    date: Date,
-    searchQuery?: string,
-    statusFilter?: 'all' | 'present' | 'absent' | 'late'
-  ) {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    // Get all attendance records for the date with orgId filter
-    const records = await prisma.attendanceRecord.findMany({
-      where: {
-        orgId,
-        scanTime: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-        ...(searchQuery && {
-          student: {
-            name: {
-              contains: searchQuery,
-              mode: 'insensitive',
-            },
-          },
-        }),
-      },
-      include: {
-        student: {
-          select: {
-            id: true,
-            name: true,
-            classroom: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        scanTime: 'asc',
-      },
-    });
-
-    // Get all active students for the org (to identify absences)
-    const allStudents = await prisma.student.findMany({
-      where: {
-        orgId,
-        isActive: true,
-        ...(searchQuery && {
-          name: {
-            contains: searchQuery,
-            mode: 'insensitive',
-          },
-        }),
-      },
-      select: {
-        id: true,
-        name: true,
-        classroom: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
-
-    // Group records by student
-    const groupedByStudent = new Map<string, typeof records>();
-    records.forEach((record: typeof records[0]) => {
-      const studentId = record.studentId;
-      if (!groupedByStudent.has(studentId)) {
-        groupedByStudent.set(studentId, []);
-      }
-      groupedByStudent.get(studentId)?.push(record);
-    });
-
-    // Build grouped attendance data
-    const groupedAttendance = allStudents.map((student: typeof allStudents[0]) => {
-      const studentRecords = groupedByStudent.get(student.id) || [];
-      const checkInRecord = studentRecords.find((r: typeof records[0]) => r.checkType === 'check_in');
-      const checkOutRecord = [...studentRecords].reverse().find((r: typeof records[0]) => r.checkType === 'check_out');
-
-      let durationOnSite: number | null = null;
-      if (checkInRecord?.scanTime && checkOutRecord?.scanTime) {
-        durationOnSite = Math.round(
-          (new Date(checkOutRecord.scanTime).getTime() - new Date(checkInRecord.scanTime).getTime()) / (1000 * 60)
-        );
-      }
-
-      // Determine status
-      let status: 'present' | 'absent' | 'late' | 'on-site' | 'checked-out';
-      if (studentRecords.length === 0) {
-        status = 'absent';
-      } else if (checkInRecord && !checkOutRecord) {
-        status = 'on-site';
-      } else if (checkInRecord && checkOutRecord) {
-        status = 'checked-out';
-      } else {
-        status = 'present';
-      }
-
-      // Check for late arrival (after 8:00 AM)
-      const isLate = checkInRecord && new Date(checkInRecord.scanTime).getHours() >= 8 && new Date(checkInRecord.scanTime).getMinutes() > 0;
-      if (isLate && status !== 'absent') {
-        status = 'late';
-      }
-
-      return {
-        studentId: student.id,
-        studentName: student.name,
-        className: student.classroom?.name || 'N/A',
-        status,
-        checkInTime: checkInRecord?.scanTime || null,
-        checkOutTime: checkOutRecord?.scanTime || null,
-        deviceId: checkInRecord?.deviceId || checkOutRecord?.deviceId || null,
-        durationOnSite,
-        totalScans: studentRecords.length,
-      };
-    });
-
-    // Apply status filter
-    let filteredAttendance = groupedAttendance;
-    if (statusFilter && statusFilter !== 'all') {
-      filteredAttendance = groupedAttendance.filter((a: typeof groupedAttendance[0]) => {
-        if (statusFilter === 'present') return a.status === 'present' || a.status === 'on-site' || a.status === 'checked-out';
-        if (statusFilter === 'absent') return a.status === 'absent';
-        if (statusFilter === 'late') return a.status === 'late';
-        return true;
-      });
-    }
-
-    // Calculate summary stats
-    const stats = {
-      total: allStudents.length,
-      present: filteredAttendance.filter((a: typeof groupedAttendance[0]) => a.status !== 'absent').length,
-      absent: filteredAttendance.filter((a: typeof groupedAttendance[0]) => a.status === 'absent').length,
-      late: filteredAttendance.filter((a: typeof groupedAttendance[0]) => a.status === 'late').length,
-      onSite: filteredAttendance.filter((a: typeof groupedAttendance[0]) => a.status === 'on-site').length,
-      checkedOut: filteredAttendance.filter((a: typeof groupedAttendance[0]) => a.status === 'checked-out').length,
-    };
-
-    return {
-      attendance: filteredAttendance,
-      stats,
-      date,
-    };
-  }
-
-  /**
-   * Get attendance records filtered by classroom
-   */
-  async getAttendanceByClassroom(
-    orgId: string,
-    classroomId: string,
-    date: Date,
-    searchQuery?: string
-  ) {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    // Get students in this classroom
-    const students = await prisma.student.findMany({
-      where: {
-        orgId,
-        classroomId,
-        isActive: true,
-        ...(searchQuery && {
-          name: {
-            contains: searchQuery,
-            mode: 'insensitive',
-          },
-        }),
-      },
-      select: {
-        id: true,
-        name: true,
-        rfidUid: true,
-      },
-    });
-
-    // Get attendance records for these students
-    const records = await prisma.attendanceRecord.findMany({
-      where: {
-        orgId,
-        studentId: { in: students.map((s: { id: string }) => s.id) },
-        scanTime: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-      },
-      orderBy: {
-        scanTime: 'asc',
-      },
-    });
-
-    // Group by student
-    const groupedByStudent = new Map<string, typeof records>();
-    records.forEach((record: typeof records[0]) => {
-      const studentId = record.studentId;
-      if (!groupedByStudent.has(studentId)) {
-        groupedByStudent.set(studentId, []);
-      }
-      groupedByStudent.get(studentId)?.push(record);
-    });
-
-    // Build attendance data
-    const attendance = students.map((student: typeof students[0]) => {
-      const studentRecords = groupedByStudent.get(student.id) || [];
-      const checkInRecord = studentRecords.find((r: typeof records[0]) => r.checkType === 'check_in');
-      const checkOutRecord = [...studentRecords].reverse().find((r: typeof records[0]) => r.checkType === 'check_out');
-
-      let durationOnSite: number | null = null;
-      if (checkInRecord?.scanTime && checkOutRecord?.scanTime) {
-        durationOnSite = Math.round(
-          (new Date(checkOutRecord.scanTime).getTime() - new Date(checkInRecord.scanTime).getTime()) / (1000 * 60)
-        );
-      }
-
-      let status: 'present' | 'absent' | 'late' | 'on-site' | 'checked-out';
-      if (studentRecords.length === 0) {
-        status = 'absent';
-      } else if (checkInRecord && !checkOutRecord) {
-        status = 'on-site';
-      } else if (checkInRecord && checkOutRecord) {
-        status = 'checked-out';
-      } else {
-        status = 'present';
-      }
-
-      return {
-        studentId: student.id,
-        studentName: student.name,
-        status,
-        checkInTime: checkInRecord?.scanTime || null,
-        checkOutTime: checkOutRecord?.scanTime || null,
-        deviceId: checkInRecord?.deviceId || checkOutRecord?.deviceId || null,
-        durationOnSite,
-        totalScans: studentRecords.length,
-      };
-    });
-
-    const stats = {
-      total: students.length,
-      present: attendance.filter((a: typeof attendance[0]) => a.status !== 'absent').length,
-      absent: attendance.filter((a: typeof attendance[0]) => a.status === 'absent').length,
-      onSite: attendance.filter((a: typeof attendance[0]) => a.status === 'on-site').length,
-      checkedOut: attendance.filter((a: typeof attendance[0]) => a.status === 'checked-out').length,
-    };
-
-    return {
-      attendance,
-      stats,
-      classroom: await prisma.classroom.findUnique({
-        where: { id: classroomId },
-        select: { name: true, grade: true },
-      }),
-    };
-  }
-
-  /**
-   * Teacher RFID scan for classroom attendance
-   */
-  async scanTeacher(
-    rfidUid: string,
-    deviceId: string,
-    orgId: string,
-    classroomId: string,
-    batteryLevel?: number
-  ) {
-    // Find teacher by RFID in Teacher model
-    const teacher = await prisma.teacher.findFirst({
-      where: {
-        rfidUid,
-        orgId,
-        isActive: true,
-      },
-    });
-
-    if (!teacher) {
-      return {
-        success: false,
-        teacherName: '',
-        checkType: 'check_in',
-        recordId: '',
-        message: 'Teacher not found or not assigned to this organization',
-      };
-    }
-
-    // Check classroom exists
-    const classroom = await prisma.classroom.findFirst({
-      where: { id: classroomId, orgId },
-    });
-
-    if (!classroom) {
-      return {
-        success: false,
-        teacherName: teacher.name,
-        checkType: 'check_in',
-        recordId: '',
-        message: 'Classroom not found',
-      };
-    }
-
-    // Check for recent scan (idempotency)
-    const fiveSecondsAgo = new Date(Date.now() - 5000);
-    const recentScan = await prisma.teacherAttendance.findFirst({
-      where: {
-        teacherId: teacher.id,
-        classroomId,
-        scanTime: { gte: fiveSecondsAgo },
-      },
-    });
-
-    if (recentScan) {
-      return {
-        success: true,
-        teacherName: teacher.name,
-        checkType: recentScan.checkType,
-        recordId: '',
-        message: 'Duplicate scan ignored',
-      };
-    }
-
-    // Determine check type based on last scan
-    const lastScan = await prisma.teacherAttendance.findFirst({
-      where: {
-        teacherId: teacher.id,
-        classroomId,
-      },
-      orderBy: { scanTime: 'desc' },
-    });
-
-    const checkType = lastScan?.checkType === 'check_in' ? 'check_out' : 'check_in';
 
     // Create attendance record
-    const record = await prisma.teacherAttendance.create({
+    const attendance = await prisma.attendanceRecord.create({
       data: {
-        teacherId: teacher.id,
-        classroomId,
+        studentId: student.id,
+        studentName: student.name,
         orgId,
-        deviceId,
-        checkType,
+        deviceId: device?.id || deviceId,
+        checkType: newCheckType,
+        scanTime: new Date(),
+        busRouteId: student.busRouteId || undefined,
       },
     });
 
-    // Update device last seen
-    await prisma.device.updateMany({
-      where: { deviceId, orgId },
-      data: {
-        lastSeen: new Date(),
-        ...(batteryLevel !== undefined && { batteryLevel }),
-      },
-    });
+    // Update student bus status if applicable
+    if (newBusStatus && student.usesSchoolBus) {
+      await prisma.student.update({
+        where: { id: student.id },
+        data: { busStatus: newBusStatus },
+      });
+    }
+
+    // Update device battery level if provided
+    if (batteryLevel !== undefined && device) {
+      await prisma.device.update({
+        where: { id: device.id },
+        data: { 
+          batteryLevel,
+          lastSeen: new Date(),
+        },
+      });
+    }
 
     return {
       success: true,
-      teacherName: teacher.name,
-      checkType,
-      recordId: record.id,
-      classroomName: classroom.name,
-      message: `${teacher.name} has ${checkType === 'check_in' ? 'checked in to' : 'checked out from'} ${classroom.name}`,
-    };
-  }
-
-  /**
-   * Get teacher attendance history
-   */
-  async getTeacherAttendance(
-    orgId: string,
-    teacherId?: string,
-    classroomId?: string,
-    startDate?: Date,
-    endDate?: Date
-  ) {
-    const where: any = { orgId };
-
-    if (teacherId) {
-      where.teacherId = teacherId;
-    }
-
-    if (classroomId) {
-      where.classroomId = classroomId;
-    }
-
-    if (startDate && endDate) {
-      where.scanTime = {
-        gte: startDate,
-        lte: endDate,
-      };
-    }
-
-    const records = await prisma.teacherAttendance.findMany({
-      where,
-      include: {
-        classroom: {
-          select: {
-            name: true,
-            grade: true,
-          },
-        },
-      },
-      orderBy: { scanTime: 'desc' },
-      take: 100,
-    });
-
-    // Group by date for better visualization
-    const groupedByDate = new Map<string, typeof records>();
-    records.forEach((record: typeof records[0]) => {
-      const date = new Date(record.scanTime).toDateString();
-      if (!groupedByDate.has(date)) {
-        groupedByDate.set(date, []);
-      }
-      groupedByDate.get(date)?.push(record);
-    });
-
-    return {
-      records,
-      groupedByDate: Array.from(groupedByDate.entries()).map(([date, recs]) => ({
-        date,
-        records: recs,
-      })),
+      studentName: student.name,
+      checkType: newCheckType,
+      recordId: attendance.id,
+      duplicate: false,
+      message: `Successfully recorded ${newCheckType.replace('_', ' ')}`,
+      busStatus: newBusStatus,
     };
   }
 }

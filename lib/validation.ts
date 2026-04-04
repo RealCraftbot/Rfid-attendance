@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+// Common password blacklist (top 1000 common passwords should be checked server-side)
+const commonPasswords = [
+  'password', '123456', '12345678', 'qwerty', '123456789',
+  'letmein', '1234567', 'football', 'iloveyou', 'admin',
+  'welcome', 'monkey', 'login', 'abc123', '111111',
+  '123123', 'password123', '1234', 'baseball', 'qwertyuiop',
+];
+
 export const checkTypes = [
   'check_in',
   'check_out',
@@ -8,6 +16,23 @@ export const checkTypes = [
   'bus_pickup_school',
   'bus_drop_home'
 ] as const;
+
+// Enhanced password validation
+export const passwordSchema = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .max(128, 'Password must not exceed 128 characters')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character')
+  .refine(
+    (password) => !commonPasswords.includes(password.toLowerCase()),
+    { message: 'Password is too common. Please choose a more unique password.' }
+  )
+  .refine(
+    (password) => !/(.)\1{2,}/.test(password),
+    { message: 'Password cannot contain repeated characters (e.g., "aaa", "111").' }
+  );
 
 export const scanAttendanceSchema = z.object({
   device_id: z.string().min(1, 'Device ID is required'),
@@ -54,6 +79,42 @@ export const busRouteSchema = z.object({
   eveningEnd: z.string().optional(),
 }).strict();
 
+// Enhanced signup schema with strong password
+export const signupSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: passwordSchema,
+  orgName: z.string().min(2, 'Organization name is required').max(100, 'Organization name too long'),
+}).strict();
+
+// Input sanitization helper
+export function sanitizeString(input: string): string {
+  return input
+    .trim()
+    .replace(/[<>]/g, '') // Remove < and > to prevent basic XSS
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .slice(0, 1000); // Limit length
+}
+
+// Sanitize object recursively
+export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
+  const sanitized: any = {};
+  
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string') {
+      sanitized[key] = sanitizeString(value);
+    } else if (typeof value === 'object' && value !== null) {
+      sanitized[key] = sanitizeObject(value);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  
+  return sanitized;
+}
+
 export type ScanAttendanceInput = z.infer<typeof scanAttendanceSchema>;
 export type AttendanceQueryInput = z.infer<typeof attendanceQuerySchema>;
 export type BusRouteInput = z.infer<typeof busRouteSchema>;
+export type SignupInput = z.infer<typeof signupSchema>;

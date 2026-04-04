@@ -1,42 +1,79 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-
 export const dynamic = 'force-dynamic';
 
+import { NextResponse } from 'next/server';
+import { MonitoringService } from '@/lib/monitoring';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+
+// Public health check (basic)
 export async function GET() {
   try {
-    // Test database connection
-    await prisma.$connect();
+    const health = await MonitoringService.checkHealth();
     
-    // Get database version
-    const result = await prisma.$queryRaw<{ version: string }[]>`SELECT version()`;
+    const statusCode = health.status === 'healthy' ? 200 : 
+                      health.status === 'degraded' ? 200 : 503;
     
-    // Count records in key tables
-    const orgCount = await prisma.organization.count();
-    const userCount = await prisma.user.count();
-    const studentCount = await prisma.student.count();
-    
-    return NextResponse.json({
-      status: 'healthy',
-      database: 'connected',
-      timestamp: new Date().toISOString(),
-      version: result[0]?.version || 'unknown',
-      stats: {
-        organizations: orgCount,
-        users: userCount,
-        students: studentCount,
-      },
-    }, { status: 200 });
+    return NextResponse.json(health, { status: statusCode });
   } catch (error) {
-    console.error('Health check failed:', error);
+    return NextResponse.json(
+      {
+        status: 'unhealthy',
+        error: 'Health check failed',
+        timestamp: new Date().toISOString(),
+      },
+      { status: 503 }
+    );
+  }
+}
+
+// Detailed metrics (authenticated admin only)
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
     
-    return NextResponse.json({
-      status: 'unhealthy',
-      database: 'disconnected',
-      timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
+    if (!session?.user || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { type } = await request.json();
+    
+    switch (type) {
+      case 'security':
+        const securityMetrics = await MonitoringService.getSecurityMetrics();
+        return NextResponse.json(securityMetrics);
+        
+      case 'business':
+        const businessMetrics = await MonitoringService.getBusinessMetrics();
+        return NextResponse.json(businessMetrics);
+        
+      case 'full':
+        const [health, security, business] = await Promise.all([
+          MonitoringService.checkHealth(),
+          MonitoringService.getSecurityMetrics(),
+          MonitoringService.getBusinessMetrics(),
+        ]);
+        
+        return NextResponse.json({
+          health,
+          security,
+          business,
+          timestamp: new Date().toISOString(),
+        });
+        
+      default:
+        return NextResponse.json(
+          { error: 'Invalid metrics type' },
+          { status: 400 }
+        );
+    }
+  } catch (error) {
+    console.error('Metrics API error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch metrics' },
+      { status: 500 }
+    );
   }
 }

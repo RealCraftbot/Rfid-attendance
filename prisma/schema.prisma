@@ -564,3 +564,29 @@ model Timetable {
   @@index([orgId, classroomId])
   @@index([orgId, subject])
 }
+
+// Audit log for compliance and security tracking
+model AuditLog {
+  id            String    @id @default(cuid())
+  action        String    // Type of action performed
+  userId        String?   // Who performed the action
+  orgId         String?   // Which organization
+  targetId      String?   // ID of the affected entity
+  targetType    String?   // Type of entity (Student, User, etc.)
+  details       Json?     // Additional details as JSON
+  ipAddress     String?   // Client IP address
+  userAgent     String?   // Client user agent
+  status        String    // SUCCESS or FAILURE
+  errorMessage  String?   // Error message if failed
+  createdAt     DateTime  @default(now())
+
+  @@index([action])
+  @@index([userId])
+  @@index([orgId])
+  @@index([targetId])
+  @@index([targetType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([orgId, createdAt])
+  @@index([action, createdAt])
+}

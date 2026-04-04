@@ -123,14 +123,16 @@ export function tooManyRequests(message = 'Rate limit exceeded', retryAfter?: nu
   );
 }
 
-export function serverError(message = 'Internal server error'): NextResponse<ApiResponse> {
+export function serverError(message = 'An unexpected error occurred'): NextResponse<ApiResponse> {
+  // Log detailed error internally but return generic message
   console.error('[Server Error]', message);
+  
   return NextResponse.json(
     {
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message,
+        message: 'An unexpected error occurred. Please try again later.',
       },
     },
     { status: 500 }
