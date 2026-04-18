@@ -71,6 +71,7 @@ const getNavItems = (role: string) => {
     { icon: Users, label: 'Students', href: '/dashboard/students' },
     { icon: UserPlus, label: 'Parents', href: '/dashboard/parents' },
     { icon: ClipboardList, label: 'Enrollments', href: '/dashboard/admin/enrollments' },
+    { icon: MessageSquare, label: 'Messages', href: '/dashboard/messages' },
     { icon: Cpu, label: 'Devices', href: '/dashboard/devices' },
     { icon: Bus, label: 'Bus Tracking', href: '/dashboard/bus' },
     { icon: Calendar, label: 'Timetable', href: '/dashboard/timetable' },
