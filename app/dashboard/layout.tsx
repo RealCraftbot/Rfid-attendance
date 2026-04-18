@@ -30,7 +30,8 @@ import {
   FileText,
   UserCheck,
   Loader2,
-  Calendar
+  Calendar,
+  ClipboardList
 } from 'lucide-react';
 
 // Role type matching the database
@@ -69,6 +70,7 @@ const getNavItems = (role: string) => {
     { icon: BookOpen, label: 'Classrooms', href: '/dashboard/classrooms' },
     { icon: Users, label: 'Students', href: '/dashboard/students' },
     { icon: UserPlus, label: 'Parents', href: '/dashboard/parents' },
+    { icon: ClipboardList, label: 'Enrollments', href: '/dashboard/admin/enrollments' },
     { icon: Cpu, label: 'Devices', href: '/dashboard/devices' },
     { icon: Bus, label: 'Bus Tracking', href: '/dashboard/bus' },
     { icon: Calendar, label: 'Timetable', href: '/dashboard/timetable' },
