@@ -95,6 +95,7 @@ model Organization {
   parents           Parent[]
   teachers          Teacher[]
   academicSessions  AcademicSession[]
+  messages          Message[]
 
   @@index([slug])
   @@index([status])
@@ -525,6 +526,24 @@ model Session {
 
   @@index([userId])
   @@index([token])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  content    String
+  senderId   String
+  receiverId String
+  orgId      String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime  @default(now())
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([orgId, receiverId])
+  @@index([createdAt])
 }
 
 model VerificationToken {
