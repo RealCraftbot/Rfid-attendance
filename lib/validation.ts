@@ -118,3 +118,30 @@ export type ScanAttendanceInput = z.infer<typeof scanAttendanceSchema>;
 export type AttendanceQueryInput = z.infer<typeof attendanceQuerySchema>;
 export type BusRouteInput = z.infer<typeof busRouteSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
+
+export const enrollmentStep1Schema = z.object({
+  studentName: z.string().min(2, 'Student name required').max(100),
+  studentDob: z.string().optional(),
+  studentGender: z.enum(['Male', 'Female', 'Other']).optional(),
+  gradeApplying: z.string().min(1, 'Grade applying required').max(20),
+});
+
+export const enrollmentStep2Schema = z.object({
+  parentName: z.string().min(2, 'Parent name required').max(100),
+  parentEmail: z.string().email('Valid email required'),
+  parentPhone: z.string().min(10, 'Phone number required').max(20),
+  relationship: z.string().max(30).optional(),
+});
+
+export const enrollmentStep3Schema = z.object({
+  passportUrl: z.string().url().optional(),
+  birthCertUrl: z.string().url().optional(),
+  otherDocs: z.string().optional(),
+});
+
+export const enrollmentSubmitSchema = z.object({
+  orgSlug: z.string().min(1, 'Organization slug required'),
+  step1: enrollmentStep1Schema,
+  step2: enrollmentStep2Schema,
+  step3: enrollmentStep3Schema.optional(),
+});

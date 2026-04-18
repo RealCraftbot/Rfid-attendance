@@ -96,6 +96,7 @@ model Organization {
   teachers          Teacher[]
   academicSessions  AcademicSession[]
   messages          Message[]
+  enrollments     Enrollment[]
 
   @@index([slug])
   @@index([status])
@@ -608,4 +609,48 @@ model AuditLog {
   @@index([createdAt])
   @@index([orgId, createdAt])
   @@index([action, createdAt])
+}
+
+enum EnrollmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Enrollment {
+  id              String   @id @default(cuid())
+  orgId           String
+  
+  // Step 1: Student Bio
+  studentName     String
+  studentDob    DateTime?
+  studentGender String?
+  gradeApplying String?
+  
+  // Step 2: Parent Contact
+  parentName    String
+  parentEmail  String
+  parentPhone  String
+  relationship  String?
+  
+  // Step 3: Documents
+  passportUrl   String?
+  birthCertUrl String?
+  otherDocs   String?
+  
+  // Status
+  status        EnrollmentStatus @default(PENDING)
+  reviewedBy    String?
+  reviewedAt   DateTime?
+  rejectionReason String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([orgId, status])
 }
